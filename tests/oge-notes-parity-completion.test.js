@@ -138,7 +138,7 @@ test('unsure GitHub Save can be reconciled without overwriting a remote version'
   assert.match(ui, /Confirm already saved/);
   assert.match(ui, /Use my offline version/);
   const page = await readFile(new URL('../app/notes/page.js', import.meta.url), 'utf8');
-  assert.match(page, /window\.localStorage\.setItem\(key, JSON\.stringify\(\{ draft \}\)\)/);
+  assert.match(page, /browserStorage\.setItem\(key, JSON\.stringify\(\{ draft \}\)\)/);
   assert.match(page, /saveOffline\(\{ allowWhileSaving: true \}\)/);
   assert.match(page, /saveVaultReadCache\(window\.localStorage/);
 });
