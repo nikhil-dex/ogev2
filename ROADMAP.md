@@ -1,5 +1,17 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestone #134 — Study, offline reliability, backup coverage and Customs fixes (19 Nov 2026)
+
+**Work branch:** `feature/vault-study-reliability` based on unmerged `feature/customs-indexed-module`.
+
+1. **GitHub study + revision:** Added `/vault/study` with a paged active-recall queue of committed GitHub Notes. Ratings (Again/Hard/Good/Easy) set 1/3/7/14-day review intervals, indexed as owner/repository-scoped due-date metadata in MongoDB, not as Notes content. Added `/vault/history` to browse recent GitHub revisions and explicitly restore an older version through the existing draft-conflict-safe GitHub revision endpoint. The history list is intentionally bounded; this is not an exhaustive Git log.
+2. **Offline reading:** A size- and age-limited owner/repository-specific `sessionStorage` cache preserves recently fetched Vault Notes for read-only recovery when a subsequent Notes API request fails. Editing or deleting while in cache mode is blocked. Existing browser/session and temporary-draft recovery remains; full offline application-shell operation and reliable offline writes are **not yet provided**.
+3. **Complete backup coverage and manual recovery:** Added `/vault/backup` and authenticated `/api/vault/backup-manifest` to check a complete, non-truncated repository tree, show committed file counts by category and offer the existing GitHub ZIP archive. This is a **read-only coverage check**, not validation of the user's downloaded ZIP. Full one-click ZIP restore remains **unimplemented**; the page includes honest manual recovery guidance.
+4. **Customs reliability:** Fixed the JSX apostrophe that failed the previous CI validation and added stale-index recovery when GitHub is unavailable. It continues to enforce signed-in owner/repository access before any file is opened.
+
+**Remaining gates:** CI must pass, real-account GitHub study and restore acceptance, offline-browser testing, and end-to-end backup/restore validation. No deployment or merge to `main`.
+
+
 ## Milestone #133 — Permanent Customs module + MongoDB metadata index (19 Nov 2026)
 
 - Added a **Customs** home module linking to `/customs` for accounts that have selected and connected GitHub Vault; it is visible to those owners even before they create a `customs/` folder, and hidden from MongoDB-only or disconnected accounts.
