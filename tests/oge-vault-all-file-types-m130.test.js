@@ -79,9 +79,9 @@ test('M130 My Files allows every file picker format and provides Other downloads
   assert.doesNotMatch(ui, /accept="\.[^"]+"/);
   assert.match(ui, /\['other','Other'\]/);
   assert.match(ui, /file\.type \|\| 'application\/octet-stream'/);
-  assert.match(ui, /if \(!canPreviewMediaFile\(file\)\)/);
+  assert.match(ui, /if \(!canViewFile\(file\)\)/);
   assert.match(ui, /await downloadFile\(file\)/);
-  assert.match(ui, /canPreviewMediaFile\(file\) && <button/);
+  assert.match(ui, /canViewFile\(file\) && <button/);
   assert.match(library, /needsMediaSignatureCheck\(norm\.value\)/);
   assert.match(library, /createVaultMediaBlob/);
 });
