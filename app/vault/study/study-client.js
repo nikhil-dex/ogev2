@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { appendStudyDueNotes, removeReviewedStudyNote, skipStudyNote } from '../../../lib/oge-vault-study-queue.js';
 
 async function json(response) {
   const value = await response.json().catch(() => ({}));
@@ -18,14 +19,20 @@ export default function VaultStudyClient() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [completed, setCompleted] = useState(0);
+  const [scanned, setScanned] = useState(0);
+  const [total, setTotal] = useState(null);
   const load = useCallback(async (next = null) => {
     setLoading(true); setError('');
     try {
       const page = await json(await fetch('/api/vault/study' +
         (next ? '?cursor=' + encodeURIComponent(next) : ''), { cache: 'no-store' }));
-      setNotes(page.notes.filter((note) => note.due));
-      setCursor(page.nextCursor);
-      setRevealed(false);
+      if (!Array.isArray(page.notes)) throw new Error('Invalid Vault study page.');
+      setNotes((existing) => next ? appendStudyDueNotes(existing, page.notes) :
+        appendStudyDueNotes([], page.notes));
+      setCursor(page.nextCursor || null);
+      setTotal(page.total);
+      setScanned((count) => next ? count + page.notes.length : page.notes.length);
+      if (!next) setRevealed(false);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }, []);
@@ -44,7 +51,7 @@ export default function VaultStudyClient() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: note.id, rating }),
       }));
-      setNotes((items) => items.filter((item) => item.id !== note.id));
+      setNotes((items) => removeReviewedStudyNote(items, note.id));
       setCompleted((n) => n + 1);
       setRevealed(false);
       setMessage('Review saved. Next due ' + new Date(result.reviewDueAt).toLocaleDateString('en-IN') + '.');
@@ -62,6 +69,7 @@ export default function VaultStudyClient() {
       <div className="oge-workflow-summary">
         <div className="oge-workflow-stat"><span className="oge-section-kicker">DUE IN THIS PAGE</span><strong>{notes.length}</strong></div>
         <div className="oge-workflow-stat"><span className="oge-section-kicker">REVIEWED THIS VISIT</span><strong>{completed}</strong></div>
+        <div className="oge-workflow-stat"><span className="oge-section-kicker">NOTES SCANNED</span><strong>{scanned}{total !== null ? ' / ' + total : ''}</strong></div>
       </div>
       {error && <p role="alert" className="oge-form-error">{error}</p>}
       {message && <p role="status" className="oge-form-success">{message}</p>}
@@ -69,6 +77,12 @@ export default function VaultStudyClient() {
         <div className="hub-card oge-module-card">
           <span className="hub-card-kicker">SUBJECT · {note.subjectId}</span>
           <h2>{note.heading}</h2>
+          {notes.length > 1 && <button type="button" className="oge-settings-secondary-button"
+            disabled={saving} onClick={() => {
+              setNotes((items) => skipStudyNote(items));
+              setRevealed(false);
+              setMessage('Card moved to the end of the current study queue.');
+            }}>Skip for now →</button>}
           {revealed ? <div className="oge-notes-preview">{note.answer}</div> :
             <button type="button" className="oge-primary-link" onClick={() => setRevealed(true)}>Reveal answer</button>}
           {revealed && <div className="oge-settings-data-actions">
@@ -81,8 +95,9 @@ export default function VaultStudyClient() {
       ) : <div className="home-dashboard-empty"><strong>No due cards on this page.</strong>
         <p>Review more notes or return when your next revision is due.</p></div>}
       {!loading && cursor &&
-        <button type="button" className="oge-settings-secondary-button" onClick={() => load(cursor)}>Load next 20 notes →</button>}
-      <p className="oge-settings-note">This is a paged queue. Use the next-page control to continue through larger Vault libraries.</p>
+        <button type="button" className="oge-settings-secondary-button" disabled={saving}
+          onClick={() => load(cursor)}>Scan next 20 Notes →</button>}
+      <p className="oge-settings-note">Newly scanned due cards are appended, not substituted for unreviewed cards. If a page contains no due cards, scan the next page to continue.</p>
     </section>
   );
 }
