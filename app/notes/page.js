@@ -7,6 +7,7 @@ import SiteNavbar from '../components/site-navbar';
 import { markdownHtml } from '../../lib/markdown.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
+import { vaultReadCacheKey, saveVaultReadCache, readVaultReadCache } from '../../lib/oge-vault-read-cache.js';
 import { noteEditorFeedback, noteBodyMetrics } from '../../lib/oge-notes-editor-feedback.js';
 import { vaultSaveFailureMessage } from '../../lib/oge-vault-save-feedback.js';
 import { stageVaultFollowupSave, retireSubmittedVaultDraft } from '../../lib/oge-vault-followup-save.js';
@@ -47,6 +48,7 @@ export default function NotesPage({
   const [selectedTag, setSelectedTag] = useState('');
   const [sortOrder, setSortOrder] = useState('latest');
   const [loading, setLoading] = useState(true);
+  const [offlineReadOnly, setOfflineReadOnly] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -279,6 +281,13 @@ export default function NotesPage({
       const defaultSubject = subjectList[0]?.slug || '';
       setSubjects(subjectList);
       setNotes(loadedNotes);
+      setOfflineReadOnly(false);
+      if (vaultMode) {
+        try {
+          const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+          saveVaultReadCache(window.sessionStorage, key, subjectList, loadedNotes);
+        } catch { /* Browser cache is optional. */ }
+      }
       setNextNotesCursor(vaultMode ? response.nextCursor || null : null);
       setTotalVaultNotes(vaultMode ? response.total : null);
       const linkId = vaultMode
@@ -298,7 +307,24 @@ export default function NotesPage({
         setError('Could not open the linked GitHub Note. Refresh or check your Vault connection.');
       }
     } catch (err) {
-      setError(err.message || 'Could not load your notes.');
+      let cached = null;
+      if (vaultMode) {
+        try {
+          cached = readVaultReadCache(window.sessionStorage,
+            vaultReadCacheKey(vaultOwnerId, vaultRepoId));
+        } catch { /* No owner-scoped offline cache available. */ }
+      }
+      if (cached) {
+        setSubjects(cached.subjects);
+        setNotes(cached.notes);
+        setActiveSubject((current) => preferredSubject || current || cached.subjects[0]?.slug || '');
+        setNextNotesCursor(null);
+        setTotalVaultNotes(null);
+        setOfflineReadOnly(true);
+        setError('GitHub is unavailable. Showing the last notes read in this tab (read-only). Reconnect and refresh before editing.');
+      } else {
+        setError(err.message || 'Could not load your notes.');
+      }
     } finally {
       setLoading(false);
     }
@@ -590,6 +616,7 @@ export default function NotesPage({
 
   async function saveNote(event) {
     event.preventDefault();
+    if (offlineReadOnly) { setError('Reconnect and refresh Notes before saving to GitHub.'); return; }
     if (saving || !activeSubject || (hybridDrafts && !hybridReady)) return;
     setSaving(true);
     const submittedEditor = JSON.stringify({
@@ -885,6 +912,7 @@ export default function NotesPage({
   }
 
   async function toggleFavorite(note) {
+    if (offlineReadOnly) { setError('Reconnect before changing favorites.'); return; }
     setError('');
     try {
       await responseJson(await fetch(notesApi, {
@@ -900,6 +928,7 @@ export default function NotesPage({
   }
 
   async function deleteNote(note) {
+    if (offlineReadOnly) { setError('Reconnect before deleting GitHub Notes.'); return; }
     if (!window.confirm(`Delete “${note.heading}” permanently? This cannot be undone.`)) return;
     setError('');
     try {
@@ -921,6 +950,7 @@ export default function NotesPage({
   }, [showSubjectForm]);
 
   async function createSubject(event) {
+    if (offlineReadOnly) { event.preventDefault(); setError('Reconnect before creating subjects.'); return; }
     event.preventDefault();
     if (subjectSaving) return;
     setSubjectSaving(true);
@@ -1048,6 +1078,11 @@ export default function NotesPage({
   return (
     <main className="shell">
       <SiteNavbar notesHref={vaultMode ? '/vault/notes' : '/notes'} showFiles={vaultMode} actions={<ThemeToggle />} />
+      {vaultMode && <nav aria-label="GitHub Vault study tools" className="oge-settings-data-actions">
+        <Link className="oge-settings-secondary-link" href="/vault/study">Revision &amp; Study ↻</Link>
+        <Link className="oge-settings-secondary-link" href="/vault/history">GitHub Note History ◷</Link>
+        <Link className="oge-settings-secondary-link" href="/vault/backup">Backup &amp; Recovery ▣</Link>
+      </nav>}
 
       <nav className="subject-nav" aria-label="Subjects">
         {subjects.map((subject) => (

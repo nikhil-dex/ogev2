@@ -200,7 +200,8 @@ test('D3 new preview API requires auth, rate limit, owner subject and encrypted-
   const route = await readFile(new URL('../app/api/vault/revision-history/route.js', import.meta.url), 'utf8');
   const engine = await readFile(new URL('../lib/oge-vault-revision-history.js', import.meta.url), 'utf8');
   const production = await readFile(new URL('../app/api/revision-history/route.js', import.meta.url), 'utf8');
-  assert.match(route, /OGE_VAULT_REVISION_PREVIEW !== 'true'/);
+  assert.match(route, /account\?\.notesStorage !== 'github'/);
+  assert.doesNotMatch(route, /OGE_VAULT_REVISION_PREVIEW !== 'true'/);
   assert.match(route, /OGE_VAULT_MAIN_PREVIEW !== 'true'/);
   assert.match(route, /const session = await auth\(\)/);
   assert.match(route, /getVaultNoteClient\(db/);

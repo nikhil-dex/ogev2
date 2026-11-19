@@ -54,6 +54,21 @@ export default async function HomePage() {
     }] : []),
     ...modules.filter((item) => account.notesStorage !== 'github' ||
       (item.href !== '/revision' && item.href !== '/revision-history')),
+    ...(account.notesStorage === 'github' && vaultNotesReady ? [{
+      number: '08', group: 'REVIEW', title: 'Vault Study',
+      description: 'Practice committed GitHub Notes with spaced-repetition due dates.',
+      href: '/vault/study', icon: '↻',
+    }] : []),
+    ...(account.notesStorage === 'github' && vaultNotesReady ? [{
+      number: '10', group: 'HISTORY', title: 'Vault History',
+      description: 'Browse and restore prior committed versions of your GitHub Notes.',
+      href: '/vault/history', icon: '◷',
+    }] : []),
+    ...(account.notesStorage === 'github' && filesReady ? [{
+      number: '09', group: 'RECOVER', title: 'Vault Backup',
+      description: 'Inspect committed resources, download your full repository ZIP, and review recovery steps.',
+      href: '/vault/backup', icon: '▣',
+    }] : []),
     ...(filesReady ? [{
       number: '06', group: 'COLLECT', title: 'My Files',
       description: 'Store documents, code, media and other files in your private GitHub Vault.',

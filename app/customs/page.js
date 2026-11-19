@@ -49,7 +49,7 @@ export default async function CustomsPage({ searchParams }) {
         {!connected ? (
           <div className="home-dashboard-empty">
             <strong>Connect your GitHub Vault first.</strong>
-            <p>Customs reads files from your private Vault repository, not from OgeV2's source code.</p>
+            <p>Customs reads files from your private Vault repository, not from OgeV2 source code.</p>
             <Link className="home-dashboard-action-link" href="/vault">Open Vault setup →</Link>
           </div>
         ) : error ? <p className="home-dashboard-error" role="status">{error}</p> : !customs?.exists ? (
@@ -69,6 +69,7 @@ export default async function CustomsPage({ searchParams }) {
             ))}
           </div>
         ) : <p className="home-dashboard-empty">The folder exists but has no supported files yet.</p>}
+        {customs?.stale && <p className="home-dashboard-error" role="status">GitHub is temporarily unavailable. Showing the last indexed file list; previews still require GitHub access. Try Refresh again later.</p>}
         {customs && <p className="oge-settings-note">Last checked: {new Date(customs.indexedAt).toLocaleString('en-IN')}. {customs.source === 'index' ? 'Using the saved file index.' : 'Indexed from GitHub Vault.'} Files stay in GitHub; MongoDB stores only the file list.</p>}
       </section>
     </main>
