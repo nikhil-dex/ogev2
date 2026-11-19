@@ -126,6 +126,7 @@ export default async function VaultPage({ searchParams }) {
             {recoveryCenterVisible && <Link className="oge-primary-link" href="/vault/recovery">Recovery Center — coverage and safety status →</Link>}
             {user.notesStorage !== 'mongodb' && <>
               <p className="oge-settings-note">Download a snapshot of everything currently committed in your Vault, including Saved Links and My Files. GitHub may ask you to sign in to access the private repository. This is not an Oge one-click restore; unsaved drafts are excluded.</p>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a className="oge-primary-link" href="/api/vault/backup-zip">↓ Download complete Vault ZIP</a>
             </>}
             {currentResourceBackupVisible && <>
