@@ -99,7 +99,8 @@ test('Notes interface wires all six parity improvements to existing APIs', async
   assert.match(mongo, /pinned: Boolean\(note\.pinned\)/);
   assert.match(gemini, /getVaultNoteClient\(db/);
   assert.match(gemini, /readVaultNote\(client/);
-  assert.match(study, /finishDailyStudyReview/);
+  assert.match(study, /setDaily\(result\.daily\)/);
+  assert.match(study, /method: 'PATCH'/);
   assert.match(study, /LEARNED NOTES/);
   assert.match(pdf, /\/api\/vault\/media\?action=upload-chunk/);
   assert.match(pdf, /\/api\/vault\/media'/);
