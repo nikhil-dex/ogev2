@@ -93,7 +93,8 @@ test('familiar Notes hybrid editor is opt-in and preserves legacy production mod
   assert.match(api, /isNew: true/);
   const notesAdapter = await readFile(new URL('../app/api/vault/notes-main/route.js', import.meta.url), 'utf8');
   assert.match(notesAdapter, /const suppliedId = data\?\.id/);
-  assert.match(notesAdapter, /OGE_VAULT_HYBRID_DRAFT_PREVIEW === 'true'/);
+  assert.match(notesAdapter, /suppliedId !== undefined/);
+  assert.match(api, /OGE_VAULT_HYBRID_DRAFT_PREVIEW !== 'true'/);
   assert.match(notesAdapter, /suppliedId \? \{ id: suppliedId \} : \{\}/);
   assert.match(page, /Server recovery unavailable\. Restore the browser draft/);
   assert.ok(page.includes("if (!navigator.onLine)"));
