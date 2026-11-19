@@ -45,10 +45,15 @@ export async function GET(request) {
     const params = new URL(request.url).searchParams;
     const cursor = params.get('cursor');
     const page = await listVaultNotePage(ctx.client, { limit: 20, cursor });
-    return json({
-      notes: await annotateVaultStudyPage(ctx.db, ctx.client, ctx.ownerId, page.notes),
-      nextCursor: page.nextCursor, total: page.total,
-    });
+    const [notes, learnedCount] = await Promise.all([
+      annotateVaultStudyPage(ctx.db, ctx.client, ctx.ownerId, page.notes),
+      ctx.db.collection('vaultStudyProgress').countDocuments({
+        ownerId: ctx.ownerId, repoId: ctx.client.vault.repoId,
+        rating: { $in: ['good', 'easy'] },
+      }),
+    ]);
+    return json({ notes, learnedCount,
+      nextCursor: page.nextCursor, total: page.total });
   } catch (error) { return failed(error); }
 }
 export async function POST(request) {
