@@ -297,6 +297,7 @@ export default function NotesPage({
       if (vaultMode) {
         try {
           const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+          saveVaultReadCache(window.localStorage, key, subjectList, loadedNotes);
           saveVaultReadCache(window.sessionStorage, key, subjectList, loadedNotes);
         } catch { /* Browser cache is optional. */ }
       }
@@ -322,8 +323,9 @@ export default function NotesPage({
       let cached = null;
       if (vaultMode) {
         try {
-          cached = readVaultReadCache(window.sessionStorage,
-            vaultReadCacheKey(vaultOwnerId, vaultRepoId));
+          const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+          cached = readVaultReadCache(window.localStorage, key) ||
+            readVaultReadCache(window.sessionStorage, key);
         } catch { /* No owner-scoped offline cache available. */ }
       }
       if (cached) {
@@ -434,6 +436,17 @@ export default function NotesPage({
     Promise.resolve().then(() => { if (active) void load(); });
     return () => { active = false; };
   }, [load]);
+
+  useEffect(() => {
+    if (!vaultMode || !readerNote || !subjects.length) return;
+    try {
+      const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+      const saved = readVaultReadCache(window.localStorage, key);
+      const otherNotes = saved?.notes || notes;
+      saveVaultReadCache(window.localStorage, key, subjects,
+        [readerNote, ...otherNotes.filter((note) => note.id !== readerNote.id)]);
+    } catch { /* Offline cache remains optional. */ }
+  }, [vaultMode, vaultOwnerId, vaultRepoId, readerNote, subjects, notes]);
 
   const availableTags = useMemo(
     () => [...new Set(notes.flatMap((note) => Array.isArray(note.tags) ? note.tags : []))].sort(),
