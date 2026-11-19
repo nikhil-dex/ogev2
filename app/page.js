@@ -47,6 +47,7 @@ export default async function HomePage() {
   const quickNotesApi = captureReady ? '/api/vault/quick-notes' : '/api/quick-notes';
   const filesReady = githubVaultFilesEnabled(account);
   let customs = { exists: false, files: [] };
+  let customsUnavailable = false;
   if (filesReady) {
     try {
       const client = await getVaultNoteClient(db, {
@@ -56,6 +57,7 @@ export default async function HomePage() {
     } catch (error) {
       // A temporarily unreachable GitHub repository must not break Home.
       console.error('Could not load Vault Customs:', error?.name);
+      customsUnavailable = true;
     }
   }
   // GitHub Vault does not use the legacy MongoDB revision queue or history pages.
@@ -107,6 +109,10 @@ export default async function HomePage() {
           <span className="hub-card-link">Go to AirNotes <span aria-hidden="true">→</span></span>
         </Link>
       </section>
+
+      {customsUnavailable && (
+        <p className="home-dashboard-error" role="status">Could not check the Customs folder in your GitHub Vault right now. Check your Vault connection and refresh this page.</p>
+      )}
 
       {customs.exists && (
         <section className="oge-module-section" aria-labelledby="customs-title">
