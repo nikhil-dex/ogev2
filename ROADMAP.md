@@ -2,6 +2,9 @@
 
 ## Milestone #132 — Personal GitHub Vault Customs library (19 Nov 2026)
 
+- **CI fix:** The first actual Customs run uncovered an incorrectly constructed extension-to-MIME map (HTML/PDF/image names all went unrecognized). Corrected the map and added case-insensitive extension regression coverage. Original validation failure: 2 Customs tests; awaiting follow-up CI.
+
+
 - **Corrected original implementation:** Customs is detected from each signed-in user's **private GitHub Vault repository**, not `ogev2/public/customs/`. The static source-repository reader and its public file links have been removed.
 - The home page uses the existing read-only GitHub App client to discover an optional root-level `customs/` folder; the section is hidden if absent. Supported top-level HTML, PDF and image files appear as cards.
 - Clicking a file opens an owner-authenticated read-only API route, which verifies the user's active Vault and loads the selected file from a GitHub blob. HTML is rendered with sandbox restrictions. No permanent content is stored in MongoDB.
