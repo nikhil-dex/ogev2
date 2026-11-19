@@ -25,6 +25,7 @@ export default function VaultHistoryClient() {
   const [selectedId, setSelectedId] = useState('');
   const [history, setHistory] = useState(null);
   const [selectedCommit, setSelectedCommit] = useState('');
+  const [historyPage, setHistoryPage] = useState(0);
   const [query, setQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [error, setError] = useState('');
@@ -54,14 +55,14 @@ export default function VaultHistoryClient() {
   }, []);
   async function loadHistory(id) {
     const request = ++requestRef.current;
-    setSelectedId(id); setHistory(null); setSelectedCommit(''); setError(''); setMessage('');
+    setSelectedId(id); setHistory(null); setSelectedCommit(''); setHistoryPage(0); setError(''); setMessage('');
     if (!id) return;
     setBusy(true);
     try {
       const result = await read(await fetch('/api/vault/revision-history?id=' +
         encodeURIComponent(id), { cache: 'no-store' }));
       if (request !== requestRef.current) return;
-      setHistory(result);
+      setHistory({ ...result, items: result.items.map((entry) => ({ ...entry, page: 0 })) });
       setSelectedCommit(result.items.find((item) => !item.isCurrent)?.commitSha ||
         result.items[0]?.commitSha || '');
       historyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -80,6 +81,24 @@ export default function VaultHistoryClient() {
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
+  async function loadOlderVersions() {
+    if (!history?.moreMayExist || busy || historyPage >= 19) return;
+    const nextPage = historyPage + 1;
+    const request = ++requestRef.current;
+    setBusy(true); setError('');
+    try {
+      const next = await read(await fetch('/api/vault/revision-history?id=' +
+        encodeURIComponent(selectedId) + '&page=' + nextPage + '&snapshot=' +
+        encodeURIComponent(history.snapshot), { cache: 'no-store' }));
+      if (request !== requestRef.current) return;
+      const additional = next.items.filter((entry) =>
+        !history.items.some((old) => old.commitSha === entry.commitSha));
+      setHistory({ ...next, items: [...history.items, ...additional.map((entry) => ({ ...entry, page: nextPage }))] });
+      setHistoryPage(nextPage);
+      if (additional.length === 0 && !next.moreMayExist) setMessage('You have reached the oldest available versions.');
+    } catch (err) { if (request === requestRef.current) setError(err.message + ' Refresh this Note to retry.'); }
+    finally { if (request === requestRef.current) setBusy(false); }
+  }
   async function restore(entry) {
     if (!history || entry.isCurrent || busy ||
       !window.confirm('Restore this earlier GitHub Note version? Unsaved drafts must be resolved first. The current committed version remains in Git history.')) return;
@@ -90,12 +109,14 @@ export default function VaultHistoryClient() {
         body: JSON.stringify({
           id: selectedId, sha: history.currentSha,
           commitSha: entry.commitSha, sourceSha: entry.sha,
+          page: entry.page ?? historyPage, snapshot: history.snapshot,
         }),
       }));
       setMessage('Previous version committed to your GitHub Vault.');
       const refreshed = await read(await fetch('/api/vault/revision-history?id=' +
         encodeURIComponent(selectedId), { cache: 'no-store' }));
       setHistory(refreshed);
+      setHistoryPage(0);
       setSelectedCommit(refreshed.items.find((item) => !item.isCurrent)?.commitSha || '');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -158,7 +179,9 @@ export default function VaultHistoryClient() {
                 onClick={() => void restore(selected)}>{busy ? 'Working…' : 'Restore selected version'}</button>
             </div>
           </div>}
-          {history.moreMayExist && <p className="oge-vh-muted" role="status">Showing a limited window of recent GitHub commits. Older versions may exist; they are not yet displayed.</p>}
+          {history.moreMayExist && <button type="button" className="oge-settings-secondary-button" disabled={busy}
+            onClick={() => void loadOlderVersions()}>{busy ? 'Loading…' : 'Load older versions'}</button>}
+          <p className="oge-vh-muted" role="status">Showing {history.items.length} distinct versions from GitHub. Older history is loaded in small batches.</p>
         </>}
       </div>
     </div>
