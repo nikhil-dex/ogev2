@@ -22,7 +22,7 @@ export async function GET(request) {
       ownerMutationFilter(ownerId, { sessionVersion }),
       { projection: { notesStorage: 1, vault: 1 } },
     );
-    if (!account || !connectedVaultStorageAvailable(account))
+    if (!account || account.notesStorage !== 'github' || !connectedVaultStorageAvailable(account))
       return json({ error: 'Connect your GitHub Vault to use Customs.' }, 403);
     const client = await getVaultNoteClient(db, { ownerId, sessionVersion }, { readOnly: true });
     const name = new URL(request.url).searchParams.get('file');
