@@ -20,7 +20,7 @@ export function legacyVaultNote(note) {
   return {
     id: note.id, sha: note.sha,
     subjectSlug: note.subjectId, heading: note.heading, answer: note.answer,
-    tags: note.tags, favorite: note.favorite,
+    tags: note.tags, favorite: note.favorite, pinned: note.pinned === true,
     createdAt: note.createdAt, updatedAt: note.updatedAt,
   };
 }
@@ -108,9 +108,8 @@ export async function POST(request) {
     // Hybrid new-note drafts keep a stable opaque UUID from the first edit
     // through the eventual GitHub commit. Legacy preview creates still let
     // the server generate the ID.
-    const hybridCreate = process.env.OGE_VAULT_HYBRID_DRAFT_PREVIEW === 'true';
     const suppliedId = data?.id;
-    if (suppliedId !== undefined && (!hybridCreate ||
+    if (suppliedId !== undefined && (
         typeof suppliedId !== 'string' ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(suppliedId))) {
       return json({ error: 'Invalid hybrid note ID.' }, 400);
@@ -119,7 +118,7 @@ export async function POST(request) {
       () => commitVaultNoteBatch(ctx.client, [{
       action: 'create', ...(suppliedId ? { id: suppliedId } : {}), note: {
         subjectId: data.subjectSlug, heading: data.heading, answer: data.answer,
-        tags: data.tags, favorite: false,
+        tags: data.tags, favorite: false, pinned: false,
       },
     }])); 
     return json(legacyVaultNote(change.results[0]), 201);
@@ -138,7 +137,8 @@ export async function PUT(request) {
       () => commitVaultNoteBatch(ctx.client, [{
         action: 'update', id: data.id, sha: data.sha,
         note: { subjectId: previous.subjectId, heading: data.heading,
-          answer: data.answer, tags: data.tags, favorite: previous.favorite },
+          answer: data.answer, tags: data.tags, favorite: previous.favorite,
+          pinned: previous.pinned === true },
       }]));
     return json(legacyVaultNote(change.results[0]));
   });
@@ -147,7 +147,7 @@ export async function PUT(request) {
 export async function PATCH(request) {
   return mutation(request, async (ctx, data) => {
     if (typeof data?.id !== 'string' || typeof data?.sha !== 'string' ||
-        typeof data?.favorite !== 'boolean')
+        (typeof data?.favorite !== 'boolean' && typeof data?.pinned !== 'boolean'))
       return json({ error: 'Note ID, revision and favorite value required.' }, 400);
     const previous = await readVaultNote(ctx.client, data.id);
     if (!await subjectExists(ctx, previous.subjectId))
@@ -156,7 +156,9 @@ export async function PATCH(request) {
       () => commitVaultNoteBatch(ctx.client, [{
         action: 'update', id: data.id, sha: data.sha,
         note: { subjectId: previous.subjectId, heading: previous.heading,
-          answer: previous.answer, tags: previous.tags, favorite: data.favorite },
+          answer: previous.answer, tags: previous.tags,
+          favorite: typeof data.favorite === 'boolean' ? data.favorite : previous.favorite,
+          pinned: typeof data.pinned === 'boolean' ? data.pinned : previous.pinned === true },
       }]));
     return json(legacyVaultNote(change.results[0]));
   }, 4096);
