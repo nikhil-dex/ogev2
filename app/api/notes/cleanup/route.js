@@ -2,6 +2,7 @@ import { auth } from '../../../../auth.js';
 import { getDatabase } from '../../../../lib/mongodb.js';
 import { readLimitedBody } from '../../../../lib/read-limited-body.js';
 import { decryptGeminiKey } from '../../../../lib/gemini-key.js';
+import { FREE_GEMINI_MODELS } from '../../../../lib/oge-gemini-connection.js';
 import { ObjectId } from 'mongodb';
 import { getVaultNoteClient, readVaultNote } from '../../../../lib/oge-vault-notes.js';
 import { ownerMutationFilter } from '../../../../lib/active-owner-mutation.js';
@@ -89,7 +90,7 @@ export async function POST(request) {
     // Keep this list restricted to models with a documented free API tier and
     // structured JSON output support. Try the next model if one is unavailable
     // or its model-specific quota is exhausted.
-    const freeModels = ['gemini-3.8-flash', 'gemini-3.6-flash'];
+    const freeModels = FREE_GEMINI_MODELS;
     let payload = {};
     let lastStatus = 0;
     let upstream;
@@ -132,7 +133,7 @@ export async function POST(request) {
       if (upstream.ok) break;
       lastStatus = upstream.status;
       if (upstream.status === 401 || upstream.status === 403) {
-        return json({ error: 'Gemini rejected your key. Update it in Settings → Gemini AI.' }, 502);
+        return json({ error: 'Gemini denied generation for your project (HTTP ' + upstream.status + '). The saved key may be valid; check Gemini API permissions and model access in Google AI Studio.' }, 403);
       }
       if (![404, 429, 500, 502, 503, 504].includes(upstream.status)) {
         return json({ error: 'Gemini could not clean up this note (' + upstream.status + '). Try again.' }, 502);
