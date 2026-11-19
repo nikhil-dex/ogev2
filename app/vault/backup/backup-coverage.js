@@ -22,8 +22,12 @@ export default function BackupCoverage() {
     <h2>{data.totalCommittedFiles} committed files</h2>
     <p>Branch: <code>{data.branch}</code></p>
     <p>Commit: <code>{data.commitSha.slice(0, 12)}</code></p>
+    <a className="oge-primary-link"
+      href={'/api/vault/backup-snapshot?commit=' + encodeURIComponent(data.commitSha)}>
+      ↓ Download this verified snapshot ZIP
+    </a>
     <ul>{Object.entries(data.groups).map(([name, count]) =>
       <li key={name}>{name}: {count}</li>)}</ul>
-    <p className="oge-settings-note">These counts confirm the repository tree could be enumerated. They do not verify a downloaded ZIP or its contents.</p>
+    <p className="oge-settings-note">The snapshot link uses this exact GitHub commit. If the branch changes, refresh the report. This verifies the source tree only; it does not independently verify the downloaded ZIP bytes.</p>
   </div>;
 }
