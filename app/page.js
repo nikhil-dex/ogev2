@@ -10,8 +10,6 @@ import HomeDashboard from './components/home-dashboard';
 import QuickNotesPanel from './components/quick-notes-panel';
 import { githubVaultFilesEnabled } from '../lib/oge-vault-media-validation.js';
 import { vaultNotesAvailable, vaultCaptureAvailable } from '../lib/oge-vault-workspace-routing.js';
-import { listVaultCustoms } from '../lib/customs-library.js';
-import { getVaultNoteClient } from '../lib/oge-vault-notes.js';
 
 const modules = [
   { number: '01', group: 'LEARN', title: 'Notes', description: 'Organize ideas, study material, and everything worth keeping.', href: '/notes', icon: '▤', featured: true },
@@ -46,23 +44,12 @@ export default async function HomePage() {
     (!account.notesStorage && !githubVaultFilesEnabled(account));
   const quickNotesApi = captureReady ? '/api/vault/quick-notes' : '/api/quick-notes';
   const filesReady = githubVaultFilesEnabled(account);
-  let customs = { exists: false, files: [] };
-  let customsUnavailable = false;
-  if (filesReady) {
-    try {
-      const client = await getVaultNoteClient(db, {
-        ownerId: session.user.id, sessionVersion: session.user.sessionVersion,
-      }, { readOnly: true });
-      customs = await listVaultCustoms(client);
-    } catch (error) {
-      // A temporarily unreachable GitHub repository must not break Home.
-      console.error('Could not load Vault Customs:', error?.name);
-      customsUnavailable = true;
-    }
-  }
   // GitHub Vault does not use the legacy MongoDB revision queue or history pages.
   // Per-note GitHub history is accessible within Vault Notes instead.
   const visibleModules = [
+    { number: '00', group: 'PERSONAL', title: 'Customs',
+      description: 'Open HTML pages, PDFs and images from your own private GitHub Vault.',
+      href: '/customs', icon: '▧' },
     ...modules.filter((item) => account.notesStorage !== 'github' ||
       (item.href !== '/revision' && item.href !== '/revision-history')),
     ...(filesReady ? [{
@@ -109,41 +96,6 @@ export default async function HomePage() {
           <span className="hub-card-link">Go to AirNotes <span aria-hidden="true">→</span></span>
         </Link>
       </section>
-
-      {customsUnavailable && (
-        <p className="home-dashboard-error" role="status">Could not check the Customs folder in your GitHub Vault right now. Check your Vault connection and refresh this page.</p>
-      )}
-
-      {customs.exists && (
-        <section className="oge-module-section" aria-labelledby="customs-title">
-          <div className="oge-section-heading">
-            <div>
-              <span className="oge-section-kicker">YOUR CUSTOM LIBRARY</span>
-              <h2 id="customs-title">Customs<span>.</span></h2>
-              <p>HTML pages, PDFs and images in your private GitHub Vault.</p>
-            </div>
-            <span className="oge-count">{String(customs.files.length).padStart(2, '0')} FILES</span>
-          </div>
-          {customs.files.length ? (
-            <div className="hub-grid oge-module-grid">
-              {customs.files.map((file) => (
-                <a className="hub-card oge-module-card" key={file.name}
-                  href={file.url} target="_blank" rel="noopener noreferrer">
-                  <div className="oge-module-card-top">
-                    <span className="oge-module-icon" aria-hidden="true">{file.type === 'HTML' ? '⌘' : file.type === 'PDF' ? '▤' : '▧'}</span>
-                    <span className="hub-card-kicker">{file.type}</span>
-                  </div>
-                  <h3>{file.title} <span aria-hidden="true">↗</span></h3>
-                  <p>{file.name}</p>
-                  <span className="hub-card-link">Open file <span aria-hidden="true">→</span></span>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="home-dashboard-empty">The customs folder is empty. Add an HTML, PDF or image file inside the customs folder of your GitHub Vault.</p>
-          )}
-        </section>
-      )}
 
       <section className="oge-module-section" aria-labelledby="modules-title">
         <div className="oge-section-heading">
