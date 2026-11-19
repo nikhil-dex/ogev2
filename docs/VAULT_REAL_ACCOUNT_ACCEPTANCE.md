@@ -18,6 +18,24 @@ Use a **non-critical signed-in account and its own private `ogenotes-vault`** in
 
 Record each scenario as **PASS**, **FAIL** or **NOT RUN** along with browser, time and a redacted error. Do not mark Milestone #136 complete until those actual-user scenarios pass. Existing CI verifies only synthetic workflows and can run without GitHub credentials.
 
+
+## Notes parity acceptance — PR #7
+
+Run these checks on `feature/notes-parity-simple` in a signed-in, connected private GitHub Vault. These steps must be marked **NOT RUN** until executed with a real account.
+
+| Feature | Real-user action | Expected |
+|---|---|---|
+| Pinning | Pin and unpin a Note; filter pinned; reload | Pinned order and filter are consistent in GitHub Vault |
+| Links and reader navigation | Create `[[Arrays]]` in a Note in Mathematics and an Arrays Note in another subject; open backlinks and select **Check links in entire Vault**, open the result | Links across subjects are found; previous/next, keyboard arrows and mobile swipe remain available in the linked Note |
+| Gemini | Configure your own Gemini key; open a committed Note and run cleanup; review but do not Save, then retry and Save | Suggestion appears without committing automatically; only pressing Save writes GitHub |
+| PDF | Export a Note containing headings, lists, code blocks, tables and Unicode; open saved PDF under My Files | PDF opens and content is legible, with a structured readable layout; browser Print is still available |
+| Study | Set a daily goal; review two different Notes; open Study in another signed-in device | Goal and unique completed Notes match across devices; no Note bodies are stored in MongoDB |
+| Offline reload | Open a committed Note, disconnect, edit and close/reload the app while the shell is available; reconnect | Browser draft is recoverable; pending change requires Review & Sync |
+| Offline conflict | Edit a Note offline, update its GitHub version on another device, reconnect and choose **Keep both** | Two Notes survive; neither version is silently overwritten |
+| Uncertain save | Interrupt a Note Save after the request might have reached GitHub; reconnect | If GitHub already contains identical content, queue recognizes **Already saved** and can be safely cleared |
+
+**Limitations:** Browser-local unsaved drafts are not backed up across devices; the app cannot cold-start fully offline without the application shell. Successful CI does not certify these real-user cases.
+
 ## Local commands
 
 ```bash
