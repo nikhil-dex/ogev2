@@ -10,7 +10,8 @@ import HomeDashboard from './components/home-dashboard';
 import QuickNotesPanel from './components/quick-notes-panel';
 import { githubVaultFilesEnabled } from '../lib/oge-vault-media-validation.js';
 import { vaultNotesAvailable, vaultCaptureAvailable } from '../lib/oge-vault-workspace-routing.js';
-import { listCustomsFiles } from '../lib/customs-library.js';
+import { listVaultCustoms } from '../lib/customs-library.js';
+import { getVaultNoteClient } from '../lib/oge-vault-notes.js';
 
 const modules = [
   { number: '01', group: 'LEARN', title: 'Notes', description: 'Organize ideas, study material, and everything worth keeping.', href: '/notes', icon: '▤', featured: true },
@@ -45,7 +46,18 @@ export default async function HomePage() {
     (!account.notesStorage && !githubVaultFilesEnabled(account));
   const quickNotesApi = captureReady ? '/api/vault/quick-notes' : '/api/quick-notes';
   const filesReady = githubVaultFilesEnabled(account);
-  const customs = await listCustomsFiles();
+  let customs = { exists: false, files: [] };
+  if (filesReady) {
+    try {
+      const client = await getVaultNoteClient(db, {
+        ownerId: session.user.id, sessionVersion: session.user.sessionVersion,
+      }, { readOnly: true });
+      customs = await listVaultCustoms(client);
+    } catch (error) {
+      // A temporarily unreachable GitHub repository must not break Home.
+      console.error('Could not load Vault Customs:', error?.name);
+    }
+  }
   // GitHub Vault does not use the legacy MongoDB revision queue or history pages.
   // Per-note GitHub history is accessible within Vault Notes instead.
   const visibleModules = [
@@ -102,7 +114,7 @@ export default async function HomePage() {
             <div>
               <span className="oge-section-kicker">YOUR CUSTOM LIBRARY</span>
               <h2 id="customs-title">Customs<span>.</span></h2>
-              <p>HTML pages, PDFs and images added to your repository.</p>
+              <p>HTML pages, PDFs and images in your private GitHub Vault.</p>
             </div>
             <span className="oge-count">{String(customs.files.length).padStart(2, '0')} FILES</span>
           </div>
@@ -122,7 +134,7 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <p className="home-dashboard-empty">The customs folder is empty. Add an HTML, PDF or image file to show it here.</p>
+            <p className="home-dashboard-empty">The customs folder is empty. Add an HTML, PDF or image file inside the customs folder of your GitHub Vault.</p>
           )}
         </section>
       )}
