@@ -32,11 +32,11 @@ test('Study UI preserves queue, shows scan progress, and acknowledges review onl
   assert.match(source, /Scan next 20 Notes/);
 });
 
-test('Offline read-only mode blocks opening create and edit dialogs until reconnect', async () => {
+test('Offline read-only mode permits explicit queued edits but not automatic GitHub sync', async () => {
   const source = await readFile(new URL('../app/notes/page.js', import.meta.url), 'utf8');
-  assert.match(source, /function openNewNote\([\s\S]*?if \(offlineReadOnly\)/);
-  assert.match(source, /function editNote\([\s\S]*?if \(offlineReadOnly\)/);
-  assert.match(source, /if \(offlineReadOnly\) \{ setError\('Reconnect and refresh Notes before saving/);
+  assert.match(source, /function openNewNote\(subjectId = activeSubject\)/);
+  assert.match(source, /function editNote\(note\)/);
+  assert.match(source, /if \(vaultMode && \(offlineReadOnly \|\| !navigator\.onLine\)\) \{ saveOffline\(\); return; \}/);
 });
 
 test('Snapshot ZIP route binds committed SHA to signed-in owner and fails if branch changed', async () => {
