@@ -1,5 +1,15 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestone #136 — Private My Files PDF, DOCX, and image previews (19 Nov 2026)
+
+- Fixed the preview-frame CSP rule by allowing authenticated self-origin and temporary `blob:` PDF frames. The prior `frame-src` allowed only Google OAuth, blocking PDFs in enforced-CSP environments.
+- My Files fetches owner-authorized file bytes from its existing GitHub Vault route; PDF and raster image previews use temporary tab-local `blob:` URLs. Revokes object URLs when the preview closes; files are not published or shared externally.
+- Added **DOCX text preview** for `.docx` Word documents using browser-local bounded ZIP extraction and inert XML text parsing. No third-party converter, public link, or MongoDB file body. Word's full layout/embedded media is not reproduced; Download remains available.
+- Added validated GIF image previews alongside existing PDF/JPEG/PNG/WebP formats. HTML/SVG and other executable types remain download-only.
+- Added tests for supported formats, extraction of stored/deflated DOCX XML, malicious/corrupted archives, private preview path, CSP, and no external document service.
+- **Branch:** `feature/vault-file-previews`, based on `ogev2/main`; PR/CI and real-account acceptance are pending. No merge or deployment.
+
+
 ## Milestone #135 — Study queue continuity, offline edit guard and pinned Vault backup (19 Nov 2026)
 
 - **Study pagination reliability:** Subsequent pages append due cards instead of replacing the existing queue. Duplicate IDs are ignored, reviewed cards are removed only after an acknowledged API response, and a **Skip for now** action rotates cards without saving review progress. Shows notes scanned and total notes.

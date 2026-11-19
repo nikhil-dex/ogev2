@@ -2570,3 +2570,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .oge-editor-save-meta span{display:block}
   .oge-editor-save-footer{padding:10px 0 max(14px,env(safe-area-inset-bottom))}
 }
+
+
+/* M136: authenticated My Files Word-document text reader */
+.media-docx-preview{flex:1;min-height:0;overflow:auto;padding:16px;background:var(--surface);width:100%}
+.media-docx-page{max-width:850px;min-height:70%;margin:12px auto;padding:clamp(20px,5vw,64px);background:#fff;color:#1e2520;border:1px solid #d8ddd9;box-shadow:0 6px 28px rgba(0,0,0,.14);font:15px/1.75 system-ui,sans-serif}
+.media-preview-dialog .media-pdf-frame{flex:1;min-height:55vh}
+.media-preview-dialog:has(.media-docx-preview){overflow:hidden}
+@media(max-width:600px){.media-docx-preview{padding:7px}.media-docx-page{padding:18px;font-size:14px}.media-preview-dialog .media-pdf-frame{min-height:45vh}}
