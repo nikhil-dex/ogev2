@@ -740,16 +740,16 @@ export default function NotesPage({
   }, [hybridDrafts, hybridReady, noteDialog, editingId, newDraftId, activeSubject, heading, answer, tagsText,
     notes, saving, hybridError, hybridRetryToken, hasUnsavedEditorChanges]);
 
-  function saveOffline() {
-    if (!vaultMode || !activeSubject || saving) return;
+  function saveOffline({ allowWhileSaving = false } = {}) {
+    if (!vaultMode || !activeSubject || (saving && !allowWhileSaving)) return false;
     if (!heading.trim() || !answer.trim()) {
       setError('Add a title and Note content before saving offline.');
-      return;
+      return false;
     }
     const current = notes.find((item) => item.id === editingId);
     if (editingId && !current?.sha) {
       setError('Cannot queue this Note without its original GitHub revision.');
-      return;
+      return false;
     }
     try {
       const tags = [...new Set(tagsText.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10);
@@ -775,8 +775,10 @@ export default function NotesPage({
       setNoteDialog(false);
       setPreview(false);
       setAnswerFullscreen(false);
+      return true;
     } catch (err) {
       setError(err.message || 'Browser storage is unavailable. Keep the editor open.');
+      return false;
     }
   }
 
@@ -994,6 +996,11 @@ export default function NotesPage({
       setMessage('Note saved successfully.');
       await load(activeSubject);
     } catch (err) {
+      // A network failure can arrive after GitHub committed. Queue the same
+      // stable ID and review its remote revision after reconnecting, never
+      // retry an uncertain POST blindly.
+      if (vaultMode && (!navigator.onLine || err instanceof TypeError) &&
+          saveOffline({ allowWhileSaving: true })) return;
       if (attemptedGitHubSave && hybridDrafts && vaultMode) {
         // An HTTP error does NOT prove GitHub rejected the commit. Verify
         // immutable GitHub content, then independently CAS-clear ONLY that
