@@ -2804,3 +2804,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .editor-backdrop .editor-dialog #noteForm>.oge-editor-save-footer .field-hint{
   margin:8px 0 0;
 }
+
+/* Safari/Chromium: hide decorative scrollbars in the Notes modal without
+   disabling scrolling, keyboard navigation, or textarea selection. */
+.editor-backdrop .editor-dialog #noteForm,
+.editor-backdrop .editor-dialog #noteForm textarea#answer,
+.editor-backdrop .editor-dialog #noteForm .answer-preview,
+.editor-backdrop .editor-dialog #noteForm .oge-gemini-review-pane pre,
+.answer-workspace.is-fullscreen textarea#answer,
+.answer-workspace.is-fullscreen .answer-preview,
+.answer-workspace.is-fullscreen .oge-gemini-review {
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.editor-backdrop .editor-dialog #noteForm::-webkit-scrollbar,
+.editor-backdrop .editor-dialog #noteForm textarea#answer::-webkit-scrollbar,
+.editor-backdrop .editor-dialog #noteForm .answer-preview::-webkit-scrollbar,
+.editor-backdrop .editor-dialog #noteForm .oge-gemini-review-pane pre::-webkit-scrollbar,
+.answer-workspace.is-fullscreen textarea#answer::-webkit-scrollbar,
+.answer-workspace.is-fullscreen .answer-preview::-webkit-scrollbar,
+.answer-workspace.is-fullscreen .oge-gemini-review::-webkit-scrollbar {
+  display:none;
+  width:0;
+  height:0;
+}
+.editor-backdrop .editor-dialog #noteForm {
+  scrollbar-gutter:auto;
+  padding-right:0;
+}
+.editor-backdrop .editor-dialog #noteForm>.answer-workspace:not(.is-fullscreen) textarea#answer {
+  overflow-y:auto;
+}
