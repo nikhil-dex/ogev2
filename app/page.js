@@ -59,6 +59,11 @@ export default async function HomePage() {
       description: 'Practice committed GitHub Notes with spaced-repetition due dates.',
       href: '/vault/study', icon: '↻',
     }] : []),
+    ...(account.notesStorage === 'github' && vaultNotesReady ? [{
+      number: '10', group: 'HISTORY', title: 'Vault History',
+      description: 'Browse and restore prior committed versions of your GitHub Notes.',
+      href: '/vault/history', icon: '◷',
+    }] : []),
     ...(account.notesStorage === 'github' && filesReady ? [{
       number: '09', group: 'RECOVER', title: 'Vault Backup',
       description: 'Inspect committed resources, download your full repository ZIP, and review recovery steps.',
