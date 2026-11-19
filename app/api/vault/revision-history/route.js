@@ -71,9 +71,15 @@ export async function GET(request) {
   try {
     const { ctx, response } = await requestContext();
     if (response) return response;
-    const id = new URL(request.url).searchParams.get('id');
+    const params = new URL(request.url).searchParams;
+    const id = params.get('id');
+    const pageText = params.get('page') || '0';
+    if (!/^(0|[1-9][0-9]?)$/.test(pageText))
+      return json({ error: 'Invalid history page.' }, 400);
+    const page = Number(pageText);
+    const expectedHead = params.get('snapshot') || null;
     noteFilePath(id); // Reject paths and malformed note IDs.
-    const history = await listVaultNoteRevisions(ctx.client, id);
+    const history = await listVaultNoteRevisions(ctx.client, id, { page, expectedHead });
     if (!await subjectIsOwned(ctx, history.subjectId))
       return json({ error: 'Subject not found.' }, 404);
     return json(history);
@@ -93,12 +99,14 @@ export async function POST(request) {
     const data = JSON.parse(await readLimitedBody(request, 4096));
     const id = data?.id, sha = data?.sha;
     const commitSha = data?.commitSha, sourceSha = data?.sourceSha;
+    const page = data?.page ?? 0;
+    const expectedHead = data?.snapshot || null;
     noteFilePath(id);
     if (![sha, commitSha, sourceSha].every((value) =>
       typeof value === 'string' && /^[0-9a-f]{40}$/i.test(value)))
       return json({ error: 'Expected current and historical GitHub revisions are required.' }, 400);
 
-    const history = await listVaultNoteRevisions(ctx.client, id);
+    const history = await listVaultNoteRevisions(ctx.client, id, { page, expectedHead });
     if (!await subjectIsOwned(ctx, history.subjectId))
       return json({ error: 'Subject not found.' }, 404);
     if (history.currentSha !== sha.toLowerCase())
