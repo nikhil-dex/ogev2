@@ -1,13 +1,12 @@
 # OgeNotes — Product and Engineering Roadmap
 
-## Milestone #132 — Conditional Customs library (19 Nov 2026)
+## Milestone #132 — Personal GitHub Vault Customs library (19 Nov 2026)
 
-- Added an optional home-screen **Customs** section inspired by the original ogenotes HTML Files section.
-- The section is rendered only when `public/customs/` exists in the OgeV2 source repository. HTML, PDF and common image files inside are listed and open as ordinary static assets in a new tab. Nonmatching files are ignored.
-- No new storage provider, upload API or GitHub permissions needed. These are public app assets, separate from each user's private GitHub Vault.
-- Added tests for absent/empty folder behavior, file types, links and conditional rendering.
-- Implementation branch: `feature/customs-library` in `nikhil-dex/ogev2`; leave `main` unchanged until review.
-
+- **Corrected original implementation:** Customs is detected from each signed-in user's **private GitHub Vault repository**, not `ogev2/public/customs/`. The static source-repository reader and its public file links have been removed.
+- The home page uses the existing read-only GitHub App client to discover an optional root-level `customs/` folder; the section is hidden if absent. Supported top-level HTML, PDF and image files appear as cards.
+- Clicking a file opens an owner-authenticated read-only API route, which verifies the user's active Vault and loads the selected file from a GitHub blob. HTML is rendered with sandbox restrictions. No permanent content is stored in MongoDB.
+- Added tests for missing folders, owner-scoped source routing, supported extensions, safe filenames, large-file rejection, immutable blob reads and isolated HTML response policy.
+- Branch `feature/customs-library` in `nikhil-dex/ogev2` — PR #1 remains draft until CI and real-account testing pass. `ogev2/main` remains unchanged.
 
 ## Milestone #131 — Consistency repairs (in progress, 19 Nov 2026)
 
