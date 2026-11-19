@@ -1,41 +1,91 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { listCustomsFiles } from '../lib/customs-library.js';
+import {
+  listVaultCustoms, readVaultCustomFile, customFileType, customFileLink,
+} from '../lib/customs-library.js';
+import { VaultGitHubError } from '../lib/oge-vault-github.js';
 
-test('Customs stays hidden without the optional folder', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'oge-customs-'));
-  try {
-    assert.deepEqual(await listCustomsFiles(root), { exists: false, files: [] });
-  } finally { await rm(root, { recursive: true, force: true }); }
+const SHA = 'a'.repeat(40);
+function fakeClient({ missing = false, files = null } = {}) {
+  const bytes = Buffer.from('<h1>Private HTML</h1>', 'utf8');
+  const entries = files ?? [{
+    type: 'file', path: 'customs/my notes.html', name: 'my notes.html',
+    size: bytes.length, sha: SHA,
+  }, {
+    type: 'file', path: 'customs/study.pdf', name: 'study.pdf', size: 50, sha: 'b'.repeat(40),
+  }, {
+    type: 'file', path: 'customs/photo.PNG', name: 'photo.PNG', size: 50, sha: 'c'.repeat(40),
+  }, {
+    type: 'file', path: 'customs/skip.js', name: 'skip.js', size: 10, sha: 'd'.repeat(40),
+  }];
+  const calls = [];
+  return {
+    branch: 'main',
+    calls,
+    async call(path) {
+      calls.push(path);
+      if (path === '/contents/customs?ref=main') {
+        if (missing) throw new VaultGitHubError('not-found', 404);
+        return entries;
+      }
+      if (path === '/git/blobs/' + SHA) {
+        return { sha: SHA, encoding: 'base64', content: bytes.toString('base64') };
+      }
+      throw new Error('Unexpected GitHub API path: ' + path);
+    },
+  };
+}
+
+test('Customs is hidden when the signed-in user Vault has no customs folder', async () => {
+  assert.deepEqual(await listVaultCustoms(fakeClient({ missing: true })),
+    { exists: false, files: [] });
 });
 
-test('Customs discovers HTML, PDFs and images with safe asset links', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'oge-customs-'));
-  try {
-    const folder = path.join(root, 'public', 'customs');
-    await mkdir(folder, { recursive: true });
-    for (const name of ['ml_notes.html', 'Java Basics.PDF', 'network chart.png', 'photo.JPG',
-      'demo.webp', 'skip.js', 'skip.txt']) {
-      await writeFile(path.join(folder, name), 'example');
-    }
-    await mkdir(path.join(folder, 'subfolder'));
-    const { exists, files } = await listCustomsFiles(root);
-    assert.equal(exists, true);
-    assert.equal(files.length, 5);
-    assert.deepEqual([...new Set(files.map((file) => file.type))].sort(), ['HTML', 'Image', 'PDF']);
-    assert.ok(files.some((file) => file.url === '/customs/network%20chart.png'));
-    assert.ok(files.some((file) => file.name === 'ml_notes.html' && file.title === 'ml notes'));
-    assert.ok(files.every((file) => !file.name.startsWith('skip')));
-  } finally { await rm(root, { recursive: true, force: true }); }
+test('Customs lists only supported top-level private Vault files', async () => {
+  const client = fakeClient();
+  const result = await listVaultCustoms(client);
+  assert.equal(result.exists, true);
+  assert.equal(result.files.length, 3);
+  assert.ok(result.files.some((file) => file.name === 'my notes.html' &&
+    file.url === '/api/vault/customs?file=my%20notes.html' && file.type === 'html'));
+  assert.ok(result.files.some((file) => file.type === 'pdf'));
+  assert.ok(result.files.some((file) => file.type === 'image'));
+  assert.equal(result.files.some((file) => file.name === 'skip.js'), false);
+  assert.deepEqual(client.calls, ['/contents/customs?ref=main']);
 });
 
-test('Homepage only renders Customs when the directory exists', async () => {
-  const source = await readFile(new URL('../app/page.js', import.meta.url), 'utf8');
-  assert.match(source, /await listCustomsFiles\(\)/);
-  assert.match(source, /\{customs\.exists && \(/);
-  assert.match(source, /customs\.files\.map/);
-  assert.match(source, /href=\{file\.url\}/);
+test('Customs rejects unsupported paths and oversized files', async () => {
+  assert.equal(customFileType('../secret.html'), null);
+  assert.equal(customFileType('file.js'), null);
+  assert.throws(() => customFileLink('secret/notes.html'));
+  assert.deepEqual(await listVaultCustoms(fakeClient({ files: [{
+    type: 'file', path: 'customs/big.pdf', name: 'big.pdf',
+    size: 11 * 1024 * 1024, sha: SHA,
+  }] })), { exists: true, files: [] });
+});
+
+test('Opening a Custom HTML file reads immutable blob bytes', async () => {
+  const client = fakeClient();
+  const result = await readVaultCustomFile(client, 'my notes.html');
+  assert.equal(result.mime, 'text/html');
+  assert.equal(result.bytes.toString(), '<h1>Private HTML</h1>');
+  assert.ok(client.calls.includes('/git/blobs/' + SHA));
+  await assert.rejects(readVaultCustomFile(client, 'no.html'));
+});
+
+test('Homepage and file route use signed-in owner Vault access, not public/customs', async () => {
+  const home = await readFile(new URL('../app/page.js', import.meta.url), 'utf8');
+  const route = await readFile(new URL('../app/api/vault/customs/route.js', import.meta.url), 'utf8');
+  assert.match(home, /getVaultNoteClient\(db,/);
+  assert.match(home, /await listVaultCustoms\(client\)/);
+  assert.match(home, /\{customs\.exists && \(/);
+  assert.match(home, /customs\.files\.map/);
+  assert.doesNotMatch(home, /listCustomsFiles|public\/customs/);
+  assert.match(route, /await auth\(\)/);
+  assert.match(route, /ownerMutationFilter\(ownerId, \{ sessionVersion \}\)/);
+  assert.match(route, /connectedVaultStorageAvailable\(account\)/);
+  assert.match(route, /getVaultNoteClient\(db, \{ ownerId, sessionVersion \}, \{ readOnly: true \}\)/);
+  assert.match(route, /Content-Security-Policy/);
+  assert.match(route, /sandbox allow-scripts/);
 });
