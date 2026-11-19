@@ -1388,6 +1388,18 @@ export default function NotesPage({
             <div className="reader-meta">Saved {savedLabel(readerNote.updatedAt || readerNote.createdAt)}</div>
             <div className="reader-answer" dangerouslySetInnerHTML={{ __html: markdownHtml(readerNote.answer) }} />
             {(readerNote.tags || []).length > 0 && <div className="reader-tags">{readerNote.tags.map((tag) => <span key={tag} className="tag-chip">{tag}</span>)}</div>}
+            <section className="note-links-section" aria-label="Linked notes">
+              <h3>Linked notes</h3>
+              {readerLinks.outgoing.length ? <ul>{readerLinks.outgoing.map((note) =>
+                <li key={note.id}><button type="button" onClick={() => setReaderNote(note)}>{note.heading} →</button></li>)}</ul>
+                : <p>Use [[Exact note heading]] to link another loaded Note in this subject.</p>}
+            </section>
+            <section className="note-links-section backlinks-section" aria-label="Backlinks">
+              <h3>Backlinks</h3>
+              {readerLinks.backlinks.length ? <ul>{readerLinks.backlinks.map((note) =>
+                <li key={note.id}><button type="button" onClick={() => setReaderNote(note)}>{note.heading} ↗</button></li>)}</ul>
+                : <p>No backlinks from loaded Notes.</p>}
+            </section>
           </div>
         </article>
       </div>}
