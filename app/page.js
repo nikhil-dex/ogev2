@@ -10,6 +10,7 @@ import HomeDashboard from './components/home-dashboard';
 import QuickNotesPanel from './components/quick-notes-panel';
 import { githubVaultFilesEnabled } from '../lib/oge-vault-media-validation.js';
 import { vaultNotesAvailable, vaultCaptureAvailable } from '../lib/oge-vault-workspace-routing.js';
+import { listCustomsFiles } from '../lib/customs-library.js';
 
 const modules = [
   { number: '01', group: 'LEARN', title: 'Notes', description: 'Organize ideas, study material, and everything worth keeping.', href: '/notes', icon: '▤', featured: true },
@@ -44,6 +45,7 @@ export default async function HomePage() {
     (!account.notesStorage && !githubVaultFilesEnabled(account));
   const quickNotesApi = captureReady ? '/api/vault/quick-notes' : '/api/quick-notes';
   const filesReady = githubVaultFilesEnabled(account);
+  const customs = await listCustomsFiles();
   // GitHub Vault does not use the legacy MongoDB revision queue or history pages.
   // Per-note GitHub history is accessible within Vault Notes instead.
   const visibleModules = [
@@ -93,6 +95,37 @@ export default async function HomePage() {
           <span className="hub-card-link">Go to AirNotes <span aria-hidden="true">→</span></span>
         </Link>
       </section>
+
+      {customs.exists && (
+        <section className="oge-module-section" aria-labelledby="customs-title">
+          <div className="oge-section-heading">
+            <div>
+              <span className="oge-section-kicker">YOUR CUSTOM LIBRARY</span>
+              <h2 id="customs-title">Customs<span>.</span></h2>
+              <p>HTML pages, PDFs and images added to your repository.</p>
+            </div>
+            <span className="oge-count">{String(customs.files.length).padStart(2, '0')} FILES</span>
+          </div>
+          {customs.files.length ? (
+            <div className="hub-grid oge-module-grid">
+              {customs.files.map((file) => (
+                <a className="hub-card oge-module-card" key={file.name}
+                  href={file.url} target="_blank" rel="noopener noreferrer">
+                  <div className="oge-module-card-top">
+                    <span className="oge-module-icon" aria-hidden="true">{file.type === 'HTML' ? '⌘' : file.type === 'PDF' ? '▤' : '▧'}</span>
+                    <span className="hub-card-kicker">{file.type}</span>
+                  </div>
+                  <h3>{file.title} <span aria-hidden="true">↗</span></h3>
+                  <p>{file.name}</p>
+                  <span className="hub-card-link">Open file <span aria-hidden="true">→</span></span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="home-dashboard-empty">The customs folder is empty. Add an HTML, PDF or image file to show it here.</p>
+          )}
+        </section>
+      )}
 
       <section className="oge-module-section" aria-labelledby="modules-title">
         <div className="oge-section-heading">
