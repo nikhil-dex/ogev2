@@ -40,10 +40,10 @@ The dashboard, Google sign-in scaffolding, news-interest onboarding, and MongoDB
 - Keep database access and privileged operations on the server.
 - Do not deploy publicly until the release gates in `ROADMAP.md` have passed.
 
-## Customs library
+## Customs library (personal GitHub Vault)
 
-To enable the **Customs** section on the homepage, create a folder at `public/customs/` in this OgeV2 source repository and add files such as `lesson.html`, `notes.pdf` or `diagram.png`.
+Each user can create a **`customs/`** folder at the root of their own private `ogenotes-vault` GitHub repository and commit HTML, PDF or image files to it. No change to the OgeV2 application source repository is needed.
 
-The homepage automatically lists the supported HTML (.html/.htm), PDF (.pdf) and image (.png/.jpg/.jpeg/.webp/.gif/.avif) files from that folder. Click any file to open it in a new tab. The section is hidden when the directory does not exist, and shows an empty state when the directory is present but empty.
+After signing in with their connected GitHub Vault, the OgeV2 homepage automatically detects that folder and lists its supported top-level files (.html, .htm, .pdf, .png, .jpg, .jpeg, .webp, .gif, .avif) in a **Customs** section. Clicking a file opens it in a new tab through an authenticated, read-only OgeV2 endpoint. Files are not published from the app's `public/` directory.
 
-These files are **public website assets** (not private GitHub Vault/My Files). Commit them to this code repository and redeploy for a hosted website to pick them up. The current version lists top-level files only.
+The section is hidden when the Vault's `customs/` folder does not exist. An empty folder must contain at least one committed file to be present in Git, such as a `.gitkeep`; otherwise Git does not track it. Files above 10 MiB and unsupported formats are not displayed. HTML previews run with a restricted sandbox; some external resources or scripts may not work. The browser must be signed in to view the files.
