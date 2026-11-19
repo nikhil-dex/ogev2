@@ -2700,3 +2700,79 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   }
   .editor-dialog:has(.answer-workspace) .oge-editor-save-footer{padding-bottom:max(10px,env(safe-area-inset-bottom))}
 }
+
+/* Notes modal structural layout — override the legacy flex-grow editor.
+   The form is the ONE scroll container. Its contents stay in document order. */
+.editor-backdrop .editor-dialog:has(#noteForm){
+  height:min(92dvh,900px);
+  max-height:calc(100dvh - 24px);
+  min-height:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  padding-bottom:clamp(14px,2vw,26px);
+}
+.editor-backdrop .editor-dialog #noteForm{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  padding:0 2px 8px 0;
+  scroll-padding-block:16px 90px;
+}
+.editor-backdrop .editor-dialog #noteForm>.answer-workspace:not(.is-fullscreen){
+  display:block;
+  flex:none;
+  height:auto;
+  max-height:none;
+  overflow:visible;
+  min-height:0;
+}
+.editor-backdrop .editor-dialog #noteForm>.answer-workspace:not(.is-fullscreen) textarea#answer,
+.editor-backdrop .editor-dialog #noteForm>.answer-workspace:not(.is-fullscreen) .answer-preview{
+  display:block;
+  box-sizing:border-box;
+  flex:none;
+  height:clamp(210px,33dvh,380px);
+  min-height:210px;
+  max-height:none;
+  width:100%;
+  resize:vertical;
+}
+.editor-backdrop .editor-dialog #noteForm:has(.oge-gemini-review)>.answer-workspace:not(.is-fullscreen) textarea#answer,
+.editor-backdrop .editor-dialog #noteForm:has(.oge-gemini-review)>.answer-workspace:not(.is-fullscreen) .answer-preview{
+  height:clamp(170px,23dvh,260px);
+  min-height:170px;
+  max-height:none;
+}
+.editor-backdrop .editor-dialog #noteForm .oge-gemini-review{
+  display:block;
+  flex:none;
+  max-height:none;
+  overflow:visible;
+  scroll-margin-top:16px;
+  scroll-margin-bottom:22px;
+}
+.editor-backdrop .editor-dialog #noteForm .oge-editor-save-footer{
+  position:static;
+  flex:none;
+  margin-top:12px;
+  bottom:auto;
+  box-shadow:none;
+}
+.editor-backdrop .editor-dialog #noteForm .oge-gemini-review-footer{
+  position:static;
+  box-shadow:none;
+}
+@media(max-width:680px){
+  .editor-backdrop .editor-dialog:has(#noteForm){height:min(94dvh,900px);max-height:calc(100dvh - 12px)}
+  .editor-backdrop .editor-dialog #noteForm{scrollbar-gutter:auto}
+  .editor-backdrop .editor-dialog #noteForm>.answer-workspace:not(.is-fullscreen) textarea#answer,
+  .editor-backdrop .editor-dialog #noteForm>.answer-workspace:not(.is-fullscreen) .answer-preview{height:240px;min-height:190px}
+  .editor-backdrop .editor-dialog #noteForm:has(.oge-gemini-review)>.answer-workspace:not(.is-fullscreen) textarea#answer,
+  .editor-backdrop .editor-dialog #noteForm:has(.oge-gemini-review)>.answer-workspace:not(.is-fullscreen) .answer-preview{height:190px;min-height:160px}
+}
