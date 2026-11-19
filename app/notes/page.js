@@ -9,6 +9,7 @@ import { vaultOfflineQueueKey, enqueueVaultOfflineChange } from '../../lib/oge-v
 import { markdownHtml } from '../../lib/markdown.js';
 import { relatedNoteLinks } from '../../lib/oge-note-links.js';
 import { scanAllVaultNoteLinks } from '../../lib/oge-vault-all-note-links.js';
+import { readerSequenceForNote } from '../../lib/oge-note-reader-sequence.js';
 import { notePdfFile, saveNotePdfToVault } from '../../lib/oge-note-pdf.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
@@ -469,7 +470,7 @@ export default function NotesPage({
         return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
       });
   }, [notes, activeSubject, query, globalSearch, favoritesOnly, pinnedOnly, selectedTag, sortOrder]);
-  const readerSequence = readerNote ? visibleNotes.filter((note) => note.subjectSlug === readerNote.subjectSlug) : [];
+  const readerSequence = readerSequenceForNote(readerNote, visibleNotes, notes, sortOrder);
   const readerIndex = readerNote ? readerSequence.findIndex((note) => note.id === readerNote.id) : -1;
   const readerLinks = linkScan?.complete && linkScan.noteId === readerNote?.id
     ? linkScan : relatedNoteLinks(readerNote, notes, { allSubjects: true });
@@ -1316,6 +1317,9 @@ export default function NotesPage({
         const next = readerSequence[readerIndex + step];
         if (!next) return;
         event.preventDefault();
+        linkScanRef.current?.abort();
+        linkScanRef.current = null;
+        setLinkScanBusy(false);
         setReaderNote(next);
         setShareMenuOpen(false);
         return;
@@ -1326,6 +1330,9 @@ export default function NotesPage({
         closeNoteEditor();
         return;
       }
+      linkScanRef.current?.abort();
+      linkScanRef.current = null;
+      setLinkScanBusy(false);
       setReaderNote(null);
     };
     window.addEventListener('keydown', onKeyDown);
@@ -1523,7 +1530,7 @@ export default function NotesPage({
         </section>
       </div>}
 
-      {readerNote && <div className="reader-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setReaderNote(null); setShareMenuOpen(false); } }}>
+      {readerNote && <div className="reader-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { stopLinkScan(); setReaderNote(null); setShareMenuOpen(false); } }}>
         <article className="reader-panel" role="dialog" aria-modal="true" aria-labelledby="readerTitle"
           onTouchStart={(event) => { readerSwipeRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }; }}
           onTouchEnd={(event) => {
