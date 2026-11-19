@@ -75,7 +75,7 @@ test('Notes reader navigates with keyboard arrows without interfering with typin
   assert.match(ui, /target\.closest\('input, textarea, select, \[contenteditable\], \[role="textbox"\]'\)/);
   assert.match(ui, /event\.key === 'ArrowRight' \? 1 : -1/);
   assert.match(ui, /const next = readerSequence\[readerIndex \+ step\]/);
-  assert.match(ui, /if \(!next\) return;\s*event\.preventDefault\(\);\s*setReaderNote\(next\)/);
+  assert.match(ui, /if \(!next\) return;\s*event\.preventDefault\(\);\s*linkScanRef\.current\?\.abort\(\);[\s\S]*?setReaderNote\(next\)/);
   assert.match(ui, /Use ← and → keyboard arrows to browse Notes/);
 });
 
