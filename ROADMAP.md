@@ -1,5 +1,14 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestone #132 — Conditional Customs library (19 Nov 2026)
+
+- Added an optional home-screen **Customs** section inspired by the original ogenotes HTML Files section.
+- The section is rendered only when `public/customs/` exists in the OgeV2 source repository. HTML, PDF and common image files inside are listed and open as ordinary static assets in a new tab. Nonmatching files are ignored.
+- No new storage provider, upload API or GitHub permissions needed. These are public app assets, separate from each user's private GitHub Vault.
+- Added tests for absent/empty folder behavior, file types, links and conditional rendering.
+- Implementation branch: `feature/customs-library` in `nikhil-dex/ogev2`; leave `main` unchanged until review.
+
+
 ## Milestone #131 — Consistency repairs (in progress, 19 Nov 2026)
 
 - **Homepage Notes counter fixed:** Dashboard now reads GitHub Vault note totals from the paged `/api/vault/notes-main` response when Vault storage is selected, rather than counting legacy MongoDB `/api/notes` records. The dashboard Notes shortcuts point to the active Notes workspace; Quick Notes uses the matching provider. A failed Vault count shows unavailable (—), not misleading zero. Added regression coverage.
