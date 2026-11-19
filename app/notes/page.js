@@ -453,6 +453,10 @@ export default function NotesPage({
   });
 
   function openNewNote(subjectId = activeSubject) {
+    if (offlineReadOnly) {
+      setError('Showing cached Notes in read-only mode. Reconnect and refresh before creating Notes.');
+      return;
+    }
     if (!subjectId) {
       // The Notes editor requires a subject, but the action must remain
       // clickable and explain what is missing instead of silently disabling.
@@ -486,6 +490,10 @@ export default function NotesPage({
   }
 
   function editNote(note) {
+    if (offlineReadOnly) {
+      setError('Showing cached Notes in read-only mode. Reconnect and refresh before editing.');
+      return;
+    }
     const generation = ++hybridGenerationRef.current;
     setHybridReady(!hybridDrafts);
     setHybridError('');
@@ -1096,7 +1104,7 @@ export default function NotesPage({
             </button>
           </span>
         ))}
-        <button type="button" className="subject-add" onClick={() => {
+        <button type="button" className="subject-add" disabled={offlineReadOnly} onClick={() => {
           if (showSubjectForm) createNoteAfterSubjectRef.current = false;
           setShowSubjectForm((value) => !value);
         }} aria-expanded={showSubjectForm}>＋ Add subject</button>
