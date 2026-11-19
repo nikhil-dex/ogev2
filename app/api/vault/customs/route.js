@@ -4,7 +4,8 @@ import { ownerMutationFilter } from '../../../../lib/active-owner-mutation.js';
 import { connectedVaultStorageAvailable } from '../../../../lib/oge-vault-workspace-routing.js';
 import { getVaultNoteClient } from '../../../../lib/oge-vault-notes.js';
 import { VaultGitHubError } from '../../../../lib/oge-vault-github.js';
-import { listVaultCustoms, readVaultCustomFile } from '../../../../lib/customs-library.js';
+import { readVaultCustomFile } from '../../../../lib/customs-library.js';
+import { getIndexedCustoms } from '../../../../lib/customs-index.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,10 @@ export async function GET(request) {
       return json({ error: 'Connect your GitHub Vault to use Customs.' }, 403);
     const client = await getVaultNoteClient(db, { ownerId, sessionVersion }, { readOnly: true });
     const name = new URL(request.url).searchParams.get('file');
-    if (name === null) return json(await listVaultCustoms(client));
+    if (name === null) {
+      const refresh = new URL(request.url).searchParams.get('refresh') === 'true';
+      return json(await getIndexedCustoms(db, client, ownerId, { refresh }));
+    }
     const { bytes, mime, kind } = await readVaultCustomFile(client, name);
     const headers = {
       ...HEADERS,
