@@ -1,5 +1,17 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Notes Gemini cleanup parity — four focused improvements (20 Nov 2026)
+
+**In PR #7, feature branch `feature/notes-parity-simple` (not merged or deployed):**
+
+1. **Original study-focused prompt:** Fix grammar and Markdown, correct clear code mistakes without changing intended behavior, preserve `[[Note links]]` and formulas, and add or replace exactly one `### 📌 Imp Notes` section with 2–5 useful takeaways. Preserve relevant tags and use the user's BYOK Gemini key.
+2. **Review before applying:** Display original heading/body/tags alongside Gemini's proposed heading/body/tags in regular and full-screen editors; offer **Apply to draft** and **Cancel suggestion**. Gemini does not commit a Note to GitHub or MongoDB; Save stays explicit.
+3. **Stale suggestion protection:** Compare exact heading, answer, tag text and Note identity both when the server response arrives and when Apply is pressed. Editing or switching Notes invalidates the proposal; changing/closing the editor aborts pending requests.
+4. **Unsaved new Notes:** Let signed-in users request cleanup before their first Save. Existing saved Note requests still verify GitHub/MongoDB ownership. Unsaved content is sent only to the signed-in account's configured Gemini key; it is not stored by the cleanup endpoint.
+
+**Verification:** Prompt, preview, stale-guard and new-draft regression tests; CI must pass. A real-account Gemini generation test remains pending and cannot be inferred from synthetic tests.
+
+
 ## Gemini API key Save / Test reliability — Notes parity follow-up (20 Nov 2026)
 
 - **Save key** now stores an encrypted BYOK credential without first running a text-generation request. Model outages, quota limits and unavailable free-tier generation no longer prevent saving an entered key. A working `GEMINI_KEY_ENCRYPTION_SECRET` remains required on the OgeV2 server.
