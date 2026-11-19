@@ -1,5 +1,19 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Notes module parity — Six simple improvements (19 Nov 2026)
+
+**Working branch:** `feature/notes-parity-simple` based on `ogev2/main`.
+
+1. **Pinned Notes** — Pin/unpin from Notes cards, sort pinned Notes first and filter by Pinned. GitHub Notes store `pinned: true` only when pinned; existing GitHub JSON remains readable. Legacy Mongo Notes also support pinned.
+2. **`[[Note links]]` and backlinks** — Reader displays clickable outgoing links and incoming backlinks based on matching titles within currently loaded Notes in the same subject. No new index or storage.
+3. **Gemini cleanup for GitHub Notes** — Reuse existing Gemini cleanup handler, verify the Note belongs to the signed-in private Vault, and return an editing suggestion. Users review before Save; Gemini never directly commits.
+4. **Reader polish and PDF** — Previous/next buttons and horizontal mobile swipes. GitHub Vault users can generate a simple readable browser-local PDF and store it in private My Files, retaining Print / Save PDF for full browser formatting. This PDF export is text-based, not a pixel-perfect Markdown rendition.
+5. **Daily study goals** — Daily goal and completed counter in browser-local storage, scoped to account and repo, plus learned-note counts using the existing MongoDB review metadata. Note text remains in GitHub.
+6. **Offline creation and autosave** — Every new GitHub Note gets a stable UUID; local sessionStorage autosaves drafts even when hybrid Mongo draft preview is disabled. New Notes can be queued offline using localStorage and synced with the existing explicit conflict-resolution flow. Pending GitHub commits are never silently overwritten or automatically replayed.
+
+**Verification:** CI, browser smoke and signed-in real-account acceptance remain required before claiming these are fully live. No merge or deployment until review.
+
+
 ## Milestones #136–#138 — Real-account acceptance, Vault ZIP recovery, offline Notes (19 Nov 2026)
 
 **Scope:** Only the three requested workflows. Work branch: `feature/vault-recovery-offline-acceptance`; do not treat this feature branch as merged or deployed.
