@@ -19,7 +19,7 @@ test('Study progress stores metadata, not the note body', async () => {
   const calls = [];
   const db = { collection() { return {
     async updateOne(filter, update, options) { calls.push({ filter, update, options }); },
-    async find() { return { toArray: async () => [] }; },
+    find() { return { toArray: async () => [] }; },
   }; } };
   const client = { vault: { repoId: 42 } };
   const note = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', subjectId: 'study',
