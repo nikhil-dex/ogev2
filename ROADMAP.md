@@ -1,5 +1,16 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Notes parity completion — #7 finishing pass (20 Nov 2026)
+
+The six Notes features now include the four follow-through improvements requested after the initial implementation:
+
+- **Full-library wiki links:** Existing `[[Title]]` and backlinks work immediately for loaded Notes, including other subjects. Select **Check links in entire Vault** from a Note's reader to scan every GitHub Notes page on demand; progress and cancellation are visible. The scan never writes an index or note content to MongoDB. If GitHub changes mid-scan, it asks for a refresh instead of claiming results are complete.
+- **Better PDF:** Direct Save PDF to My Files now renders Markdown headings, lists, code blocks, quotations, tables and dividers with visual hierarchy using the existing browser-local PDF exporter. It remains a readable, rasterized export rather than pixel-perfect browser printing or a searchable text PDF. **Print / Save PDF** remains the higher-fidelity alternative.
+- **Study across devices:** Daily goal settings and unique Notes reviewed per day are stored as owner/repo/day metadata in MongoDB and served by `/api/vault/study`. Review bodies remain committed in GitHub; the learned-note count uses the existing per-note study metadata.
+- **Reliable offline drafts:** Recent Notes cache and standard-mode draft autosaves persist in browser `localStorage`, not just a tab. Network-failed saves queue stable IDs for an explicit review, never auto-replay. The offline review detects already-saved copies, offers **Keep both as separate Notes** for conflicts, and still requires confirmation before replacing a newer GitHub revision. The app is not a full offline-installable PWA; initial page loading still requires the app shell to be available.
+- **Validation still needed:** CI and browser smoke on this PR, then a real signed-in GitHub/Gemini/PDF/offline conflict acceptance pass. No deployment or automatic merge.
+
+
 ## Notes module parity — Six simple improvements (19 Nov 2026)
 
 **Working branch:** `feature/notes-parity-simple` based on `ogev2/main`.
