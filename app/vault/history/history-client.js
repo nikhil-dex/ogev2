@@ -16,7 +16,7 @@ export default function VaultHistoryClient() {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    read(fetch('/api/vault/notes-main?paged=true&limit=20', { cache: 'no-store' }))
+    fetch('/api/vault/notes-main?paged=true&limit=20', { cache: 'no-store' }).then(read)
       .then((v) => { if (active) { setNotes(v.notes); setCursor(v.nextCursor); } })
       .catch((err) => { if (active) setError(err.message); });
     return () => { active = false; };
