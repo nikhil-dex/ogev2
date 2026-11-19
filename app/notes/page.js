@@ -671,9 +671,9 @@ export default function NotesPage({
       const browserStorage = hybridDrafts ? window.sessionStorage : window.localStorage;
       browserStorage.setItem(key, JSON.stringify({ draft }));
       if (!editingId) browserStorage.setItem(newDraftPointerKey(activeSubject), noteId);
-      if (!hybridDrafts) setDraftStatus('Draft saved in this browser');
+      if (!hybridDrafts) Promise.resolve().then(() => setDraftStatus('Draft saved in this browser'));
     } catch {
-      setDraftStatus('Local autosave unavailable — copy your edits before closing');
+      Promise.resolve().then(() => setDraftStatus('Local autosave unavailable — copy your edits before closing'));
     }
     // The browser autosaves even if temporary Mongo draft preview is off.
     if (!hybridDrafts) return undefined;
