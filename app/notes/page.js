@@ -963,6 +963,21 @@ export default function NotesPage({
       }
       if (vaultMode && !hybridDrafts) {
         if (JSON.stringify(liveEditorRef.current) !== submittedEditor) {
+          // Persist the newer typed text with the fresh GitHub SHA before
+          // switching from POST to PUT. A reload must not recreate the Note.
+          try {
+            const newer = liveEditorRef.current;
+            window.localStorage.setItem(hybridKey(note.id), JSON.stringify({
+              draft: {
+                subjectId: note.subjectSlug, heading: newer.heading, answer: newer.answer,
+                tags: [...new Set(newer.tagsText.split(',').map((tag) =>
+                  tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10),
+                baseSha: note.sha,
+              },
+            }));
+            if (!editingId && window.localStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+              window.localStorage.removeItem(newDraftPointerKey(activeSubject));
+          } catch { /* Keep text in the live editor if storage is unavailable. */ }
           setNotes((existing) => mergeRecentVaultNotes(existing, [note]));
           setEditingId(note.id);
           setNewDraftId('');
