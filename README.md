@@ -47,3 +47,7 @@ Each user can create a **`customs/`** folder at the root of their own private `o
 After signing in with their connected GitHub Vault, the OgeV2 homepage automatically detects that folder and lists its supported top-level files (.html, .htm, .pdf, .png, .jpg, .jpeg, .webp, .gif, .avif) in a **Customs** section. Clicking a file opens it in a new tab through an authenticated, read-only OgeV2 endpoint. Files are not published from the app's `public/` directory.
 
 The section is hidden when the Vault's `customs/` folder does not exist. An empty folder must contain at least one committed file to be present in Git, such as a `.gitkeep`; otherwise Git does not track it. Files above 10 MiB and unsupported formats are not displayed. HTML previews run with a restricted sandbox; some external resources or scripts may not work. The browser must be signed in to view the files.
+
+## Indexed Customs module
+
+For users with GitHub Vault selected and connected, OgeV2 shows a **Customs** module on the home screen even if their personal GitHub Vault repository has no `customs/` folder yet. It is hidden from MongoDB-only and disconnected accounts. Open Customs to scan for files. The first visit creates a MongoDB **metadata-only index** linked to your own Vault repo; the app never copies the file bytes into MongoDB. Scans are refreshed after approximately 60 seconds or instantly with **Refresh files**. If the folder is absent, the Customs page explains how to create it at the root of your private `ogenotes-vault` repository.

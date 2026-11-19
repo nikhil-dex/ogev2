@@ -1,5 +1,14 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestone #133 — Permanent Customs module + MongoDB metadata index (19 Nov 2026)
+
+- Added a **Customs** home module linking to `/customs` for accounts that have selected and connected GitHub Vault; it is visible to those owners even before they create a `customs/` folder, and hidden from MongoDB-only or disconnected accounts.
+- The dedicated page uses the connected owner's private GitHub Vault to scan `customs/` the first time it opens, then stores **metadata only** (folder existence, supported filenames, types, links, repository ID, branch and scan time) in a MongoDB `vaultCustomsIndexes` collection. File bytes remain exclusively on GitHub.
+- Reuses the owner- and repository-scoped index for 60 seconds, then rechecks GitHub. A **Refresh files** link forces a new scan without waiting.
+- Missing folder shows creation instructions; disconnected GitHub Vault owners see Vault setup. MongoDB users are redirected away from the dedicated page, and the Customs API rejects requests without GitHub Vault selected. The authenticated file viewer continues verifying the file from GitHub rather than trusting the index for access.
+- Added regression tests for initial indexing, cache reuse, refresh/expiry, isolation between owners, repository/branch changes and failed reads.
+- Work branch: `feature/customs-indexed-module` based on unmerged Customs PR #1. Do not merge to `main` without CI and account-level verification.
+
 ## Milestone #132 — Personal GitHub Vault Customs library (19 Nov 2026)
 
 - **CI fix:** The first actual Customs run uncovered an incorrectly constructed extension-to-MIME map (HTML/PDF/image names all went unrecognized). Corrected the map and added case-insensitive extension regression coverage. Original validation failure: 2 Customs tests; awaiting follow-up CI.
