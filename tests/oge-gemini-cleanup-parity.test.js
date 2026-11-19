@@ -109,3 +109,12 @@ test('Gemini review does not get covered by the Save footer on desktop or mobile
   assert.match(css, /\.editor-dialog:has\(\.oge-gemini-review\) \.oge-gemini-review\s*\{/);
   assert.match(css, /\.editor-dialog \.oge-gemini-review-footer\s*\{\s*position:static/);
 });
+
+test('Notes modal uses single scroll region and a bounded editor instead of flex-growing over Gemini review', async () => {
+  const css = await readFile(new URL('../public/extra.css', import.meta.url), 'utf8');
+  assert.match(css, /#noteForm\s*\{[\s\S]*?overflow-y:auto/);
+  assert.match(css, /#noteForm>\.answer-workspace:not\(\.is-fullscreen\)\s*\{[\s\S]*?flex:none/);
+  assert.match(css, /#noteForm>\.answer-workspace:not\(\.is-fullscreen\) textarea#answer/);
+  assert.match(css, /#noteForm \.oge-editor-save-footer\s*\{[\s\S]*?position:static/);
+  assert.match(css, /#noteForm \.oge-gemini-review\s*\{[\s\S]*?overflow:visible/);
+});
