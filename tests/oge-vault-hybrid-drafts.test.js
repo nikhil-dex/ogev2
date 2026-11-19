@@ -88,7 +88,7 @@ test('familiar Notes hybrid editor is opt-in and preserves legacy production mod
   assert.match(page, /recoverNewHybridDraft\(subjectId, generation\)/);
   assert.match(page, /newDraftPointerKey\(subjectId\)/);
   assert.match(page, /sessionStorage\.getItem\(newDraftPointerKey\(subjectId\)\)/);
-  assert.match(page, /hybridDrafts \? \{ \.\.\.payload, id: newDraftId \} : payload/);
+  assert.match(page, /vaultMode \? \{ \.\.\.payload, id: newDraftId \} : payload/);
   assert.match(api, /params\.get\('new'\) === 'true'/);
   assert.match(api, /isNew: true/);
   const notesAdapter = await readFile(new URL('../app/api/vault/notes-main/route.js', import.meta.url), 'utf8');
