@@ -81,6 +81,8 @@ test('Homepage and file route use signed-in owner Vault access, not public/custo
   assert.match(home, /await listVaultCustoms\(client\)/);
   assert.match(home, /\{customs\.exists && \(/);
   assert.match(home, /customs\.files\.map/);
+  assert.match(home, /customsUnavailable = true/);
+  assert.match(home, /Could not check the Customs folder in your GitHub Vault/);
   assert.doesNotMatch(home, /listCustomsFiles|public\/customs/);
   assert.match(route, /await auth\(\)/);
   assert.match(route, /ownerMutationFilter\(ownerId, \{ sessionVersion \}\)/);
