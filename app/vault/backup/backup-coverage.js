@@ -22,6 +22,7 @@ export default function BackupCoverage() {
     <h2>{data.totalCommittedFiles} committed files</h2>
     <p>Branch: <code>{data.branch}</code></p>
     <p>Commit: <code>{data.commitSha.slice(0, 12)}</code></p>
+    {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
     <a className="oge-primary-link"
       href={'/api/vault/backup-snapshot?commit=' + encodeURIComponent(data.commitSha)}>
       ↓ Download this verified snapshot ZIP
