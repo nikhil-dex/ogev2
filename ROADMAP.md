@@ -1,5 +1,15 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestones #136–#138 — Real-account acceptance, Vault ZIP recovery, offline Notes (19 Nov 2026)
+
+**Scope:** Only the three requested workflows. Work branch: `feature/vault-recovery-offline-acceptance`; do not treat this feature branch as merged or deployed.
+
+- **#136 Real-account acceptance:** Added `docs/VAULT_REAL_ACCOUNT_ACCEPTANCE.md` covering actual GitHub sign-in, private Vault connection, Notes, browser extension Quick Notes capture, Customs detection, GitHub Note revision restoration, and PDF/DOCX/image previews. **Live owner-account execution is still required**: automated tests do not sign into the user's GitHub account.
+- **#137 Full repository ZIP recovery:** Select a downloaded GitHub Vault ZIP on `/vault/backup`, validate the ZIP directory and every file's CRC and Git blob SHA in the browser, then compare all repository paths with the connected private Vault. Covers Notes, Quick Notes, AirNotes, Saved Links, My Files (index and object chunks), Customs and other committed files. **Only missing paths are restored** by a single GitHub commit; identical files are skipped, changed paths are reported as conflicts and never silently overwritten. The restore refuses to commit if the Vault branch changed after preview. It does not restore MongoDB account settings, subject metadata not present in Git, or temporary drafts.
+- **#138 Offline Notes:** Signed-in GitHub Vault owners can edit recently cached Notes during a network outage and choose **Save offline (sync later)**. The owner/repository-specific browser queue keeps the edit locally; after reconnection, a user must explicitly select Review & Sync. If the GitHub revision changed, both versions appear and an explicit choice is required before a GitHub PUT. No automatic overwrite or background synchronization.
+- **Required follow-up:** Run all CI jobs and complete real GitHub-account acceptance, including restore with representative disposable files and second-device offline conflicts. Do not claim these are tested live without a signed-in session.
+
+
 ## Milestone #136 — Private My Files PDF, DOCX, and image previews (19 Nov 2026)
 
 - Fixed the preview-frame CSP rule by allowing authenticated self-origin and temporary `blob:` PDF frames. The prior `frame-src` allowed only Google OAuth, blocking PDFs in enforced-CSP environments.

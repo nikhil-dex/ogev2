@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import SiteNavbar from '../components/site-navbar';
+import VaultOfflineQueue from '../components/vault-offline-queue';
+import { vaultOfflineQueueKey, enqueueVaultOfflineChange } from '../../lib/oge-vault-offline-queue.js';
 import { markdownHtml } from '../../lib/markdown.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
@@ -453,10 +455,6 @@ export default function NotesPage({
   });
 
   function openNewNote(subjectId = activeSubject) {
-    if (offlineReadOnly) {
-      setError('Showing cached Notes in read-only mode. Reconnect and refresh before creating Notes.');
-      return;
-    }
     if (!subjectId) {
       // The Notes editor requires a subject, but the action must remain
       // clickable and explain what is missing instead of silently disabling.
@@ -468,7 +466,7 @@ export default function NotesPage({
     }
     const generation = ++hybridGenerationRef.current;
     setNewDraftId('');
-    setHybridReady(!hybridDrafts);
+    setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
     hybridRevisionRef.current = 0;
     const freshId = hybridDrafts ? crypto.randomUUID() : '';
     setNewDraftId(freshId);
@@ -486,16 +484,12 @@ export default function NotesPage({
     setAnswerFullscreen(false);
     setDraftStatus('');
     setNoteDialog(true);
-    if (hybridDrafts) void recoverNewHybridDraft(subjectId, generation);
+    if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverNewHybridDraft(subjectId, generation);
   }
 
   function editNote(note) {
-    if (offlineReadOnly) {
-      setError('Showing cached Notes in read-only mode. Reconnect and refresh before editing.');
-      return;
-    }
     const generation = ++hybridGenerationRef.current;
-    setHybridReady(!hybridDrafts);
+    setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
     setHybridError('');
     hybridConflictRef.current = false;
     editorInitialRef.current = {
@@ -515,7 +509,7 @@ export default function NotesPage({
     setAnswerFullscreen(false);
     setDraftStatus('');
     setNoteDialog(true);
-    if (hybridDrafts) void recoverHybridDraft(note, generation);
+    if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverHybridDraft(note, generation);
   }
 
   // Focus the title when the editor opens and when draft recovery finishes.
@@ -622,9 +616,48 @@ export default function NotesPage({
   }, [hybridDrafts, hybridReady, noteDialog, editingId, newDraftId, activeSubject, heading, answer, tagsText,
     notes, saving, hybridError, hybridRetryToken, hasUnsavedEditorChanges]);
 
+  function saveOffline() {
+    if (!vaultMode || !activeSubject || saving) return;
+    if (!heading.trim() || !answer.trim()) {
+      setError('Add a title and Note content before saving offline.');
+      return;
+    }
+    const current = notes.find((item) => item.id === editingId);
+    if (!editingId && !hybridDrafts) {
+      setError('Offline new Notes need the GitHub Vault draft feature. Existing Notes can be queued.');
+      return;
+    }
+    if (editingId && !current?.sha) {
+      setError('Cannot queue this Note without its original GitHub revision.');
+      return;
+    }
+    try {
+      const tags = [...new Set(tagsText.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10);
+      const offline = {
+        id: editingId || newDraftId || crypto.randomUUID(),
+        action: editingId ? 'update' : 'create',
+        subjectId: current?.subjectSlug || activeSubject,
+        baseSha: editingId ? current.sha : null,
+        heading: heading.trim(), answer: answer.trim(), tags,
+      };
+      const key = vaultOfflineQueueKey(vaultOwnerId, vaultRepoId);
+      enqueueVaultOfflineChange(window.localStorage, key, offline);
+      window.dispatchEvent(new Event('oge:vault-offline-changed'));
+      setError('');
+      setDraftStatus('Saved locally — review and sync when online');
+      setMessage('Note saved to this browser. Review the pending offline edit before syncing to GitHub.');
+      hybridGenerationRef.current += 1;
+      setNoteDialog(false);
+      setPreview(false);
+      setAnswerFullscreen(false);
+    } catch (err) {
+      setError(err.message || 'Browser storage is unavailable. Keep the editor open.');
+    }
+  }
+
   async function saveNote(event) {
     event.preventDefault();
-    if (offlineReadOnly) { setError('Reconnect and refresh Notes before saving to GitHub.'); return; }
+    if (vaultMode && (offlineReadOnly || !navigator.onLine)) { saveOffline(); return; }
     if (saving || !activeSubject || (hybridDrafts && !hybridReady)) return;
     setSaving(true);
     const submittedEditor = JSON.stringify({
@@ -1086,6 +1119,8 @@ export default function NotesPage({
   return (
     <main className="shell">
       <SiteNavbar notesHref={vaultMode ? '/vault/notes' : '/notes'} showFiles={vaultMode} actions={<ThemeToggle />} />
+      {vaultMode && <VaultOfflineQueue ownerId={vaultOwnerId} repoId={vaultRepoId}
+        notesApi={notesApi} onSynced={() => load(activeSubject)} />}
       {vaultMode && <nav aria-label="GitHub Vault study tools" className="oge-settings-data-actions">
         <Link className="oge-settings-secondary-link" href="/vault/study">Revision &amp; Study ↻</Link>
         <Link className="oge-settings-secondary-link" href="/vault/history">GitHub Note History ◷</Link>
@@ -1258,6 +1293,9 @@ export default function NotesPage({
                 disabled={saving || !activeSubject || (hybridDrafts && !hybridReady)}>
                 <span>{saving ? 'Saving…' : editingId ? 'Save changes' : 'Save note'}</span><span aria-hidden="true">→</span>
               </button>
+              {vaultMode && <button className="answer-expand-button" type="button"
+                disabled={saving || !activeSubject}
+                onClick={saveOffline}>Save offline (sync later)</button>}
               <p className="field-hint">Tip: press Ctrl+Enter (Windows) or ⌘+Enter (Mac) to Save.</p>
             </div>
           </form>
