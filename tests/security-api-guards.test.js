@@ -5,9 +5,11 @@ import { readFile } from 'node:fs/promises';
 test('Gemini key action is validated before provider verification', async () => {
   const source = await readFile(new URL('../app/api/gemini-key/route.js', import.meta.url), 'utf8');
   const validation = source.indexOf("if (!['save', 'test', 'delete'].includes(action))");
-  const verification = source.indexOf('await verifyGeminiKey(apiKey)');
+  const verification = source.indexOf('await testGeminiApiKey(apiKey)');
+  const save = source.indexOf('encryptGeminiKey(apiKey)');
   assert.ok(validation > -1);
   assert.ok(verification > validation);
+  assert.ok(save > validation);
   assert.ok(!source.includes('payload.error.message'), 'untrusted provider errors should not be reflected');
 });
 

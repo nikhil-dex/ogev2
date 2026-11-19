@@ -35,7 +35,7 @@ test('Study progress stores metadata, not the note body', async () => {
   assert.equal(annotated[0].heading, note.heading);
 });
 
-test('Offline cache is owner-specific, read-only, bounded and expires', () => {
+test('Offline cache is owner-specific, bounded and expires after 14 days', () => {
   const map = new Map();
   const storage = { getItem: (k) => map.get(k), setItem: (k, v) => map.set(k, v) };
   const key = vaultReadCacheKey('owner', 123);
@@ -43,7 +43,7 @@ test('Offline cache is owner-specific, read-only, bounded and expires', () => {
   const note = { id: 'x', heading: 'H', answer: 'A', subjectSlug: 'study' };
   assert.equal(saveVaultReadCache(storage, key, [{ slug: 'study' }], [note], 1000), true);
   assert.equal(readVaultReadCache(storage, key, 2000).notes[0].answer, 'A');
-  assert.equal(readVaultReadCache(storage, key, 25 * 60 * 60 * 1000), null);
+  assert.equal(readVaultReadCache(storage, key, 15 * 24 * 60 * 60 * 1000), null);
   assert.equal(saveVaultReadCache(storage, key, [], [{ ...note, answer: 'x'.repeat(600000) }]), false);
 });
 

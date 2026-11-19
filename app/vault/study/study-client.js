@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { appendStudyDueNotes, removeReviewedStudyNote, skipStudyNote } from '../../../lib/oge-vault-study-queue.js';
+import { studyDayKey } from '../../../lib/oge-vault-study-goal.js';
 
 async function json(response) {
   const value = await response.json().catch(() => ({}));
@@ -21,16 +22,23 @@ export default function VaultStudyClient() {
   const [completed, setCompleted] = useState(0);
   const [scanned, setScanned] = useState(0);
   const [total, setTotal] = useState(null);
+  const [learnedCount, setLearnedCount] = useState(0);
+  const [daily, setDaily] = useState({ goal: 10, completed: 0, date: '' });
+  const [goalSaving, setGoalSaving] = useState(false);
   const load = useCallback(async (next = null) => {
     setLoading(true); setError('');
     try {
-      const page = await json(await fetch('/api/vault/study' +
-        (next ? '?cursor=' + encodeURIComponent(next) : ''), { cache: 'no-store' }));
+      const params = new URLSearchParams({ day: studyDayKey() });
+      if (next) params.set('cursor', next);
+      const page = await json(await fetch('/api/vault/study?' + params.toString(),
+        { cache: 'no-store' }));
       if (!Array.isArray(page.notes)) throw new Error('Invalid Vault study page.');
       setNotes((existing) => next ? appendStudyDueNotes(existing, page.notes) :
         appendStudyDueNotes([], page.notes));
       setCursor(page.nextCursor || null);
       setTotal(page.total);
+      setLearnedCount(page.learnedCount || 0);
+      if (page.daily) setDaily(page.daily);
       setScanned((count) => next ? count + page.notes.length : page.notes.length);
       if (!next) setRevealed(false);
     } catch (err) { setError(err.message); }
@@ -41,6 +49,18 @@ export default function VaultStudyClient() {
     Promise.resolve().then(() => { if (active) void load(); });
     return () => { active = false; };
   }, [load]);
+  async function changeDailyGoal(goal) {
+    setGoalSaving(true); setError('');
+    try {
+      const result = await json(await fetch('/api/vault/study', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day: studyDayKey(), goal }),
+      }));
+      setDaily(result.daily);
+      setMessage('Daily study goal saved across devices.');
+    } catch (err) { setError(err.message); }
+    finally { setGoalSaving(false); }
+  }
   const note = notes[0] || null;
 
   async function rate(rating) {
@@ -49,10 +69,13 @@ export default function VaultStudyClient() {
     try {
       const result = await json(await fetch('/api/vault/study', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: note.id, rating }),
+        body: JSON.stringify({ id: note.id, rating, day: studyDayKey() }),
       }));
       setNotes((items) => removeReviewedStudyNote(items, note.id));
       setCompleted((n) => n + 1);
+      if (result.daily) setDaily(result.daily);
+      if (result.learned !== note.learned)
+        setLearnedCount((n) => Math.max(0, n + (result.learned ? 1 : -1)));
       setRevealed(false);
       setMessage('Review saved. Next due ' + new Date(result.reviewDueAt).toLocaleDateString('en-IN') + '.');
     } catch (err) { setError(err.message); }
@@ -70,6 +93,16 @@ export default function VaultStudyClient() {
         <div className="oge-workflow-stat"><span className="oge-section-kicker">DUE IN THIS PAGE</span><strong>{notes.length}</strong></div>
         <div className="oge-workflow-stat"><span className="oge-section-kicker">REVIEWED THIS VISIT</span><strong>{completed}</strong></div>
         <div className="oge-workflow-stat"><span className="oge-section-kicker">NOTES SCANNED</span><strong>{scanned}{total !== null ? ' / ' + total : ''}</strong></div>
+        <div className="oge-workflow-stat"><span className="oge-section-kicker">LEARNED NOTES</span><strong>{learnedCount}</strong></div>
+      </div>
+      <div className="hub-card oge-module-card">
+        <label htmlFor="vault-daily-goal">Today&apos;s revision goal</label>
+        <select id="vault-daily-goal" value={daily.goal} disabled={goalSaving}
+          onChange={(event) => { void changeDailyGoal(Number(event.target.value)); }}>
+          {[5, 10, 15, 20, 30].map((n) => <option key={n} value={n}>{n} Notes</option>)}
+        </select>
+        <p role="status">{daily.completed} / {daily.goal} unique Notes reviewed today · synced across your devices</p>
+        <progress value={Math.min(daily.completed, daily.goal)} max={daily.goal} />
       </div>
       {error && <p role="alert" className="oge-form-error">{error}</p>}
       {message && <p role="status" className="oge-form-success">{message}</p>}
@@ -77,6 +110,7 @@ export default function VaultStudyClient() {
         <div className="hub-card oge-module-card">
           <span className="hub-card-kicker">SUBJECT · {note.subjectId}</span>
           <h2>{note.heading}</h2>
+          {note.learned && <p className="oge-settings-note">Learned previously · due for a refresher</p>}
           {notes.length > 1 && <button type="button" className="oge-settings-secondary-button"
             disabled={saving} onClick={() => {
               setNotes((items) => skipStudyNote(items));

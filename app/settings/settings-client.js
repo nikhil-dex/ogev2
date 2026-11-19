@@ -148,7 +148,8 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ action, ...(action === 'delete' ? {} : { apiKey: geminiKey }) }),
+        body: JSON.stringify({ action, ...(action === 'delete' || (action === 'test' && !geminiKey.trim())
+          ? {} : { apiKey: geminiKey }) }),
       }));
       setGeminiMessage(result.message || 'Gemini settings updated.');
       setGeminiMessageType('status');
@@ -261,10 +262,10 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
         <form className="oge-gemini-key-form" onSubmit={(event) => { event.preventDefault(); manageGeminiKey('save'); }}>
           <label htmlFor="gemini-api-key">Google Gemini API key</label>
           <input id="gemini-api-key" type="password" value={geminiKey} onChange={(event) => setGeminiKey(event.target.value)} placeholder={geminiConfigured ? 'Saved key is hidden — enter a new key to replace it' : 'Paste your Gemini API key'} autoComplete="new-password" spellCheck="false" maxLength={512} />
-          <p className="oge-settings-note">Create a key in <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio ↗</a>. OgeNotes uses free-tier Gemini models with automatic fallback when a model is unavailable or its quota is exhausted. Free-tier rate limits apply; paid models are not selected.</p>
+          <p className="oge-settings-note">Create a key in <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio ↗</a>. Save securely stores your key without contacting Google. Test connection checks whether Google accepts it and whether a Flash model can generate text. Google determines which models and free-tier access your project receives.</p>
           <div className="oge-gemini-key-actions">
-            <button className="oge-google-button" type="submit" disabled={geminiBusy || !geminiKey.trim()}>{geminiBusy ? 'Working…' : geminiConfigured ? 'Test & replace key' : 'Test & save key'}</button>
-            <button className="oge-settings-secondary-button" type="button" onClick={() => manageGeminiKey('test')} disabled={geminiBusy || !geminiKey.trim()}>{geminiBusy ? 'Checking…' : 'Test only'}</button>
+            <button className="oge-google-button" type="submit" disabled={geminiBusy || !geminiKey.trim()}>{geminiBusy ? 'Saving…' : geminiConfigured ? 'Replace saved key' : 'Save key'}</button>
+            <button className="oge-settings-secondary-button" type="button" onClick={() => manageGeminiKey('test')} disabled={geminiBusy || (!geminiKey.trim() && !geminiConfigured)}>{geminiBusy ? 'Checking…' : geminiKey.trim() ? 'Test entered key' : 'Test saved key'}</button>
             {geminiConfigured && <button className="oge-settings-danger-button" type="button" onClick={() => manageGeminiKey('delete')} disabled={geminiBusy}>Remove key</button>}
           </div>
         </form>

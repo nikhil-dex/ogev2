@@ -1,5 +1,51 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Notes Gemini cleanup parity — four focused improvements (20 Nov 2026)
+
+**In PR #7, feature branch `feature/notes-parity-simple` (not merged or deployed):**
+
+1. **Original study-focused prompt:** Fix grammar and Markdown, correct clear code mistakes without changing intended behavior, preserve `[[Note links]]` and formulas, and add or replace exactly one `### 📌 Imp Notes` section with 2–5 useful takeaways. Preserve relevant tags and use the user's BYOK Gemini key.
+2. **Review before applying:** Display original heading/body/tags alongside Gemini's proposed heading/body/tags in regular and full-screen editors; offer **Apply to draft** and **Cancel suggestion**. Gemini does not commit a Note to GitHub or MongoDB; Save stays explicit.
+3. **Stale suggestion protection:** Compare exact heading, answer, tag text and Note identity both when the server response arrives and when Apply is pressed. Editing or switching Notes invalidates the proposal; changing/closing the editor aborts pending requests.
+4. **Unsaved new Notes:** Let signed-in users request cleanup before their first Save. Existing saved Note requests still verify GitHub/MongoDB ownership. Unsaved content is sent only to the signed-in account's configured Gemini key; it is not stored by the cleanup endpoint.
+
+**Verification:** Prompt, preview, stale-guard and new-draft regression tests; CI must pass. A real-account Gemini generation test remains pending and cannot be inferred from synthetic tests.
+
+
+## Gemini API key Save / Test reliability — Notes parity follow-up (20 Nov 2026)
+
+- **Save key** now stores an encrypted BYOK credential without first running a text-generation request. Model outages, quota limits and unavailable free-tier generation no longer prevent saving an entered key. A working `GEMINI_KEY_ENCRYPTION_SECRET` remains required on the OgeV2 server.
+- **Test entered / saved key** checks the Google Gemini model listing, then makes a small text-generation call using supported Flash models, including Flash-Lite. A previously saved key can be tested without pasting it into the browser again.
+- **Actionable errors** distinguish invalid/restricted API keys, model generation access blocked by the provider, model unavailable, rate limits, and network issues. No Gemini key or provider error body is logged or returned.
+- **Note cleanup** uses the same Flash fallback list to avoid a successful test using a model not available to the editor.
+- **Testing:** mocked external Gemini API regression coverage and standard CI added. An actual Google AI Studio account/key test is still required; no personal keys were requested, stored in test files or used by CI.
+
+
+## Notes parity completion — #7 finishing pass (20 Nov 2026)
+
+The six Notes features now include the four follow-through improvements requested after the initial implementation:
+
+- **Full-library wiki links:** Existing `[[Title]]` and backlinks work immediately for loaded Notes, including other subjects. Select **Check links in entire Vault** from a Note's reader to scan every GitHub Notes page on demand; progress and cancellation are visible. The scan never writes an index or note content to MongoDB. If GitHub changes mid-scan, it asks for a refresh instead of claiming results are complete.
+- **Better PDF:** Direct Save PDF to My Files now renders Markdown headings, lists, code blocks, quotations, tables and dividers with visual hierarchy using the existing browser-local PDF exporter. It remains a readable, rasterized export rather than pixel-perfect browser printing or a searchable text PDF. **Print / Save PDF** remains the higher-fidelity alternative.
+- **Study across devices:** Daily goal settings and unique Notes reviewed per day are stored as owner/repo/day metadata in MongoDB and served by `/api/vault/study`. Review bodies remain committed in GitHub; the learned-note count uses the existing per-note study metadata.
+- **Reliable offline drafts:** Recent Notes cache and standard-mode draft autosaves persist in browser `localStorage`, not just a tab. Network-failed saves queue stable IDs for an explicit review, never auto-replay. The offline review detects already-saved copies, offers **Keep both as separate Notes** for conflicts, and still requires confirmation before replacing a newer GitHub revision. The app is not a full offline-installable PWA; initial page loading still requires the app shell to be available.
+- **Validation still needed:** CI and browser smoke on this PR, then a real signed-in GitHub/Gemini/PDF/offline conflict acceptance pass. No deployment or automatic merge.
+
+
+## Notes module parity — Six simple improvements (19 Nov 2026)
+
+**Working branch:** `feature/notes-parity-simple` based on `ogev2/main`.
+
+1. **Pinned Notes** — Pin/unpin from Notes cards, sort pinned Notes first and filter by Pinned. GitHub Notes store `pinned: true` only when pinned; existing GitHub JSON remains readable. Legacy Mongo Notes also support pinned.
+2. **`[[Note links]]` and backlinks** — Reader displays clickable outgoing links and incoming backlinks based on matching titles within currently loaded Notes in the same subject. No new index or storage.
+3. **Gemini cleanup for GitHub Notes** — Reuse existing Gemini cleanup handler, verify the Note belongs to the signed-in private Vault, and return an editing suggestion. Users review before Save; Gemini never directly commits.
+4. **Reader polish and PDF** — Previous/next buttons and horizontal mobile swipes. GitHub Vault users can generate a simple readable browser-local PDF and store it in private My Files, retaining Print / Save PDF for full browser formatting. This PDF export is text-based, not a pixel-perfect Markdown rendition.
+5. **Daily study goals** — Daily goal and completed counter in browser-local storage, scoped to account and repo, plus learned-note counts using the existing MongoDB review metadata. Note text remains in GitHub.
+6. **Offline creation and autosave** — Every new GitHub Note gets a stable UUID; local sessionStorage autosaves drafts even when hybrid Mongo draft preview is disabled. New Notes can be queued offline using localStorage and synced with the existing explicit conflict-resolution flow. Pending GitHub commits are never silently overwritten or automatically replayed.
+
+**Verification:** CI, browser smoke and signed-in real-account acceptance remain required before claiming these are fully live. No merge or deployment until review.
+
+
 ## Milestones #136–#138 — Real-account acceptance, Vault ZIP recovery, offline Notes (19 Nov 2026)
 
 **Scope:** Only the three requested workflows. Work branch: `feature/vault-recovery-offline-acceptance`; do not treat this feature branch as merged or deployed.

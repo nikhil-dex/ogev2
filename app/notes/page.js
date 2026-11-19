@@ -7,6 +7,12 @@ import SiteNavbar from '../components/site-navbar';
 import VaultOfflineQueue from '../components/vault-offline-queue';
 import { vaultOfflineQueueKey, enqueueVaultOfflineChange } from '../../lib/oge-vault-offline-queue.js';
 import { markdownHtml } from '../../lib/markdown.js';
+import { relatedNoteLinks } from '../../lib/oge-note-links.js';
+import { scanAllVaultNoteLinks } from '../../lib/oge-vault-all-note-links.js';
+import { readerSequenceForNote } from '../../lib/oge-note-reader-sequence.js';
+import { notePdfFile, saveNotePdfToVault } from '../../lib/oge-note-pdf.js';
+import GeminiNoteReview from '../components/gemini-note-review.js';
+import { geminiDraftSnapshot, isGeminiSuggestionCurrent } from '../../lib/oge-gemini-review.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
 import { vaultReadCacheKey, saveVaultReadCache, readVaultReadCache } from '../../lib/oge-vault-read-cache.js';
@@ -47,6 +53,7 @@ export default function NotesPage({
   const [query, setQuery] = useState('');
   const [globalSearch, setGlobalSearch] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [pinnedOnly, setPinnedOnly] = useState(false);
   const [selectedTag, setSelectedTag] = useState('');
   const [sortOrder, setSortOrder] = useState('latest');
   const [loading, setLoading] = useState(true);
@@ -69,10 +76,18 @@ export default function NotesPage({
   const createNoteAfterSubjectRef = useRef(false);
   const [subjectSaving, setSubjectSaving] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [savingReaderPdf, setSavingReaderPdf] = useState(false);
+  const readerSwipeRef = useRef(null);
+  const linkScanRef = useRef(null);
+  const [linkScan, setLinkScan] = useState(null);
+  const [linkScanBusy, setLinkScanBusy] = useState(false);
+  const [linkScanProgress, setLinkScanProgress] = useState('');
   const [preview, setPreview] = useState(false);
   const [answerFullscreen, setAnswerFullscreen] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
   const [aiCleanupBusy, setAiCleanupBusy] = useState(false);
+  const [geminiSuggestion, setGeminiSuggestion] = useState(null);
+  const geminiRequestRef = useRef(null);
   const answerRef = useRef(null);
   const headingRef = useRef(null);
   const editorInitialRef = useRef(null);
@@ -287,6 +302,7 @@ export default function NotesPage({
       if (vaultMode) {
         try {
           const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+          saveVaultReadCache(window.localStorage, key, subjectList, loadedNotes);
           saveVaultReadCache(window.sessionStorage, key, subjectList, loadedNotes);
         } catch { /* Browser cache is optional. */ }
       }
@@ -312,8 +328,9 @@ export default function NotesPage({
       let cached = null;
       if (vaultMode) {
         try {
-          cached = readVaultReadCache(window.sessionStorage,
-            vaultReadCacheKey(vaultOwnerId, vaultRepoId));
+          const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+          cached = readVaultReadCache(window.localStorage, key) ||
+            readVaultReadCache(window.sessionStorage, key);
         } catch { /* No owner-scoped offline cache available. */ }
       }
       if (cached) {
@@ -323,7 +340,7 @@ export default function NotesPage({
         setNextNotesCursor(null);
         setTotalVaultNotes(null);
         setOfflineReadOnly(true);
-        setError('GitHub is unavailable. Showing the last notes read in this tab (read-only). Reconnect and refresh before editing.');
+        setError('Showing cached Notes. Save changes locally, then reconnect and review pending edits before syncing to GitHub.');
       } else {
         setError(err.message || 'Could not load your notes.');
       }
@@ -425,6 +442,17 @@ export default function NotesPage({
     return () => { active = false; };
   }, [load]);
 
+  useEffect(() => {
+    if (!vaultMode || !readerNote || !subjects.length) return;
+    try {
+      const key = vaultReadCacheKey(vaultOwnerId, vaultRepoId);
+      const saved = readVaultReadCache(window.localStorage, key);
+      const otherNotes = saved?.notes || notes;
+      saveVaultReadCache(window.localStorage, key, subjects,
+        [readerNote, ...otherNotes.filter((note) => note.id !== readerNote.id)]);
+    } catch { /* Offline cache remains optional. */ }
+  }, [vaultMode, vaultOwnerId, vaultRepoId, readerNote, subjects, notes]);
+
   const availableTags = useMemo(
     () => [...new Set(notes.flatMap((note) => Array.isArray(note.tags) ? note.tags : []))].sort(),
     [notes],
@@ -436,17 +464,103 @@ export default function NotesPage({
       .filter((note) => globalSearch || !activeSubject || note.subjectSlug === activeSubject)
       .filter((note) => !needle || (note.heading + ' ' + note.answer + ' ' + (note.tags || []).join(' ')).toLocaleLowerCase().includes(needle))
       .filter((note) => !favoritesOnly || note.favorite)
+      .filter((note) => !pinnedOnly || note.pinned)
       .filter((note) => !selectedTag || (note.tags || []).includes(selectedTag))
       .sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
         if (sortOrder === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
         if (sortOrder === 'title-asc') return a.heading.localeCompare(b.heading);
         if (sortOrder === 'title-desc') return b.heading.localeCompare(a.heading);
         return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
       });
-  }, [notes, activeSubject, query, globalSearch, favoritesOnly, selectedTag, sortOrder]);
+  }, [notes, activeSubject, query, globalSearch, favoritesOnly, pinnedOnly, selectedTag, sortOrder]);
+  const readerSequence = readerSequenceForNote(readerNote, visibleNotes, notes, sortOrder);
+  const readerIndex = readerNote ? readerSequence.findIndex((note) => note.id === readerNote.id) : -1;
+  const readerLinks = linkScan?.complete && linkScan.noteId === readerNote?.id
+    ? linkScan : relatedNoteLinks(readerNote, notes, { allSubjects: true });
+  function stopLinkScan() {
+    linkScanRef.current?.abort();
+    linkScanRef.current = null;
+    setLinkScanBusy(false);
+  }
+  function moveReaderNote(step) {
+    const next = readerSequence[readerIndex + step];
+    if (!next) return;
+    stopLinkScan();
+    setReaderNote(next);
+    setShareMenuOpen(false);
+  }
+  async function openRelatedNote(note) {
+    stopLinkScan();
+    try {
+      const current = vaultMode
+        ? await responseJson(await fetch(notesApi + '?id=' + encodeURIComponent(note.id),
+          { cache: 'no-store' }))
+        : note;
+      setReaderNote(current);
+      setShareMenuOpen(false);
+    } catch (err) { setLinkScanProgress(err.message || 'Could not open linked Note.'); }
+  }
+  async function scanCompleteLinks() {
+    if (!vaultMode || !readerNote || linkScanBusy) return;
+    stopLinkScan();
+    const target = readerNote;
+    const controller = new AbortController();
+    linkScanRef.current = controller;
+    setLinkScanBusy(true);
+    setLinkScanProgress('Scanning linked Notes across your Vault…');
+    try {
+      const found = await scanAllVaultNoteLinks({
+        reader: target,
+        shouldStop: () => controller.signal.aborted,
+        fetchPage: async (cursor) => responseJson(await fetch(
+          notesApi + '?paged=true&limit=25' +
+          (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
+          { cache: 'no-store', signal: controller.signal },
+        )),
+        onProgress: ({ scanned, total }) => {
+          if (!controller.signal.aborted)
+            setLinkScanProgress('Checked ' + scanned + ' of ' + total + ' Notes…');
+        },
+      });
+      if (!found.cancelled && !controller.signal.aborted) {
+        setLinkScan({ ...found, noteId: target.id });
+        setLinkScanProgress('Checked all ' + found.total + ' GitHub Notes.');
+      }
+    } catch (err) {
+      if (!controller.signal.aborted)
+        setLinkScanProgress(err.message || 'Could not finish link scan. Try again.');
+    } finally {
+      if (linkScanRef.current === controller) {
+        linkScanRef.current = null;
+        setLinkScanBusy(false);
+      }
+    }
+  }
 
   const active = subjects.find((subject) => subject.slug === activeSubject);
   const editorMetrics = noteBodyMetrics(answer);
+  const currentGeminiDraft = geminiDraftSnapshot({ heading, answer, tagsText, activeSubject, editingId, newDraftId });
+  function cancelGeminiReview() {
+    geminiRequestRef.current?.abort();
+    geminiRequestRef.current = null;
+    setAiCleanupBusy(false);
+    setGeminiSuggestion(null);
+  }
+  function applyGeminiSuggestion() {
+    if (!geminiSuggestion || saving) return;
+    if (!isGeminiSuggestionCurrent(geminiSuggestion.original, currentGeminiDraft)) {
+      setGeminiSuggestion(null);
+      setError('Your note changed after Gemini started. Run cleanup again to protect your new edits.');
+      return;
+    }
+    setHeading(geminiSuggestion.suggested.heading);
+    setAnswer(geminiSuggestion.suggested.answer);
+    setTagsText(geminiSuggestion.suggested.tagsText);
+    setPreview(false);
+    setDraftStatus('Gemini suggestion applied to draft — press Save to commit');
+    setGeminiSuggestion(null);
+  }
   const editorFeedback = noteEditorFeedback({
     vaultMode, hybridDrafts, saving, hybridReady, editingId,
     changed: Boolean(editorBaseline && (heading !== editorBaseline.heading ||
@@ -464,11 +578,12 @@ export default function NotesPage({
       setMessage('Create a subject below. Your new Note will open automatically.');
       return;
     }
+    cancelGeminiReview();
     const generation = ++hybridGenerationRef.current;
     setNewDraftId('');
     setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
     hybridRevisionRef.current = 0;
-    const freshId = hybridDrafts ? crypto.randomUUID() : '';
+    const freshId = vaultMode ? crypto.randomUUID() : '';
     setNewDraftId(freshId);
     setHybridError('');
     hybridConflictRef.current = false;
@@ -485,9 +600,22 @@ export default function NotesPage({
     setDraftStatus('');
     setNoteDialog(true);
     if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverNewHybridDraft(subjectId, generation);
+    if (vaultMode && !hybridDrafts) {
+      try {
+        const localId = window.localStorage.getItem(newDraftPointerKey(subjectId));
+        const local = JSON.parse(window.localStorage.getItem(hybridKey(localId)) || 'null')?.draft;
+        if (localId && local?.subjectId === subjectId && local.baseSha === null) {
+          setNewDraftId(localId);
+          setHeading(local.heading || ''); setAnswer(local.answer || '');
+          setTagsText((local.tags || []).join(', '));
+          setDraftStatus('Recovered unsaved browser draft');
+        }
+      } catch { /* Browser drafts are optional. */ }
+    }
   }
 
   function editNote(note) {
+    cancelGeminiReview();
     const generation = ++hybridGenerationRef.current;
     setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
     setHybridError('');
@@ -510,6 +638,16 @@ export default function NotesPage({
     setDraftStatus('');
     setNoteDialog(true);
     if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverHybridDraft(note, generation);
+    if (vaultMode && !hybridDrafts) {
+      try {
+        const local = JSON.parse(window.localStorage.getItem(hybridKey(note.id)) || 'null')?.draft;
+        if (local?.subjectId === note.subjectSlug && local.baseSha === note.sha) {
+          setHeading(local.heading); setAnswer(local.answer);
+          setTagsText((local.tags || []).join(', '));
+          setDraftStatus('Recovered unsaved browser draft');
+        }
+      } catch { /* Keep GitHub content when recovery fails. */ }
+    }
   }
 
   // Focus the title when the editor opens and when draft recovery finishes.
@@ -529,8 +667,18 @@ export default function NotesPage({
 
   function closeNoteEditor() {
     if (saving || (hybridDrafts && !hybridReady)) return;
-    if (hasUnsavedEditorChanges() &&
+    const changed = hasUnsavedEditorChanges();
+    if (changed &&
         !window.confirm('Discard unsaved GitHub note edits? These changes have not been committed to your vault.')) return;
+    if (changed && vaultMode && !hybridDrafts) {
+      try {
+        window.localStorage.removeItem(hybridKey(editingId || newDraftId));
+        if (!editingId &&
+            window.localStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+          window.localStorage.removeItem(newDraftPointerKey(activeSubject));
+      } catch { /* Discard still closes the editor when storage is blocked. */ }
+    }
+    cancelGeminiReview();
     hybridGenerationRef.current += 1;
     setNoteDialog(false);
     setPreview(false);
@@ -539,7 +687,7 @@ export default function NotesPage({
   // Temporary draft writes are serialized. Browser storage is updated before
   // the request, so fast typing never creates parallel out-of-order revisions.
   useEffect(() => {
-    if (!hybridDrafts || !hybridReady || !noteDialog || (!editingId && !newDraftId) ||
+    if (!vaultMode || !hybridReady || !noteDialog || (!editingId && !newDraftId) ||
         !hasUnsavedEditorChanges()) return undefined;
     const current = notes.find((note) => note.id === editingId);
     if (editingId && !current?.sha) return undefined;
@@ -549,11 +697,16 @@ export default function NotesPage({
       tags: [...new Set(tagsText.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10),
       favorite: Boolean(current?.favorite), baseSha: current?.sha || null };
     try {
-      window.sessionStorage.setItem(key, JSON.stringify({ draft }));
-      if (!editingId) window.sessionStorage.setItem(newDraftPointerKey(activeSubject), noteId);
-    } catch { /* Server copy still available if the next request succeeds. */ }
+      const browserStorage = hybridDrafts ? window.sessionStorage : window.localStorage;
+      browserStorage.setItem(key, JSON.stringify({ draft }));
+      if (!editingId) browserStorage.setItem(newDraftPointerKey(activeSubject), noteId);
+      if (!hybridDrafts) Promise.resolve().then(() => setDraftStatus('Draft saved in this browser'));
+    } catch {
+      Promise.resolve().then(() => setDraftStatus('Local autosave unavailable — copy your edits before closing'));
+    }
+    // The browser autosaves even if temporary Mongo draft preview is off.
+    if (!hybridDrafts) return undefined;
     // Even while Save is running, preserve newer keystrokes in sessionStorage.
-    // Server autosave remains paused until Save returns.
     if (saving) return undefined;
     // A conflicting edit is not a transient outage; keep the user's local
     // copy, but never overwrite the other device automatically.
@@ -616,20 +769,16 @@ export default function NotesPage({
   }, [hybridDrafts, hybridReady, noteDialog, editingId, newDraftId, activeSubject, heading, answer, tagsText,
     notes, saving, hybridError, hybridRetryToken, hasUnsavedEditorChanges]);
 
-  function saveOffline() {
-    if (!vaultMode || !activeSubject || saving) return;
+  function saveOffline({ allowWhileSaving = false } = {}) {
+    if (!vaultMode || !activeSubject || (saving && !allowWhileSaving)) return false;
     if (!heading.trim() || !answer.trim()) {
       setError('Add a title and Note content before saving offline.');
-      return;
+      return false;
     }
     const current = notes.find((item) => item.id === editingId);
-    if (!editingId && !hybridDrafts) {
-      setError('Offline new Notes need the GitHub Vault draft feature. Existing Notes can be queued.');
-      return;
-    }
     if (editingId && !current?.sha) {
       setError('Cannot queue this Note without its original GitHub revision.');
-      return;
+      return false;
     }
     try {
       const tags = [...new Set(tagsText.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10);
@@ -643,6 +792,11 @@ export default function NotesPage({
       const key = vaultOfflineQueueKey(vaultOwnerId, vaultRepoId);
       enqueueVaultOfflineChange(window.localStorage, key, offline);
       window.dispatchEvent(new Event('oge:vault-offline-changed'));
+      try {
+        window.localStorage.removeItem(hybridKey(offline.id));
+        if (!editingId && window.localStorage.getItem(newDraftPointerKey(activeSubject)) === offline.id)
+          window.localStorage.removeItem(newDraftPointerKey(activeSubject));
+      } catch { /* The queued localStorage copy is authoritative until GitHub sync. */ }
       setError('');
       setDraftStatus('Saved locally — review and sync when online');
       setMessage('Note saved to this browser. Review the pending offline edit before syncing to GitHub.');
@@ -650,8 +804,10 @@ export default function NotesPage({
       setNoteDialog(false);
       setPreview(false);
       setAnswerFullscreen(false);
+      return true;
     } catch (err) {
       setError(err.message || 'Browser storage is unavailable. Keep the editor open.');
+      return false;
     }
   }
 
@@ -708,7 +864,7 @@ export default function NotesPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingId ? { ...payload, id: editingId,
           ...(vaultMode ? { sha: current.sha } : {}) } :
-          (hybridDrafts ? { ...payload, id: newDraftId } : payload)),
+          (vaultMode ? { ...payload, id: newDraftId } : payload)),
       }));
       if (vaultMode) rememberSavedNote(note.id);
       // The submitted revision really was committed, but newer keystrokes
@@ -834,6 +990,45 @@ export default function NotesPage({
         setMessage('GitHub saved the submitted version. New edits remain in the editor.');
         return;
       }
+      if (vaultMode && !hybridDrafts) {
+        if (JSON.stringify(liveEditorRef.current) !== submittedEditor) {
+          // Persist the newer typed text with the fresh GitHub SHA before
+          // switching from POST to PUT. A reload must not recreate the Note.
+          try {
+            const newer = liveEditorRef.current;
+            window.localStorage.setItem(hybridKey(note.id), JSON.stringify({
+              draft: {
+                subjectId: note.subjectSlug, heading: newer.heading, answer: newer.answer,
+                tags: [...new Set(newer.tagsText.split(',').map((tag) =>
+                  tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10),
+                baseSha: note.sha,
+              },
+            }));
+            if (!editingId && window.localStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+              window.localStorage.removeItem(newDraftPointerKey(activeSubject));
+          } catch { /* Keep text in the live editor if storage is unavailable. */ }
+          setNotes((existing) => mergeRecentVaultNotes(existing, [note]));
+          setEditingId(note.id);
+          setNewDraftId('');
+          const baseline = { heading: note.heading, answer: note.answer,
+            tags: (note.tags || []).join(', ') };
+          editorInitialRef.current = baseline;
+          setEditorBaseline(baseline);
+          setDraftStatus('Newer edits pending — earlier version saved');
+          setMessage('GitHub saved the earlier version. Your newer edits are still here.');
+          return;
+        }
+        try {
+          const raw = window.localStorage.getItem(hybridKey(note.id));
+          if (raw) {
+            const copy = JSON.parse(raw)?.draft;
+            if (copy?.heading === heading && copy?.answer === answer)
+              window.localStorage.removeItem(hybridKey(note.id));
+          }
+          if (!editingId && window.localStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+            window.localStorage.removeItem(newDraftPointerKey(activeSubject));
+        } catch { /* Browser storage must not block a confirmed GitHub Save. */ }
+      }
       hybridGenerationRef.current += 1;
       setNewDraftId('');
       editorInitialRef.current = null;
@@ -845,6 +1040,11 @@ export default function NotesPage({
       setMessage('Note saved successfully.');
       await load(activeSubject);
     } catch (err) {
+      // A network failure can arrive after GitHub committed. Queue the same
+      // stable ID and review its remote revision after reconnecting, never
+      // retry an uncertain POST blindly.
+      if (vaultMode && (!navigator.onLine || err instanceof TypeError) &&
+          saveOffline({ allowWhileSaving: true })) return;
       if (attemptedGitHubSave && hybridDrafts && vaultMode) {
         // An HTTP error does NOT prove GitHub rejected the commit. Verify
         // immutable GitHub content, then independently CAS-clear ONLY that
@@ -919,12 +1119,19 @@ export default function NotesPage({
 
 
   async function cleanupWithGemini() {
-    if (aiCleanupBusy || !editingId || vaultMode) return;
+    if (aiCleanupBusy || saving || (hybridDrafts && !hybridReady)) return;
     if (!heading.trim() || !answer.trim()) {
       setError('Add a heading and note content before using Gemini.');
       return;
     }
+    const original = geminiDraftSnapshot({
+      heading, answer, tagsText, activeSubject, editingId, newDraftId,
+    });
+    const controller = new AbortController();
+    geminiRequestRef.current?.abort();
+    geminiRequestRef.current = controller;
     setAiCleanupBusy(true);
+    setGeminiSuggestion(null);
     setError('');
     setMessage('');
     try {
@@ -932,23 +1139,36 @@ export default function NotesPage({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
+        signal: controller.signal,
         body: JSON.stringify({
-          id: editingId,
+          ...(editingId ? { id: editingId } : {}),
           heading: heading.trim(),
           answer: answer.trim(),
           tags: tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
         }),
       }));
-      setHeading(result.heading);
-      setAnswer(result.answer);
-      setTagsText((result.tags || []).join(', '));
-      setPreview(false);
-      setDraftStatus('Gemini suggestion — review before saving');
-      setMessage('');
+      if (controller.signal.aborted) return;
+      if (!isGeminiSuggestionCurrent(original, liveEditorRef.current)) {
+        setError('Your note changed while Gemini was working. Run cleanup again to protect your newer edits.');
+        return;
+      }
+      setGeminiSuggestion({
+        original,
+        suggested: {
+          heading: result.heading,
+          answer: result.answer,
+          tagsText: (result.tags || []).join(', '),
+        },
+      });
+      setDraftStatus('Gemini suggestion ready — compare before applying');
     } catch (err) {
-      setError(err.message || 'Gemini could not clean up this note.');
+      if (!controller.signal.aborted)
+        setError(err.message || 'Gemini could not clean up this note.');
     } finally {
-      setAiCleanupBusy(false);
+      if (geminiRequestRef.current === controller) {
+        geminiRequestRef.current = null;
+        setAiCleanupBusy(false);
+      }
     }
   }
 
@@ -966,6 +1186,22 @@ export default function NotesPage({
     } catch (err) {
       setError(err.message || 'Could not update favorite.');
     }
+  }
+
+  async function togglePinned(note) {
+    if (offlineReadOnly || !navigator.onLine) {
+      setError('Reconnect before changing pinned Notes.');
+      return;
+    }
+    setError('');
+    try {
+      await responseJson(await fetch(notesApi, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: note.id, pinned: !note.pinned,
+          ...(vaultMode ? { sha: note.sha } : {}) }),
+      }));
+      await load(activeSubject);
+    } catch (err) { setError(err.message || 'Could not update pin.'); }
   }
 
   async function deleteNote(note) {
@@ -1037,6 +1273,21 @@ export default function NotesPage({
     setShareMenuOpen(false);
   }
 
+  async function saveReaderPdfToFiles() {
+    if (!readerNote || !vaultMode || savingReaderPdf) return;
+    setSavingReaderPdf(true);
+    setShareMenuOpen(false);
+    try {
+      if (!navigator.onLine) throw new Error('Connect to save a PDF to My Files.');
+      const subject = subjects.find((item) => item.slug === readerNote.subjectSlug);
+      const pdf = await notePdfFile(readerNote, subject?.name || 'Notes');
+      await saveNotePdfToVault(pdf);
+      window.alert('PDF saved to My Files. Open My Files to preview or download it.');
+    } catch (err) {
+      window.alert(err.message || 'PDF save failed. Try Print / Save PDF instead.');
+    } finally { setSavingReaderPdf(false); }
+  }
+
   function printReaderNote() {
     if (!readerNote) return;
     setShareMenuOpen(false);
@@ -1104,17 +1355,37 @@ export default function NotesPage({
   useEffect(() => {
     if (!noteDialog && !readerNote) return undefined;
     const onKeyDown = (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        if (!readerNote || noteDialog || event.defaultPrevented || event.repeat ||
+            event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        // Do not steal arrows from an editor, search field or other text control.
+        if (event.target instanceof Element &&
+            event.target.closest('input, textarea, select, [contenteditable], [role="textbox"]')) return;
+        const step = event.key === 'ArrowRight' ? 1 : -1;
+        const next = readerSequence[readerIndex + step];
+        if (!next) return;
+        event.preventDefault();
+        linkScanRef.current?.abort();
+        linkScanRef.current = null;
+        setLinkScanBusy(false);
+        setReaderNote(next);
+        setShareMenuOpen(false);
+        return;
+      }
       if (event.key !== 'Escape') return;
       if (answerFullscreen) { setAnswerFullscreen(false); return; }
       if (noteDialog && !saving && (!hybridDrafts || hybridReady)) {
         closeNoteEditor();
         return;
       }
+      linkScanRef.current?.abort();
+      linkScanRef.current = null;
+      setLinkScanBusy(false);
       setReaderNote(null);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [noteDialog, readerNote, answerFullscreen, saving, hybridDrafts, hybridReady, hasUnsavedEditorChanges]);
+  }, [noteDialog, readerNote, readerSequence, readerIndex, answerFullscreen, saving, hybridDrafts, hybridReady, hasUnsavedEditorChanges]);
 
   return (
     <main className="shell">
@@ -1183,8 +1454,9 @@ export default function NotesPage({
         </div>
         <div className="note-filters" aria-label="Note filters">
           <button type="button" className={favoritesOnly ? 'filter-chip active' : 'filter-chip'} aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>★ Favorites</button>
+          <button type="button" className={pinnedOnly ? 'filter-chip active' : 'filter-chip'} aria-pressed={pinnedOnly} onClick={() => setPinnedOnly((value) => !value)}>📌 Pinned</button>
           {availableTags.length > 0 && <label className="tag-filter">Tag <select value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)} aria-label="Filter notes by tag"><option value="">All tags</option>{availableTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}</select></label>}
-          {(query || globalSearch || favoritesOnly || selectedTag) && <button type="button" className="clear-filters" onClick={() => { setQuery(''); setGlobalSearch(false); setFavoritesOnly(false); setSelectedTag(''); }}>Clear all</button>}
+          {(query || globalSearch || favoritesOnly || pinnedOnly || selectedTag) && <button type="button" className="clear-filters" onClick={() => { setQuery(''); setGlobalSearch(false); setFavoritesOnly(false); setPinnedOnly(false); setSelectedTag(''); }}>Clear all</button>}
         </div>
 
         {vaultMode && query.trim() && nextNotesCursor && <div className="oge-vault-notes-pagination" role="group" aria-label="Search all GitHub Notes">
@@ -1203,7 +1475,7 @@ export default function NotesPage({
           : visibleNotes.length ? <div className="notes-grid">{visibleNotes.map((note, index) => (
             <article className="note-card" key={note.id}>
               <button type="button" className="card-open" onClick={() => setReaderNote(note)} aria-label={`Open note: ${note.heading}`}>
-                <span className="card-top"><span className="note-index">NO. {String(index + 1).padStart(2, '0')}</span><span className="note-badges">{note.favorite && <span title="Favorite">★</span>}</span></span>
+                <span className="card-top"><span className="note-index">NO. {String(index + 1).padStart(2, '0')}</span><span className="note-badges">{note.pinned && <span title="Pinned">📌</span>}{note.favorite && <span title="Favorite">★</span>}</span></span>
                 <span className="note-title">{note.heading}</span>
                 <span className="note-preview">{note.answer}</span>
                 <span className="card-tags">{(note.tags || []).map((tag) => <span key={tag} className="tag-chip">{tag}</span>)}</span>
@@ -1211,6 +1483,10 @@ export default function NotesPage({
               </button>
               <div className="note-card-actions" aria-label={`Actions for ${note.heading}`}>
                 <button type="button" className={note.favorite ? 'metadata-action selected' : 'metadata-action'} onClick={() => toggleFavorite(note)} aria-pressed={Boolean(note.favorite)} aria-label={note.favorite ? 'Remove favorite' : 'Add favorite'} title={note.favorite ? 'Remove favorite' : 'Add favorite'}>★</button>
+                <button type="button" className={note.pinned ? 'metadata-action selected' : 'metadata-action'}
+                  onClick={() => togglePinned(note)} aria-pressed={Boolean(note.pinned)}
+                  aria-label={note.pinned ? 'Unpin note: ' + note.heading : 'Pin note: ' + note.heading}
+                  title={note.pinned ? 'Unpin' : 'Pin'}>⌖</button>
                 <button type="button" className="edit-note" onClick={() => editNote(note)} aria-label={`Edit note: ${note.heading}`} title="Edit note">✎</button>
                 <button type="button" className="delete-note" onClick={() => deleteNote(note)} aria-label={`Delete note: ${note.heading}`} title="Delete note">×</button>
               </div>
@@ -1260,18 +1536,22 @@ export default function NotesPage({
             <input id="noteTags" maxLength={260} placeholder="e.g. arrays, exam, important" value={tagsText} onChange={(event) => { setTagsText(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} />
             {answerFullscreen ? createPortal(
               <div className="answer-workspace is-fullscreen">
-                <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span>{editingId && !vaultMode && <button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button>}<button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(false)} aria-label="Exit full-screen writing area" title="Exit full screen (Esc)">↙ Exit full screen</button></div>
+                <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span><button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving || (hybridDrafts && !hybridReady)} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button><button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(false)} aria-label="Exit full-screen writing area" title="Exit full screen (Esc)">↙ Exit full screen</button></div>
                 <div className="editor-toolbar" aria-label="Answer formatting"><button type="button" onClick={() => insertFormatting('bold')} title="Bold">B</button><button type="button" onClick={() => insertFormatting('code')} title="Inline code">&lt;/&gt;</button><button type="button" onClick={() => insertFormatting('list')} title="Bullet list">• List</button><button type="button" onClick={() => insertFormatting('codeblock')} title="Code block">{'{ }'}</button><span>Formatting shortcuts</span><span className="draft-status" role="status" aria-live="polite">{draftStatus}</span></div>
                 <div className="editor-tabs"><button type="button" className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Write</button><button type="button" className={preview ? 'active' : ''} onClick={() => setPreview(true)}>Preview</button></div>
                 {!preview ? <textarea ref={answerRef} form="noteForm" id="answer" rows={6} maxLength={20000} placeholder="Write your explanation here…" value={answer} onChange={(event) => { setAnswer(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} required /> : <div className="answer-preview">{answer ? <div dangerouslySetInnerHTML={{ __html: markdownHtml(answer) }} /> : <p className="preview-placeholder">Nothing to preview yet.</p>}</div>}
+                <GeminiNoteReview suggestion={geminiSuggestion} current={currentGeminiDraft}
+                  onApply={applyGeminiSuggestion} onCancel={() => setGeminiSuggestion(null)} />
               </div>,
               document.body
             ) : <div className="answer-workspace">
-              <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span>{editingId && !vaultMode && <button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button>}<button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(true)} aria-label="Expand writing area to full screen" title="Expand writing area">⛶ Expand</button></div>
+              <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span><button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving || (hybridDrafts && !hybridReady)} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button><button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(true)} aria-label="Expand writing area to full screen" title="Expand writing area">⛶ Expand</button></div>
               <div className="editor-toolbar" aria-label="Answer formatting"><button type="button" onClick={() => insertFormatting('bold')} title="Bold">B</button><button type="button" onClick={() => insertFormatting('code')} title="Inline code">&lt;/&gt;</button><button type="button" onClick={() => insertFormatting('list')} title="Bullet list">• List</button><button type="button" onClick={() => insertFormatting('codeblock')} title="Code block">{'{ }'}</button><span>Formatting shortcuts</span><span className="draft-status" role="status" aria-live="polite">{draftStatus}</span></div>
               <div className="editor-tabs"><button type="button" className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Write</button><button type="button" className={preview ? 'active' : ''} onClick={() => setPreview(true)}>Preview</button></div>
               {!preview ? <textarea ref={answerRef} id="answer" rows={8} maxLength={20000} placeholder="Write your explanation here…" value={answer} onChange={(event) => { setAnswer(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} required /> : <div className="answer-preview">{answer ? <div dangerouslySetInnerHTML={{ __html: markdownHtml(answer) }} /> : <p className="preview-placeholder">Nothing to preview yet.</p>}</div>}
             </div>}
+            {!answerFullscreen && <GeminiNoteReview suggestion={geminiSuggestion} current={currentGeminiDraft}
+              onApply={applyGeminiSuggestion} onCancel={() => setGeminiSuggestion(null)} />}
             <p className={'oge-editor-feedback oge-editor-feedback--' + editorFeedback.kind}
               role="status" aria-live="polite">{editorFeedback.label}</p>
             {vaultMode && hybridDrafts && draftStatus && <p className="oge-editor-draft-detail">
@@ -1302,11 +1582,23 @@ export default function NotesPage({
         </section>
       </div>}
 
-      {readerNote && <div className="reader-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setReaderNote(null); setShareMenuOpen(false); } }}>
-        <article className="reader-panel" role="dialog" aria-modal="true" aria-labelledby="readerTitle">
+      {readerNote && <div className="reader-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { stopLinkScan(); setReaderNote(null); setShareMenuOpen(false); } }}>
+        <article className="reader-panel" role="dialog" aria-modal="true" aria-labelledby="readerTitle"
+          onTouchStart={(event) => { readerSwipeRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }; }}
+          onTouchEnd={(event) => {
+            if (!readerSwipeRef.current) return;
+            const dx = event.changedTouches[0].clientX - readerSwipeRef.current.x;
+            const dy = event.changedTouches[0].clientY - readerSwipeRef.current.y;
+            readerSwipeRef.current = null;
+            if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.25)
+              moveReaderNote(dx < 0 ? 1 : -1);
+          }}>
           <div className="reader-toolbar">
             <span className="reader-kicker">NOTE · {(subjects.find((item) => item.slug === readerNote.subjectSlug) || active)?.name || 'LIBRARY'}</span>
             <div className="reader-toolbar-actions">
+              <button type="button" className="reader-step-button" disabled={readerIndex <= 0} onClick={() => moveReaderNote(-1)} aria-label="Previous note">‹</button>
+              <span className="reader-position" title="Use ← and → keyboard arrows to browse Notes">{readerIndex >= 0 ? (readerIndex + 1) + ' / ' + readerSequence.length + ' · ← →' : ''}</span>
+              <button type="button" className="reader-step-button" disabled={readerIndex < 0 || readerIndex >= readerSequence.length - 1} onClick={() => moveReaderNote(1)} aria-label="Next note">›</button>
               <button type="button" className="note-share-button"
                 onClick={() => editNote(readerNote)} aria-label={'Edit note: ' + readerNote.heading}>
                 ✎ Edit note
@@ -1316,9 +1608,10 @@ export default function NotesPage({
                 {shareMenuOpen && <div className="note-share-menu" role="menu">
                   <button type="button" role="menuitem" onClick={shareReaderNote}><strong>Share note</strong><small>Send text to available apps</small></button>
                   <button type="button" role="menuitem" onClick={printReaderNote}><strong>Print / Save PDF</strong><small>Keep the note formatting</small></button>
+                  {vaultMode && <button type="button" role="menuitem" onClick={() => void saveReaderPdfToFiles()} disabled={savingReaderPdf}><strong>{savingReaderPdf ? 'Saving PDF…' : 'Save PDF to My Files'}</strong><small>Store a readable PDF in your private Vault</small></button>}
                 </div>}
               </div>
-              <button type="button" className="close-button reader-close" onClick={() => { setShareMenuOpen(false); setReaderNote(null); }} aria-label="Close note">×</button>
+              <button type="button" className="close-button reader-close" onClick={() => { stopLinkScan(); setShareMenuOpen(false); setReaderNote(null); }} aria-label="Close note">×</button>
             </div>
           </div>
           <div className="reader-content">
@@ -1327,6 +1620,29 @@ export default function NotesPage({
             <div className="reader-meta">Saved {savedLabel(readerNote.updatedAt || readerNote.createdAt)}</div>
             <div className="reader-answer" dangerouslySetInnerHTML={{ __html: markdownHtml(readerNote.answer) }} />
             {(readerNote.tags || []).length > 0 && <div className="reader-tags">{readerNote.tags.map((tag) => <span key={tag} className="tag-chip">{tag}</span>)}</div>}
+            <section className="note-links-section" aria-label="Linked notes">
+              <h3>Linked notes</h3>
+              {vaultMode && <div className="oge-settings-data-actions">
+                <button type="button" className="oge-settings-secondary-button"
+                  disabled={linkScanBusy} onClick={() => { void scanCompleteLinks(); }}>
+                  {linkScanBusy ? 'Scanning…' : 'Check links in entire Vault'}
+                </button>
+                {linkScanBusy && <button type="button" className="oge-settings-secondary-button"
+                  onClick={stopLinkScan}>Stop</button>}
+              </div>}
+              {vaultMode && linkScanProgress && <p role="status">{linkScanProgress}</p>}
+              {readerLinks.outgoing.length ? <ul>{readerLinks.outgoing.map((note) =>
+                <li key={note.id}><button type="button" onClick={() => { void openRelatedNote(note); }}>
+                  {note.heading} · {subjects.find((item) => item.slug === note.subjectSlug)?.name || 'Subject'} →</button></li>)}</ul>
+                : <p>Use [[Exact note heading]] to link Notes. Check the entire Vault to find older or cross-subject links.</p>}
+            </section>
+            <section className="note-links-section backlinks-section" aria-label="Backlinks">
+              <h3>Backlinks</h3>
+              {readerLinks.backlinks.length ? <ul>{readerLinks.backlinks.map((note) =>
+                <li key={note.id}><button type="button" onClick={() => { void openRelatedNote(note); }}>
+                  {note.heading} · {subjects.find((item) => item.slug === note.subjectSlug)?.name || 'Subject'} ↗</button></li>)}</ul>
+                : <p>No backlinks found in {linkScan?.complete && linkScan.noteId === readerNote?.id ? 'your complete Vault' : 'loaded Notes'}.</p>}
+            </section>
           </div>
         </article>
       </div>}

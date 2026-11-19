@@ -4,6 +4,8 @@ import { ownerMutationFilter } from '../../../../lib/active-owner-mutation.js';
 import { connectedVaultStorageAvailable } from '../../../../lib/oge-vault-workspace-routing.js';
 import { getVaultNoteClient, listVaultNotePage, readVaultNote } from '../../../../lib/oge-vault-notes.js';
 import { annotateVaultStudyPage, recordVaultReview } from '../../../../lib/oge-vault-study.js';
+import { validateStudyDay, readVaultDailyGoal, setVaultDailyGoal,
+  finishVaultDailyReview } from '../../../../lib/oge-vault-daily-progress.js';
 import { readLimitedBody } from '../../../../lib/read-limited-body.js';
 import { VaultGitHubError } from '../../../../lib/oge-vault-github.js';
 import { checkOwnerMutationLimit, rateLimitResponse } from '../../../../lib/rate-limit.js';
@@ -44,11 +46,19 @@ export async function GET(request) {
     if (ctx.response) return ctx.response;
     const params = new URL(request.url).searchParams;
     const cursor = params.get('cursor');
+    const day = validateStudyDay(params.get('day') ||
+      new Date().toISOString().slice(0, 10));
     const page = await listVaultNotePage(ctx.client, { limit: 20, cursor });
-    return json({
-      notes: await annotateVaultStudyPage(ctx.db, ctx.client, ctx.ownerId, page.notes),
-      nextCursor: page.nextCursor, total: page.total,
-    });
+    const [notes, learnedCount, daily] = await Promise.all([
+      annotateVaultStudyPage(ctx.db, ctx.client, ctx.ownerId, page.notes),
+      ctx.db.collection('vaultStudyProgress').countDocuments({
+        ownerId: ctx.ownerId, repoId: ctx.client.vault.repoId,
+        rating: { $in: ['good', 'easy'] },
+      }),
+      readVaultDailyGoal(ctx.db, ctx.ownerId, ctx.client.vault.repoId, day),
+    ]);
+    return json({ notes, learnedCount, daily,
+      nextCursor: page.nextCursor, total: page.total });
   } catch (error) { return failed(error); }
 }
 export async function POST(request) {
@@ -58,6 +68,7 @@ export async function POST(request) {
     const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'notes');
     if (!throttle.allowed) return rateLimitResponse(throttle);
     const body = JSON.parse(await readLimitedBody(request, 2048));
+    const day = validateStudyDay(body?.day);
     if (typeof body?.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(body.id) ||
         !['again', 'hard', 'good', 'easy'].includes(body.rating))
       return json({ error: 'Select a valid note and recall rating.' }, 400);
@@ -66,6 +77,23 @@ export async function POST(request) {
       ownerId: ctx.ownerId, slug: note.subjectId,
     }, { projection: { _id: 1 } });
     if (!subject) return json({ error: 'Note subject is unavailable.' }, 404);
-    return json(await recordVaultReview(ctx.db, ctx.client, ctx.ownerId, note, body.rating));
+    const reviewed = await recordVaultReview(ctx.db, ctx.client, ctx.ownerId, note, body.rating);
+    const daily = await finishVaultDailyReview(
+      ctx.db, ctx.ownerId, ctx.client.vault.repoId, day, note.id);
+    return json({ ...reviewed, daily });
+  } catch (error) { return failed(error); }
+}
+
+export async function PATCH(request) {
+  try {
+    const ctx = await context();
+    if (ctx.response) return ctx.response;
+    const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'notes');
+    if (!throttle.allowed) return rateLimitResponse(throttle);
+    const body = JSON.parse(await readLimitedBody(request, 2048));
+    const day = validateStudyDay(body?.day);
+    const daily = await setVaultDailyGoal(
+      ctx.db, ctx.ownerId, ctx.client.vault.repoId, day, body?.goal);
+    return json({ daily });
   } catch (error) { return failed(error); }
 }

@@ -20,7 +20,8 @@ test('Notes UI preserves MongoDB production route while GitHub preview passes SH
   assert.match(page, /vaultMode \? \{ sha: current\.sha \} : \{\}/);
   assert.match(page, /vaultMode \? \{ sha: note\.sha \} : \{\}/);
   assert.match(page, /vaultMode \? '&sha=' \+ encodeURIComponent\(note\.sha \|\| ''\)/);
-  assert.match(page, /editingId && !vaultMode && <button/);
+  assert.match(page, /onClick=\{cleanupWithGemini\}/);
+  assert.match(page, /\.\.\.\(editingId \? \{ id: editingId \} : \{\}\)/);
 });
 
 test('GitHub Notes adapter uses only GitHub content calls for all five CRUD verbs', async () => {

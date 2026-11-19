@@ -21,6 +21,6 @@ export default async function VaultStudyPage() {
     redirect('/vault?setup=onboarding');
   return <main className="shell oge-shell oge-feature-page oge-workflow-page">
     <SiteNavbar actions={<Link className="oge-signin" href="/">Home ↗</Link>} />
-    <VaultStudyClient />
+    <VaultStudyClient ownerId={session.user.id} repoId={account.vault.repoId} />
   </main>;
 }
