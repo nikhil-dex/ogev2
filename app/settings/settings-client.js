@@ -289,6 +289,7 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
           <>
             <p className="oge-settings-description">Your Notes use GitHub Vault, not MongoDB. Back up your committed Notes, Quick Notes, AirNotes, Saved Links and My Files from your private GitHub repository.</p>
             <div className="oge-settings-data-actions">
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a className="oge-settings-secondary-link" href="/api/vault/backup-zip">↓ Download Vault ZIP</a>
             </div>
             <p className="oge-settings-note">Download your committed GitHub Vault files as a ZIP. GitHub may ask you to sign in to access the private repository. Unsaved drafts are not included. Automatic restore from this ZIP is not yet available in Oge.</p>

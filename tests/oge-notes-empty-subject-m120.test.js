@@ -14,7 +14,8 @@ test('M120 Add a note stays clickable when no subject is selected', async () => 
 
 test('M120 clicking Add a note without a subject opens and focuses subject creation', async () => {
   const page = await read('../app/notes/page.js');
-  assert.match(page, /function openNewNote\(subjectId = activeSubject\) \{\s*if \(!subjectId\) \{/);
+  assert.match(page, /function openNewNote\(subjectId = activeSubject\) \{\s*if \(offlineReadOnly\) \{/);
+  assert.match(page, /function openNewNote\(subjectId = activeSubject\)[\s\S]*?if \(!subjectId\) \{/);
   assert.match(page, /createNoteAfterSubjectRef\.current = true;\s*setShowSubjectForm\(true\)/);
   assert.match(page, /ref=\{subjectInputRef\}/);
   assert.match(page, /subjectInputRef\.current\?\.focus\(\)/);

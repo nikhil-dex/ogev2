@@ -1,5 +1,47 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestone #135 — Study queue continuity, offline edit guard and pinned Vault backup (19 Nov 2026)
+
+- **Study pagination reliability:** Subsequent pages append due cards instead of replacing the existing queue. Duplicate IDs are ignored, reviewed cards are removed only after an acknowledged API response, and a **Skip for now** action rotates cards without saving review progress. Shows notes scanned and total notes.
+- **Offline reading safety:** Read-only cached Notes cannot open Create/Edit dialogs while disconnected. Existing save, favorite, delete and subject-creation mutations remain blocked in cache mode; reconnecting and refreshing restores normal GitHub-backed editing.
+- **Backup snapshot consistency:** Added an authenticated `/api/vault/backup-snapshot?commit=<SHA>` endpoint. The displayed backup coverage report now links to an immutable GitHub commit ZIP, and the endpoint returns HTTP 409 if the verified branch HEAD has moved. This does **not** independently validate downloaded ZIP bytes and is not automated restore.
+- Added unit/static regression tests for study page merging and skipping, read-only guard and signed-owner immutable ZIP linking.
+- **Branch:** `feature/vault-study-queue-recovery` based on unmerged Milestone #134 branch; no merge to `main` or deployment. GitHub Actions and signed-in acceptance still required.
+
+
+## Milestone #134 — Study, offline reliability, backup coverage and Customs fixes (19 Nov 2026)
+
+**Work branch:** `feature/vault-study-reliability` based on unmerged `feature/customs-indexed-module`.
+
+1. **GitHub study + revision:** Added `/vault/study` with a paged active-recall queue of committed GitHub Notes. Ratings (Again/Hard/Good/Easy) set 1/3/7/14-day review intervals, indexed as owner/repository-scoped due-date metadata in MongoDB, not as Notes content. Added `/vault/history` to browse recent GitHub revisions and explicitly restore an older version through the existing draft-conflict-safe GitHub revision endpoint. The history list is intentionally bounded; this is not an exhaustive Git log.
+2. **Offline reading:** A size- and age-limited owner/repository-specific `sessionStorage` cache preserves recently fetched Vault Notes for read-only recovery when a subsequent Notes API request fails. Editing or deleting while in cache mode is blocked. Existing browser/session and temporary-draft recovery remains; full offline application-shell operation and reliable offline writes are **not yet provided**.
+3. **Complete backup coverage and manual recovery:** Added `/vault/backup` and authenticated `/api/vault/backup-manifest` to check a complete, non-truncated repository tree, show committed file counts by category and offer the existing GitHub ZIP archive. This is a **read-only coverage check**, not validation of the user's downloaded ZIP. Full one-click ZIP restore remains **unimplemented**; the page includes honest manual recovery guidance.
+4. **Customs reliability:** Fixed the JSX apostrophe that failed the previous CI validation and added stale-index recovery when GitHub is unavailable. It continues to enforce signed-in owner/repository access before any file is opened.
+
+**Remaining gates:** CI must pass, real-account GitHub study and restore acceptance, offline-browser testing, and end-to-end backup/restore validation. No deployment or merge to `main`.
+
+
+## Milestone #133 — Permanent Customs module + MongoDB metadata index (19 Nov 2026)
+
+- Added a **Customs** home module linking to `/customs` for accounts that have selected and connected GitHub Vault; it is visible to those owners even before they create a `customs/` folder, and hidden from MongoDB-only or disconnected accounts.
+- The dedicated page uses the connected owner's private GitHub Vault to scan `customs/` the first time it opens, then stores **metadata only** (folder existence, supported filenames, types, links, repository ID, branch and scan time) in a MongoDB `vaultCustomsIndexes` collection. File bytes remain exclusively on GitHub.
+- Reuses the owner- and repository-scoped index for 60 seconds, then rechecks GitHub. A **Refresh files** link forces a new scan without waiting.
+- Missing folder shows creation instructions; disconnected GitHub Vault owners see Vault setup. MongoDB users are redirected away from the dedicated page, and the Customs API rejects requests without GitHub Vault selected. The authenticated file viewer continues verifying the file from GitHub rather than trusting the index for access.
+- Added regression tests for initial indexing, cache reuse, refresh/expiry, isolation between owners, repository/branch changes and failed reads.
+- Work branch: `feature/customs-indexed-module` based on unmerged Customs PR #1. Do not merge to `main` without CI and account-level verification.
+
+## Milestone #132 — Personal GitHub Vault Customs library (19 Nov 2026)
+
+- **CI fix:** The first actual Customs run uncovered an incorrectly constructed extension-to-MIME map (HTML/PDF/image names all went unrecognized). Corrected the map and added case-insensitive extension regression coverage. Original validation failure: 2 Customs tests; awaiting follow-up CI.
+
+
+- **Corrected original implementation:** Customs is detected from each signed-in user's **private GitHub Vault repository**, not `ogev2/public/customs/`. The static source-repository reader and its public file links have been removed.
+- The home page uses the existing read-only GitHub App client to discover an optional root-level `customs/` folder; the section is hidden if absent. Supported top-level HTML, PDF and image files appear as cards.
+- Clicking a file opens an owner-authenticated read-only API route, which verifies the user's active Vault and loads the selected file from a GitHub blob. HTML is rendered with sandbox restrictions. No permanent content is stored in MongoDB.
+- Added tests for missing folders, owner-scoped source routing, supported extensions, safe filenames, large-file rejection, immutable blob reads and isolated HTML response policy.
+- Branch `feature/customs-library` in `nikhil-dex/ogev2` — PR #1 remains draft until CI and real-account testing pass. `ogev2/main` remains unchanged.
+- **Follow-up:** Diagnosed reports of the section not appearing: implementation is still only on the feature branch, not `ogev2/main`. CI validation exposed two Next.js download-link lint warnings; both have been addressed. Home now surfaces a Vault Customs lookup warning instead of silently hiding failures. Confirm the user is on the feature branch and that `customs/` is committed in their connected private `ogenotes-vault` default branch.
+
 ## Milestone #131 — Consistency repairs (in progress, 19 Nov 2026)
 
 - **Homepage Notes counter fixed:** Dashboard now reads GitHub Vault note totals from the paged `/api/vault/notes-main` response when Vault storage is selected, rather than counting legacy MongoDB `/api/notes` records. The dashboard Notes shortcuts point to the active Notes workspace; Quick Notes uses the matching provider. A failed Vault count shows unavailable (—), not misleading zero. Added regression coverage.
