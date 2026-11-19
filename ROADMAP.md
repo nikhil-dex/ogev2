@@ -1220,3 +1220,13 @@ These criteria are release blockers, not optional polish:
 - [ ] Public launch approved.
 
 **Current state: core features and the Phase 5 security implementation are merged into `main`; Phase 6 private staging and release validation are in progress. See `docs/PHASE5_SECURITY_VERIFICATION.md` for the evidence checklist and blockers. The original `ogenotes` repository remains read-only.**
+
+## Vault Revision History parity — November 2026
+
+- [x] Render historical GitHub Notes using the shared Markdown renderer.
+- [x] Provide current-versus-selected-version comparison and a navigable version timeline.
+- [x] Search loaded Notes and filter by subject; label the loaded-only scope.
+- [x] Add bounded older-commit pagination with GitHub HEAD snapshot checks (up to 20 pages of five commits).
+- [x] Preserve explicit Restore, current SHA checks, GitHub-only content, and pending-draft conflict handling.
+- [x] Add focused source and pagination regression tests.
+- [ ] Verify full CI and perform real-account Chrome/Safari manual acceptance before merge or deployment.
