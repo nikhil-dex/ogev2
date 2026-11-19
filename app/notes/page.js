@@ -575,8 +575,8 @@ export default function NotesPage({
     if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverNewHybridDraft(subjectId, generation);
     if (vaultMode && !hybridDrafts) {
       try {
-        const localId = window.sessionStorage.getItem(newDraftPointerKey(subjectId));
-        const local = JSON.parse(window.sessionStorage.getItem(hybridKey(localId)) || 'null')?.draft;
+        const localId = window.localStorage.getItem(newDraftPointerKey(subjectId));
+        const local = JSON.parse(window.localStorage.getItem(hybridKey(localId)) || 'null')?.draft;
         if (localId && local?.subjectId === subjectId && local.baseSha === null) {
           setNewDraftId(localId);
           setHeading(local.heading || ''); setAnswer(local.answer || '');
@@ -612,7 +612,7 @@ export default function NotesPage({
     if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverHybridDraft(note, generation);
     if (vaultMode && !hybridDrafts) {
       try {
-        const local = JSON.parse(window.sessionStorage.getItem(hybridKey(note.id)) || 'null')?.draft;
+        const local = JSON.parse(window.localStorage.getItem(hybridKey(note.id)) || 'null')?.draft;
         if (local?.subjectId === note.subjectSlug && local.baseSha === note.sha) {
           setHeading(local.heading); setAnswer(local.answer);
           setTagsText((local.tags || []).join(', '));
@@ -644,10 +644,10 @@ export default function NotesPage({
         !window.confirm('Discard unsaved GitHub note edits? These changes have not been committed to your vault.')) return;
     if (changed && vaultMode && !hybridDrafts) {
       try {
-        window.sessionStorage.removeItem(hybridKey(editingId || newDraftId));
+        window.localStorage.removeItem(hybridKey(editingId || newDraftId));
         if (!editingId &&
-            window.sessionStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
-          window.sessionStorage.removeItem(newDraftPointerKey(activeSubject));
+            window.localStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+          window.localStorage.removeItem(newDraftPointerKey(activeSubject));
       } catch { /* Discard still closes the editor when storage is blocked. */ }
     }
     hybridGenerationRef.current += 1;
@@ -668,9 +668,13 @@ export default function NotesPage({
       tags: [...new Set(tagsText.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean))].slice(0, 10),
       favorite: Boolean(current?.favorite), baseSha: current?.sha || null };
     try {
-      window.sessionStorage.setItem(key, JSON.stringify({ draft }));
-      if (!editingId) window.sessionStorage.setItem(newDraftPointerKey(activeSubject), noteId);
-    } catch { /* Server copy still available if the next request succeeds. */ }
+      const browserStorage = hybridDrafts ? window.sessionStorage : window.localStorage;
+      browserStorage.setItem(key, JSON.stringify({ draft }));
+      if (!editingId) browserStorage.setItem(newDraftPointerKey(activeSubject), noteId);
+      if (!hybridDrafts) setDraftStatus('Draft saved in this browser');
+    } catch {
+      setDraftStatus('Local autosave unavailable — copy your edits before closing');
+    }
     // The browser autosaves even if temporary Mongo draft preview is off.
     if (!hybridDrafts) return undefined;
     // Even while Save is running, preserve newer keystrokes in sessionStorage.
@@ -760,9 +764,9 @@ export default function NotesPage({
       enqueueVaultOfflineChange(window.localStorage, key, offline);
       window.dispatchEvent(new Event('oge:vault-offline-changed'));
       try {
-        window.sessionStorage.removeItem(hybridKey(offline.id));
-        if (!editingId && window.sessionStorage.getItem(newDraftPointerKey(activeSubject)) === offline.id)
-          window.sessionStorage.removeItem(newDraftPointerKey(activeSubject));
+        window.localStorage.removeItem(hybridKey(offline.id));
+        if (!editingId && window.localStorage.getItem(newDraftPointerKey(activeSubject)) === offline.id)
+          window.localStorage.removeItem(newDraftPointerKey(activeSubject));
       } catch { /* The queued localStorage copy is authoritative until GitHub sync. */ }
       setError('');
       setDraftStatus('Saved locally — review and sync when online');
@@ -969,14 +973,14 @@ export default function NotesPage({
           return;
         }
         try {
-          const raw = window.sessionStorage.getItem(hybridKey(note.id));
+          const raw = window.localStorage.getItem(hybridKey(note.id));
           if (raw) {
             const copy = JSON.parse(raw)?.draft;
             if (copy?.heading === heading && copy?.answer === answer)
-              window.sessionStorage.removeItem(hybridKey(note.id));
+              window.localStorage.removeItem(hybridKey(note.id));
           }
-          if (!editingId && window.sessionStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
-            window.sessionStorage.removeItem(newDraftPointerKey(activeSubject));
+          if (!editingId && window.localStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+            window.localStorage.removeItem(newDraftPointerKey(activeSubject));
         } catch { /* Browser storage must not block a confirmed GitHub Save. */ }
       }
       hybridGenerationRef.current += 1;
