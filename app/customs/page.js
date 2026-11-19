@@ -21,6 +21,7 @@ export default async function CustomsPage({ searchParams }) {
     { projection: { vault: 1, notesStorage: 1 } },
   );
   if (!account) redirect('/register');
+  if (account.notesStorage !== 'github') redirect('/');
   const connected = connectedVaultStorageAvailable(account);
   let customs = null;
   let error = '';
