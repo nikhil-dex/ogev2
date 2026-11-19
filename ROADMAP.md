@@ -7,6 +7,7 @@
 - Clicking a file opens an owner-authenticated read-only API route, which verifies the user's active Vault and loads the selected file from a GitHub blob. HTML is rendered with sandbox restrictions. No permanent content is stored in MongoDB.
 - Added tests for missing folders, owner-scoped source routing, supported extensions, safe filenames, large-file rejection, immutable blob reads and isolated HTML response policy.
 - Branch `feature/customs-library` in `nikhil-dex/ogev2` — PR #1 remains draft until CI and real-account testing pass. `ogev2/main` remains unchanged.
+- **Follow-up:** Diagnosed reports of the section not appearing: implementation is still only on the feature branch, not `ogev2/main`. CI validation exposed two Next.js download-link lint warnings; both have been addressed. Home now surfaces a Vault Customs lookup warning instead of silently hiding failures. Confirm the user is on the feature branch and that `customs/` is committed in their connected private `ogenotes-vault` default branch.
 
 ## Milestone #131 — Consistency repairs (in progress, 19 Nov 2026)
 
