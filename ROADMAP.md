@@ -1,5 +1,14 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Milestone #135 — Study queue continuity, offline edit guard and pinned Vault backup (19 Nov 2026)
+
+- **Study pagination reliability:** Subsequent pages append due cards instead of replacing the existing queue. Duplicate IDs are ignored, reviewed cards are removed only after an acknowledged API response, and a **Skip for now** action rotates cards without saving review progress. Shows notes scanned and total notes.
+- **Offline reading safety:** Read-only cached Notes cannot open Create/Edit dialogs while disconnected. Existing save, favorite, delete and subject-creation mutations remain blocked in cache mode; reconnecting and refreshing restores normal GitHub-backed editing.
+- **Backup snapshot consistency:** Added an authenticated `/api/vault/backup-snapshot?commit=<SHA>` endpoint. The displayed backup coverage report now links to an immutable GitHub commit ZIP, and the endpoint returns HTTP 409 if the verified branch HEAD has moved. This does **not** independently validate downloaded ZIP bytes and is not automated restore.
+- Added unit/static regression tests for study page merging and skipping, read-only guard and signed-owner immutable ZIP linking.
+- **Branch:** `feature/vault-study-queue-recovery` based on unmerged Milestone #134 branch; no merge to `main` or deployment. GitHub Actions and signed-in acceptance still required.
+
+
 ## Milestone #134 — Study, offline reliability, backup coverage and Customs fixes (19 Nov 2026)
 
 **Work branch:** `feature/vault-study-reliability` based on unmerged `feature/customs-indexed-module`.
