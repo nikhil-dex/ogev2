@@ -59,7 +59,7 @@ export async function POST(request) {
       if (length > MAX_RESTORE_BLOB_BYTES)
         return reply({ error: 'Backup file is too large.' }, 413);
       const bytes = Buffer.from(await request.arrayBuffer());
-      if (!bytes.length || bytes.length > MAX_RESTORE_BLOB_BYTES)
+      if (bytes.length > MAX_RESTORE_BLOB_BYTES)
         return reply({ error: 'Backup file must be at most 20 MB.' }, 413);
       const sha = request.headers.get('x-oge-blob-sha');
       return reply(await uploadVaultRestoreBlob(ctx.client, bytes, sha));
