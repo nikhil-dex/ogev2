@@ -11,6 +11,8 @@ import { relatedNoteLinks } from '../../lib/oge-note-links.js';
 import { scanAllVaultNoteLinks } from '../../lib/oge-vault-all-note-links.js';
 import { readerSequenceForNote } from '../../lib/oge-note-reader-sequence.js';
 import { notePdfFile, saveNotePdfToVault } from '../../lib/oge-note-pdf.js';
+import GeminiNoteReview from '../components/gemini-note-review.js';
+import { geminiDraftSnapshot, isGeminiSuggestionCurrent } from '../../lib/oge-gemini-review.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
 import { vaultReadCacheKey, saveVaultReadCache, readVaultReadCache } from '../../lib/oge-vault-read-cache.js';
@@ -84,6 +86,8 @@ export default function NotesPage({
   const [answerFullscreen, setAnswerFullscreen] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
   const [aiCleanupBusy, setAiCleanupBusy] = useState(false);
+  const [geminiSuggestion, setGeminiSuggestion] = useState(null);
+  const geminiRequestRef = useRef(null);
   const answerRef = useRef(null);
   const headingRef = useRef(null);
   const editorInitialRef = useRef(null);
@@ -536,6 +540,27 @@ export default function NotesPage({
 
   const active = subjects.find((subject) => subject.slug === activeSubject);
   const editorMetrics = noteBodyMetrics(answer);
+  const currentGeminiDraft = geminiDraftSnapshot({ heading, answer, tagsText, activeSubject, editingId, newDraftId });
+  function cancelGeminiReview() {
+    geminiRequestRef.current?.abort();
+    geminiRequestRef.current = null;
+    setAiCleanupBusy(false);
+    setGeminiSuggestion(null);
+  }
+  function applyGeminiSuggestion() {
+    if (!geminiSuggestion || saving) return;
+    if (!isGeminiSuggestionCurrent(geminiSuggestion.original, currentGeminiDraft)) {
+      setGeminiSuggestion(null);
+      setError('Your note changed after Gemini started. Run cleanup again to protect your new edits.');
+      return;
+    }
+    setHeading(geminiSuggestion.suggested.heading);
+    setAnswer(geminiSuggestion.suggested.answer);
+    setTagsText(geminiSuggestion.suggested.tagsText);
+    setPreview(false);
+    setDraftStatus('Gemini suggestion applied to draft — press Save to commit');
+    setGeminiSuggestion(null);
+  }
   const editorFeedback = noteEditorFeedback({
     vaultMode, hybridDrafts, saving, hybridReady, editingId,
     changed: Boolean(editorBaseline && (heading !== editorBaseline.heading ||
@@ -553,6 +578,7 @@ export default function NotesPage({
       setMessage('Create a subject below. Your new Note will open automatically.');
       return;
     }
+    cancelGeminiReview();
     const generation = ++hybridGenerationRef.current;
     setNewDraftId('');
     setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
@@ -589,6 +615,7 @@ export default function NotesPage({
   }
 
   function editNote(note) {
+    cancelGeminiReview();
     const generation = ++hybridGenerationRef.current;
     setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
     setHybridError('');
@@ -651,6 +678,7 @@ export default function NotesPage({
           window.localStorage.removeItem(newDraftPointerKey(activeSubject));
       } catch { /* Discard still closes the editor when storage is blocked. */ }
     }
+    cancelGeminiReview();
     hybridGenerationRef.current += 1;
     setNoteDialog(false);
     setPreview(false);
@@ -1091,12 +1119,19 @@ export default function NotesPage({
 
 
   async function cleanupWithGemini() {
-    if (aiCleanupBusy || !editingId) return;
+    if (aiCleanupBusy || saving || (hybridDrafts && !hybridReady)) return;
     if (!heading.trim() || !answer.trim()) {
       setError('Add a heading and note content before using Gemini.');
       return;
     }
+    const original = geminiDraftSnapshot({
+      heading, answer, tagsText, activeSubject, editingId, newDraftId,
+    });
+    const controller = new AbortController();
+    geminiRequestRef.current?.abort();
+    geminiRequestRef.current = controller;
     setAiCleanupBusy(true);
+    setGeminiSuggestion(null);
     setError('');
     setMessage('');
     try {
@@ -1104,23 +1139,36 @@ export default function NotesPage({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
+        signal: controller.signal,
         body: JSON.stringify({
-          id: editingId,
+          ...(editingId ? { id: editingId } : {}),
           heading: heading.trim(),
           answer: answer.trim(),
           tags: tagsText.split(',').map((tag) => tag.trim()).filter(Boolean),
         }),
       }));
-      setHeading(result.heading);
-      setAnswer(result.answer);
-      setTagsText((result.tags || []).join(', '));
-      setPreview(false);
-      setDraftStatus('Gemini suggestion — review before saving');
-      setMessage('');
+      if (controller.signal.aborted) return;
+      if (!isGeminiSuggestionCurrent(original, liveEditorRef.current)) {
+        setError('Your note changed while Gemini was working. Run cleanup again to protect your newer edits.');
+        return;
+      }
+      setGeminiSuggestion({
+        original,
+        suggested: {
+          heading: result.heading,
+          answer: result.answer,
+          tagsText: (result.tags || []).join(', '),
+        },
+      });
+      setDraftStatus('Gemini suggestion ready — compare before applying');
     } catch (err) {
-      setError(err.message || 'Gemini could not clean up this note.');
+      if (!controller.signal.aborted)
+        setError(err.message || 'Gemini could not clean up this note.');
     } finally {
-      setAiCleanupBusy(false);
+      if (geminiRequestRef.current === controller) {
+        geminiRequestRef.current = null;
+        setAiCleanupBusy(false);
+      }
     }
   }
 
