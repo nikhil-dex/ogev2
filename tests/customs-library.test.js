@@ -55,6 +55,15 @@ test('Customs lists only supported top-level private Vault files', async () => {
   assert.deepEqual(client.calls, ['/contents/customs?ref=main']);
 });
 
+test('Customs extension mapping recognizes user files case-insensitively', () => {
+  for (const [filename, kind, mime] of [
+    ['notes.HTML', 'html', 'text/html'],
+    ['study.pdf', 'pdf', 'application/pdf'],
+    ['diagram.PNG', 'image', 'image/png'],
+    ['photo.jpeg', 'image', 'image/jpeg'],
+  ]) assert.deepEqual(customFileType(filename), { kind, mime });
+});
+
 test('Customs rejects unsupported paths and oversized files', async () => {
   assert.equal(customFileType('../secret.html'), null);
   assert.equal(customFileType('file.js'), null);
