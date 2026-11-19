@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { appendStudyDueNotes, removeReviewedStudyNote, skipStudyNote } from '../../../lib/oge-vault-study-queue.js';
+import { readDailyStudy, saveDailyStudy, finishDailyStudyReview } from '../../../lib/oge-vault-study-goal.js';
 
 async function json(response) {
   const value = await response.json().catch(() => ({}));
@@ -10,7 +11,7 @@ async function json(response) {
   return value;
 }
 
-export default function VaultStudyClient() {
+export default function VaultStudyClient({ ownerId, repoId }) {
   const [notes, setNotes] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,9 @@ export default function VaultStudyClient() {
   const [completed, setCompleted] = useState(0);
   const [scanned, setScanned] = useState(0);
   const [total, setTotal] = useState(null);
+  const [learnedCount, setLearnedCount] = useState(0);
+  const [daily, setDaily] = useState({ goal: 10, completed: 0, date: '' });
+  const goalKey = 'oge:vault:study-goal:' + ownerId + ':' + repoId;
   const load = useCallback(async (next = null) => {
     setLoading(true); setError('');
     try {
@@ -31,6 +35,7 @@ export default function VaultStudyClient() {
         appendStudyDueNotes([], page.notes));
       setCursor(page.nextCursor || null);
       setTotal(page.total);
+      setLearnedCount(page.learnedCount || 0);
       setScanned((count) => next ? count + page.notes.length : page.notes.length);
       if (!next) setRevealed(false);
     } catch (err) { setError(err.message); }
@@ -41,6 +46,13 @@ export default function VaultStudyClient() {
     Promise.resolve().then(() => { if (active) void load(); });
     return () => { active = false; };
   }, [load]);
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) setDaily(readDailyStudy(window.localStorage, goalKey));
+    });
+    return () => { active = false; };
+  }, [goalKey]);
   const note = notes[0] || null;
 
   async function rate(rating) {
@@ -53,6 +65,9 @@ export default function VaultStudyClient() {
       }));
       setNotes((items) => removeReviewedStudyNote(items, note.id));
       setCompleted((n) => n + 1);
+      setDaily(finishDailyStudyReview(window.localStorage, goalKey));
+      if (result.learned !== note.learned)
+        setLearnedCount((n) => Math.max(0, n + (result.learned ? 1 : -1)));
       setRevealed(false);
       setMessage('Review saved. Next due ' + new Date(result.reviewDueAt).toLocaleDateString('en-IN') + '.');
     } catch (err) { setError(err.message); }
@@ -70,13 +85,29 @@ export default function VaultStudyClient() {
         <div className="oge-workflow-stat"><span className="oge-section-kicker">DUE IN THIS PAGE</span><strong>{notes.length}</strong></div>
         <div className="oge-workflow-stat"><span className="oge-section-kicker">REVIEWED THIS VISIT</span><strong>{completed}</strong></div>
         <div className="oge-workflow-stat"><span className="oge-section-kicker">NOTES SCANNED</span><strong>{scanned}{total !== null ? ' / ' + total : ''}</strong></div>
+        <div className="oge-workflow-stat"><span className="oge-section-kicker">LEARNED NOTES</span><strong>{learnedCount}</strong></div>
       </div>
-      {error && <p role="alert" className="oge-form-error">{error}</p>}
+      <div className="hub-card oge-module-card">
+        <label htmlFor="vault-daily-goal">Today's revision goal</label>
+        <select id="vault-daily-goal" value={daily.goal} onChange={(event) => {
+          const next = saveDailyStudy(window.localStorage, goalKey, {
+            ...readDailyStudy(window.localStorage, goalKey),
+            goal: Number(event.target.value),
+          });
+          setDaily(next);
+        }}>
+          {[5, 10, 15, 20, 30].map((n) => <option key={n} value={n}>{n} Notes</option>)}
+        </select>
+        <p role="status">{daily.completed} / {daily.goal} reviews completed today</p>
+        <progress value={Math.min(daily.completed, daily.goal)} max={daily.goal} />
+      </div>
+      {error && <p role="alert" className="oge-form-error">{error}</p>
       {message && <p role="status" className="oge-form-success">{message}</p>}
       {loading ? <p>Loading your Vault revision queue…</p> : note ? (
         <div className="hub-card oge-module-card">
           <span className="hub-card-kicker">SUBJECT · {note.subjectId}</span>
           <h2>{note.heading}</h2>
+          {note.learned && <p className="oge-settings-note">Learned previously · due for a refresher</p>}
           {notes.length > 1 && <button type="button" className="oge-settings-secondary-button"
             disabled={saving} onClick={() => {
               setNotes((items) => skipStudyNote(items));
