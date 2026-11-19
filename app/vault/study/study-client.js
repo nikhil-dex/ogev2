@@ -88,7 +88,7 @@ export default function VaultStudyClient({ ownerId, repoId }) {
         <div className="oge-workflow-stat"><span className="oge-section-kicker">LEARNED NOTES</span><strong>{learnedCount}</strong></div>
       </div>
       <div className="hub-card oge-module-card">
-        <label htmlFor="vault-daily-goal">Today's revision goal</label>
+        <label htmlFor="vault-daily-goal">Today&apos;s revision goal</label>
         <select id="vault-daily-goal" value={daily.goal} onChange={(event) => {
           const next = saveDailyStudy(window.localStorage, goalKey, {
             ...readDailyStudy(window.localStorage, goalKey),
@@ -101,7 +101,7 @@ export default function VaultStudyClient({ ownerId, repoId }) {
         <p role="status">{daily.completed} / {daily.goal} reviews completed today</p>
         <progress value={Math.min(daily.completed, daily.goal)} max={daily.goal} />
       </div>
-      {error && <p role="alert" className="oge-form-error">{error}</p>
+      {error && <p role="alert" className="oge-form-error">{error}</p>}
       {message && <p role="status" className="oge-form-success">{message}</p>}
       {loading ? <p>Loading your Vault revision queue…</p> : note ? (
         <div className="hub-card oge-module-card">
