@@ -39,3 +39,11 @@ The dashboard, Google sign-in scaffolding, news-interest onboarding, and MongoDB
 - Never commit secrets, OAuth credentials, database connection strings, session secrets, or production environment files.
 - Keep database access and privileged operations on the server.
 - Do not deploy publicly until the release gates in `ROADMAP.md` have passed.
+
+## Customs library
+
+To enable the **Customs** section on the homepage, create a folder at `public/customs/` in this OgeV2 source repository and add files such as `lesson.html`, `notes.pdf` or `diagram.png`.
+
+The homepage automatically lists the supported HTML (.html/.htm), PDF (.pdf) and image (.png/.jpg/.jpeg/.webp/.gif/.avif) files from that folder. Click any file to open it in a new tab. The section is hidden when the directory does not exist, and shows an empty state when the directory is present but empty.
+
+These files are **public website assets** (not private GitHub Vault/My Files). Commit them to this code repository and redeploy for a hosted website to pick them up. The current version lists top-level files only.
