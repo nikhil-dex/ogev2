@@ -1,5 +1,6 @@
 import { auth } from '../../../../auth.js';
 import { getDatabase } from '../../../../lib/mongodb.js';
+import { ownerMutationFilter } from '../../../../lib/active-owner-mutation.js';
 import { getVaultNoteClient } from '../../../../lib/oge-vault-notes.js';
 import {
   listVaultNoteRevisions, restoreVaultNoteRevision,
@@ -37,6 +38,11 @@ async function authorized() {
   if (!session?.user?.id) return null;
   const db = await getDatabase();
   const ownerId = session.user.id;
+  const account = await db.collection('users').findOne(
+    ownerMutationFilter(ownerId, { sessionVersion: session.user.sessionVersion }),
+    { projection: { notesStorage: 1 } },
+  );
+  if (account?.notesStorage !== 'github') return null;
   const client = await getVaultNoteClient(db, {
     ownerId, sessionVersion: session.user.sessionVersion,
   });
@@ -50,13 +56,12 @@ async function subjectIsOwned(ctx, subjectId) {
 }
 
 async function requestContext() {
-  // No production note endpoint, old revision queue or backup reader is
-  // changed. This is an independently default-off GitHub-only preview.
-  if (process.env.OGE_VAULT_REVISION_PREVIEW !== 'true' ||
-      process.env.OGE_VAULT_MAIN_PREVIEW !== 'true')
+  // GitHub revision history shares the active Vault Notes preview gate;
+  // legacy MongoDB revision routes remain unchanged.
+  if (process.env.OGE_VAULT_MAIN_PREVIEW !== 'true')
     return { response: json({ error: 'GitHub revision preview disabled.' }, 404) };
   const ctx = await authorized();
-  if (!ctx) return { response: json({ error: 'Sign in to view revisions.' }, 401) };
+  if (!ctx) return { response: json({ error: 'Select and connect GitHub Vault to view revisions.' }, 403) };
   const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'notes');
   if (!throttle.allowed) return { response: rateLimitResponse(throttle) };
   return { ctx };
