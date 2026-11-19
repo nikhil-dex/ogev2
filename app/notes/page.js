@@ -1208,6 +1208,20 @@ export default function NotesPage({
   useEffect(() => {
     if (!noteDialog && !readerNote) return undefined;
     const onKeyDown = (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        if (!readerNote || noteDialog || event.defaultPrevented || event.repeat ||
+            event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        // Do not steal arrows from an editor, search field or other text control.
+        if (event.target instanceof Element &&
+            event.target.closest('input, textarea, select, [contenteditable], [role="textbox"]')) return;
+        const step = event.key === 'ArrowRight' ? 1 : -1;
+        const next = readerSequence[readerIndex + step];
+        if (!next) return;
+        event.preventDefault();
+        setReaderNote(next);
+        setShareMenuOpen(false);
+        return;
+      }
       if (event.key !== 'Escape') return;
       if (answerFullscreen) { setAnswerFullscreen(false); return; }
       if (noteDialog && !saving && (!hybridDrafts || hybridReady)) {
@@ -1218,7 +1232,7 @@ export default function NotesPage({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [noteDialog, readerNote, answerFullscreen, saving, hybridDrafts, hybridReady, hasUnsavedEditorChanges]);
+  }, [noteDialog, readerNote, readerSequence, readerIndex, answerFullscreen, saving, hybridDrafts, hybridReady, hasUnsavedEditorChanges]);
 
   return (
     <main className="shell">
@@ -1426,7 +1440,7 @@ export default function NotesPage({
             <span className="reader-kicker">NOTE · {(subjects.find((item) => item.slug === readerNote.subjectSlug) || active)?.name || 'LIBRARY'}</span>
             <div className="reader-toolbar-actions">
               <button type="button" className="reader-step-button" disabled={readerIndex <= 0} onClick={() => moveReaderNote(-1)} aria-label="Previous note">‹</button>
-              <span className="reader-position">{readerIndex >= 0 ? (readerIndex + 1) + ' / ' + readerSequence.length : ''}</span>
+              <span className="reader-position" title="Use ← and → keyboard arrows to browse Notes">{readerIndex >= 0 ? (readerIndex + 1) + ' / ' + readerSequence.length + ' · ← →' : ''}</span>
               <button type="button" className="reader-step-button" disabled={readerIndex < 0 || readerIndex >= readerSequence.length - 1} onClick={() => moveReaderNote(1)} aria-label="Next note">›</button>
               <button type="button" className="note-share-button"
                 onClick={() => editNote(readerNote)} aria-label={'Edit note: ' + readerNote.heading}>
