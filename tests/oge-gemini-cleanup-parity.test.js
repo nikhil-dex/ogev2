@@ -118,3 +118,19 @@ test('Notes modal uses single scroll region and a bounded editor instead of flex
   assert.match(css, /#noteForm \.oge-editor-save-footer\s*\{[\s\S]*?position:static/);
   assert.match(css, /#noteForm \.oge-gemini-review\s*\{[\s\S]*?overflow:visible/);
 });
+
+test('normal editor renders Gemini review after workspace and before Save controls', async () => {
+  const page = await readFile(new URL('../app/notes/page.js', import.meta.url), 'utf8');
+  const start = page.indexOf(') : <div className="answer-workspace">');
+  const end = page.indexOf('<div className="oge-editor-save-footer">', start);
+  assert.ok(start >= 0 && end > start);
+  const section = page.slice(start, end);
+  const workspaceClose = section.indexOf('</div>}');
+  const review = section.indexOf('{!answerFullscreen && <GeminiNoteReview');
+  const status = section.indexOf("oge-editor-feedback oge-editor-feedback--");
+  assert.ok(workspaceClose >= 0 && review > workspaceClose, 'Review must be a sibling outside the workspace');
+  assert.ok(status > review, 'Review must appear before status and Save');
+  const css = await readFile(new URL('../public/extra.css', import.meta.url), 'utf8');
+  assert.match(css, /#noteForm>\.oge-gemini-review\s*\{/);
+  assert.match(css, /#noteForm>\.oge-editor-save-footer\s*\{/);
+});
