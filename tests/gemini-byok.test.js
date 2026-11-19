@@ -20,7 +20,7 @@ test('Gemini BYOK key storage encrypts keys and never returns the saved key', as
   assert.match(route, /action === 'delete'/);
   assert.match(route, /action === 'test'/);
   assert.match(route, /testGeminiApiKey\(apiKey\)/);
-  assert.match(route, /validateGeminiApiKey\(apiKey\)/);
+  assert.doesNotMatch(route, /await validateGeminiApiKey\(apiKey\)/);
   assert.match(route, /decryptGeminiKey\(user\.geminiApiKey\)/);
   assert.doesNotMatch(route, /return json\(\{[^}]*apiKey[,}]/);
 });
