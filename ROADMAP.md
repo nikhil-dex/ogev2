@@ -1,5 +1,14 @@
 # OgeNotes — Product and Engineering Roadmap
 
+## Gemini API key Save / Test reliability — Notes parity follow-up (20 Nov 2026)
+
+- **Save key** now stores an encrypted BYOK credential without first running a text-generation request. Model outages, quota limits and unavailable free-tier generation no longer prevent saving an entered key. A working `GEMINI_KEY_ENCRYPTION_SECRET` remains required on the OgeV2 server.
+- **Test entered / saved key** checks the Google Gemini model listing, then makes a small text-generation call using supported Flash models, including Flash-Lite. A previously saved key can be tested without pasting it into the browser again.
+- **Actionable errors** distinguish invalid/restricted API keys, model generation access blocked by the provider, model unavailable, rate limits, and network issues. No Gemini key or provider error body is logged or returned.
+- **Note cleanup** uses the same Flash fallback list to avoid a successful test using a model not available to the editor.
+- **Testing:** mocked external Gemini API regression coverage and standard CI added. An actual Google AI Studio account/key test is still required; no personal keys were requested, stored in test files or used by CI.
+
+
 ## Notes parity completion — #7 finishing pass (20 Nov 2026)
 
 The six Notes features now include the four follow-through improvements requested after the initial implementation:
