@@ -1226,8 +1226,9 @@ export default function NotesPage({
         </div>
         <div className="note-filters" aria-label="Note filters">
           <button type="button" className={favoritesOnly ? 'filter-chip active' : 'filter-chip'} aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>★ Favorites</button>
+          <button type="button" className={pinnedOnly ? 'filter-chip active' : 'filter-chip'} aria-pressed={pinnedOnly} onClick={() => setPinnedOnly((value) => !value)}>📌 Pinned</button>
           {availableTags.length > 0 && <label className="tag-filter">Tag <select value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)} aria-label="Filter notes by tag"><option value="">All tags</option>{availableTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}</select></label>}
-          {(query || globalSearch || favoritesOnly || selectedTag) && <button type="button" className="clear-filters" onClick={() => { setQuery(''); setGlobalSearch(false); setFavoritesOnly(false); setSelectedTag(''); }}>Clear all</button>}
+          {(query || globalSearch || favoritesOnly || pinnedOnly || selectedTag) && <button type="button" className="clear-filters" onClick={() => { setQuery(''); setGlobalSearch(false); setFavoritesOnly(false); setPinnedOnly(false); setSelectedTag(''); }}>Clear all</button>}
         </div>
 
         {vaultMode && query.trim() && nextNotesCursor && <div className="oge-vault-notes-pagination" role="group" aria-label="Search all GitHub Notes">
@@ -1246,7 +1247,7 @@ export default function NotesPage({
           : visibleNotes.length ? <div className="notes-grid">{visibleNotes.map((note, index) => (
             <article className="note-card" key={note.id}>
               <button type="button" className="card-open" onClick={() => setReaderNote(note)} aria-label={`Open note: ${note.heading}`}>
-                <span className="card-top"><span className="note-index">NO. {String(index + 1).padStart(2, '0')}</span><span className="note-badges">{note.favorite && <span title="Favorite">★</span>}</span></span>
+                <span className="card-top"><span className="note-index">NO. {String(index + 1).padStart(2, '0')}</span><span className="note-badges">{note.pinned && <span title="Pinned">📌</span>}{note.favorite && <span title="Favorite">★</span>}</span></span>
                 <span className="note-title">{note.heading}</span>
                 <span className="note-preview">{note.answer}</span>
                 <span className="card-tags">{(note.tags || []).map((tag) => <span key={tag} className="tag-chip">{tag}</span>)}</span>
@@ -1254,6 +1255,10 @@ export default function NotesPage({
               </button>
               <div className="note-card-actions" aria-label={`Actions for ${note.heading}`}>
                 <button type="button" className={note.favorite ? 'metadata-action selected' : 'metadata-action'} onClick={() => toggleFavorite(note)} aria-pressed={Boolean(note.favorite)} aria-label={note.favorite ? 'Remove favorite' : 'Add favorite'} title={note.favorite ? 'Remove favorite' : 'Add favorite'}>★</button>
+                <button type="button" className={note.pinned ? 'metadata-action selected' : 'metadata-action'}
+                  onClick={() => togglePinned(note)} aria-pressed={Boolean(note.pinned)}
+                  aria-label={note.pinned ? 'Unpin note: ' + note.heading : 'Pin note: ' + note.heading}
+                  title={note.pinned ? 'Unpin' : 'Pin'}>⌖</button>
                 <button type="button" className="edit-note" onClick={() => editNote(note)} aria-label={`Edit note: ${note.heading}`} title="Edit note">✎</button>
                 <button type="button" className="delete-note" onClick={() => deleteNote(note)} aria-label={`Delete note: ${note.heading}`} title="Delete note">×</button>
               </div>
@@ -1346,10 +1351,22 @@ export default function NotesPage({
       </div>}
 
       {readerNote && <div className="reader-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setReaderNote(null); setShareMenuOpen(false); } }}>
-        <article className="reader-panel" role="dialog" aria-modal="true" aria-labelledby="readerTitle">
+        <article className="reader-panel" role="dialog" aria-modal="true" aria-labelledby="readerTitle"
+          onTouchStart={(event) => { readerSwipeRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }; }}
+          onTouchEnd={(event) => {
+            if (!readerSwipeRef.current) return;
+            const dx = event.changedTouches[0].clientX - readerSwipeRef.current.x;
+            const dy = event.changedTouches[0].clientY - readerSwipeRef.current.y;
+            readerSwipeRef.current = null;
+            if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.25)
+              moveReaderNote(dx < 0 ? 1 : -1);
+          }}>
           <div className="reader-toolbar">
             <span className="reader-kicker">NOTE · {(subjects.find((item) => item.slug === readerNote.subjectSlug) || active)?.name || 'LIBRARY'}</span>
             <div className="reader-toolbar-actions">
+              <button type="button" className="reader-step-button" disabled={readerIndex <= 0} onClick={() => moveReaderNote(-1)} aria-label="Previous note">‹</button>
+              <span className="reader-position">{readerIndex >= 0 ? (readerIndex + 1) + ' / ' + readerSequence.length : ''}</span>
+              <button type="button" className="reader-step-button" disabled={readerIndex < 0 || readerIndex >= readerSequence.length - 1} onClick={() => moveReaderNote(1)} aria-label="Next note">›</button>
               <button type="button" className="note-share-button"
                 onClick={() => editNote(readerNote)} aria-label={'Edit note: ' + readerNote.heading}>
                 ✎ Edit note
@@ -1359,6 +1376,7 @@ export default function NotesPage({
                 {shareMenuOpen && <div className="note-share-menu" role="menu">
                   <button type="button" role="menuitem" onClick={shareReaderNote}><strong>Share note</strong><small>Send text to available apps</small></button>
                   <button type="button" role="menuitem" onClick={printReaderNote}><strong>Print / Save PDF</strong><small>Keep the note formatting</small></button>
+                  {vaultMode && <button type="button" role="menuitem" onClick={() => void saveReaderPdfToFiles()} disabled={savingReaderPdf}><strong>{savingReaderPdf ? 'Saving PDF…' : 'Save PDF to My Files'}</strong><small>Store a readable PDF in your private Vault</small></button>}
                 </div>}
               </div>
               <button type="button" className="close-button reader-close" onClick={() => { setShareMenuOpen(false); setReaderNote(null); }} aria-label="Close note">×</button>
