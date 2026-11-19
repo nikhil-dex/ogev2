@@ -101,3 +101,11 @@ test('Gemini review automatically becomes visible and keeps deliberate Apply/Can
   assert.match(css, /\.oge-gemini-review-footer\{position:sticky/);
   assert.match(css, /@media\(max-width:680px\)/);
 });
+
+test('Gemini review does not get covered by the Save footer on desktop or mobile', async () => {
+  const css = await readFile(new URL('../public/extra.css', import.meta.url), 'utf8');
+  assert.match(css, /\.editor-dialog:has\(\.oge-gemini-review\) \.oge-editor-save-footer\s*\{\s*position:static/);
+  assert.match(css, /\.editor-dialog:has\(\.oge-gemini-review\) \.answer-workspace:not\(\.is-fullscreen\) textarea#answer/);
+  assert.match(css, /\.editor-dialog:has\(\.oge-gemini-review\) \.oge-gemini-review\s*\{/);
+  assert.match(css, /\.editor-dialog \.oge-gemini-review-footer\s*\{\s*position:static/);
+});
