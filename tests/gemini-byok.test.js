@@ -47,7 +47,8 @@ test('settings and note editor expose Gemini setup and review-before-save workfl
   const notesPage = await readFile(new URL('../app/notes/page.js', import.meta.url), 'utf8');
   const env = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
   assert.match(settingsPage, /href="#gemini-ai"/);
-  assert.match(settingsClient, /Test only/);
+  assert.match(settingsClient, /Test saved key/);
+  assert.match(settingsClient, /Test entered key/);
   assert.match(settingsClient, /Remove key/);
   assert.match(settingsClient, /aistudio\.google\.com\/app\/apikey/);
   assert.match(notesPage, /\/api\/notes\/cleanup/);
