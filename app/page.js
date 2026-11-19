@@ -47,9 +47,11 @@ export default async function HomePage() {
   // GitHub Vault does not use the legacy MongoDB revision queue or history pages.
   // Per-note GitHub history is accessible within Vault Notes instead.
   const visibleModules = [
-    { number: '00', group: 'PERSONAL', title: 'Customs',
+    ...(account.notesStorage === 'github' && filesReady ? [{
+      number: '00', group: 'PERSONAL', title: 'Customs',
       description: 'Open HTML pages, PDFs and images from your own private GitHub Vault.',
-      href: '/customs', icon: '▧' },
+      href: '/customs', icon: '▧',
+    }] : []),
     ...modules.filter((item) => account.notesStorage !== 'github' ||
       (item.href !== '/revision' && item.href !== '/revision-history')),
     ...(filesReady ? [{
