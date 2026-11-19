@@ -2578,3 +2578,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .media-preview-dialog .media-pdf-frame{flex:1;min-height:55vh}
 .media-preview-dialog:has(.media-docx-preview){overflow:hidden}
 @media(max-width:600px){.media-docx-preview{padding:7px}.media-docx-page{padding:18px;font-size:14px}.media-preview-dialog .media-pdf-frame{min-height:45vh}}
+
+
+/* Gemini cleanup: compare first, apply to the unsaved draft only on demand. */
+.oge-gemini-review{margin:14px 0 18px;padding:15px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);min-width:0}
+.oge-gemini-review-title strong{font:700 13px var(--sans)}
+.oge-gemini-review-title p,.oge-gemini-review-hint{margin:6px 0 12px;color:var(--muted);font:12px/1.6 var(--sans)}
+.oge-gemini-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.oge-gemini-review-pane{min-width:0;padding:12px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
+.oge-gemini-review-pane h3{margin:0 0 9px;color:var(--muted);text-transform:uppercase;font:700 11px var(--sans);letter-spacing:.05em}
+.oge-gemini-review-pane>strong{display:block;font:700 14px/1.4 var(--sans);overflow-wrap:anywhere}
+.oge-gemini-review-tags{font:11px/1.5 var(--sans);color:var(--muted);overflow-wrap:anywhere}
+.oge-gemini-review-pane pre{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 var(--mono);color:var(--ink);background:transparent}
+.oge-gemini-review-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:12px}
+.oge-gemini-review-actions button{min-height:38px}
+.oge-gemini-review-actions button:disabled{opacity:.55;cursor:not-allowed}
+.answer-workspace.is-fullscreen .oge-gemini-review{flex:none;width:100%;box-sizing:border-box;max-height:60vh;overflow:auto}
+@media(max-width:680px){.oge-gemini-review{padding:11px}.oge-gemini-review-grid{grid-template-columns:1fr}.oge-gemini-review-pane pre{max-height:180px}.oge-gemini-review-actions{display:grid;grid-template-columns:1fr 1fr}.oge-gemini-review-actions button{width:100%}}
