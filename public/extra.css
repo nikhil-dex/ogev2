@@ -2595,3 +2595,54 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .oge-gemini-review-actions button:disabled{opacity:.55;cursor:not-allowed}
 .answer-workspace.is-fullscreen .oge-gemini-review{flex:none;width:100%;box-sizing:border-box;max-height:60vh;overflow:auto}
 @media(max-width:680px){.oge-gemini-review{padding:11px}.oge-gemini-review-grid{grid-template-columns:1fr}.oge-gemini-review-pane pre{max-height:180px}.oge-gemini-review-actions{display:grid;grid-template-columns:1fr 1fr}.oge-gemini-review-actions button{width:100%}}
+
+
+/* Notes editor polish — calm, readable writing surface and focused Gemini review. */
+.editor-dialog:has(.answer-workspace){border-radius:18px}
+.editor-dialog:has(.answer-workspace) #noteForm>label{display:block;margin-top:16px;margin-bottom:7px;font-weight:700;letter-spacing:.055em}
+.editor-dialog:has(.answer-workspace) #heading{font-size:17px;font-weight:650;line-height:1.5;min-height:48px}
+.editor-dialog:has(.answer-workspace) #noteTags{min-height:43px}
+.editor-dialog:has(.answer-workspace) input:focus-visible,
+.editor-dialog:has(.answer-workspace) textarea:focus-visible{outline:2px solid color-mix(in srgb,var(--green) 45%,transparent);outline-offset:2px}
+.editor-dialog .answer-workspace{margin-top:18px;border:1px solid var(--line);border-radius:13px;padding:13px;background:color-mix(in srgb,var(--surface) 35%,var(--paper));min-width:0}
+.editor-dialog .answer-workspace .label-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.editor-dialog .answer-workspace .label-row>span{flex:1;min-width:160px;color:var(--muted);font-size:11px;line-height:1.5}
+.editor-dialog .answer-workspace .editor-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}
+.editor-dialog .answer-workspace .editor-tabs{margin-top:12px}
+.editor-dialog .answer-workspace textarea{box-sizing:border-box;width:100%;min-height:230px;resize:vertical;border-radius:9px;padding:16px;font:13px/1.85 var(--mono);background:var(--paper);color:var(--ink)}
+.editor-dialog .answer-workspace .answer-preview{box-sizing:border-box;min-height:230px;overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:17px;line-height:1.8}
+.editor-dialog .answer-workspace .draft-status{margin-left:auto;overflow-wrap:anywhere}
+.editor-dialog .answer-workspace .oge-gemini-cleanup-button{border-color:color-mix(in srgb,var(--green) 38%,var(--line));color:var(--green);font-weight:700}
+.oge-gemini-review{scroll-margin-top:20px;margin-top:18px;padding:18px;border:1px solid color-mix(in srgb,var(--green) 26%,var(--line));border-radius:13px;background:var(--paper);box-shadow:0 8px 30px color-mix(in srgb,var(--ink) 5%,transparent)}
+.oge-gemini-review-title{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}
+.oge-gemini-review-heading{display:flex;align-items:center;gap:11px}
+.oge-gemini-review-heading strong{display:block;font:750 16px/1.4 var(--sans);letter-spacing:-.015em;color:var(--ink)}
+.oge-gemini-review-heading p{margin:4px 0 0;color:var(--muted);font:11px/1.55 var(--sans)}
+.oge-gemini-review-sparkle{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:10px;color:var(--green);background:color-mix(in srgb,var(--green) 11%,var(--paper));font-size:20px}
+.oge-gemini-review-status{flex:none;padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font:10px/1.3 var(--sans)}
+.oge-gemini-review-grid{gap:13px;align-items:stretch}
+.oge-gemini-review-pane{padding:15px;border-radius:10px;background:var(--paper);display:flex;flex-direction:column}
+.oge-gemini-review-original{background:color-mix(in srgb,var(--surface) 65%,var(--paper))}
+.oge-gemini-review-improved{border-color:color-mix(in srgb,var(--green) 45%,var(--line));background:color-mix(in srgb,var(--green) 4%,var(--paper))}
+.oge-gemini-review-pane-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:13px}
+.oge-gemini-review-pane-heading h3{margin:0;font-size:10px;letter-spacing:.08em}
+.oge-gemini-review-pane-heading span{font:10px var(--sans);color:var(--muted)}
+.oge-gemini-review-pane>strong{font:750 15px/1.5 var(--sans)}
+.oge-gemini-review-tags{margin:8px 0 11px}
+.oge-gemini-review-pane pre{flex:1;box-sizing:border-box;width:100%;margin:0;padding:12px;border:1px solid var(--line);border-radius:8px;max-height:340px;background:var(--paper);font:12px/1.8 var(--mono)}
+.oge-gemini-review-footer{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding:12px 0 0;border-top:1px solid var(--line);background:var(--paper)}
+.oge-gemini-review-footer .oge-gemini-review-hint{flex:1 1 240px;margin:0;font:11px/1.6 var(--sans)}
+.oge-gemini-review-actions{margin:0}
+.oge-gemini-review-actions button{min-height:42px;border-radius:8px;padding:9px 14px}
+.answer-workspace.is-fullscreen .oge-gemini-review{max-height:75vh;overflow:auto;scroll-margin-top:15px}
+@media(max-width:680px){
+  .editor-dialog .answer-workspace{padding:10px}
+  .editor-dialog .answer-workspace textarea{min-height:190px;padding:12px}
+  .oge-gemini-review{padding:12px}
+  .oge-gemini-review-title{flex-wrap:wrap}
+  .oge-gemini-review-pane{padding:11px}
+  .oge-gemini-review-pane pre{max-height:260px}
+  .oge-gemini-review-footer{align-items:stretch}
+  .oge-gemini-review-actions{width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){.oge-gemini-review{scroll-behavior:auto}}
