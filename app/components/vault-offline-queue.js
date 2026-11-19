@@ -1,8 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  vaultOfflineQueueKey, readVaultOfflineQueue, removeVaultOfflineChange,
-  classifyVaultOfflineConflict,
+  vaultOfflineQueueKey, readVaultOfflineQueue, enqueueVaultOfflineChange,
+  removeVaultOfflineChange, offlineMatchesGitHub, classifyVaultOfflineConflict,
 } from '../../lib/oge-vault-offline-queue.js';
 
 async function read(response) {
@@ -102,6 +102,37 @@ export default function VaultOfflineQueue({ ownerId, repoId, notesApi, onSynced 
     finally { setBusy(false); }
   }
 
+  async function clearAlreadySaved() {
+    if (!selected || status !== 'already-synced' || busy) return;
+    setBusy(true); setError('');
+    try {
+      const latest = await currentGitHub(selected);
+      if (!offlineMatchesGitHub(selected, latest))
+        throw new Error('GitHub changed. Review this Note again before removing the queue entry.');
+      setItems(removeVaultOfflineChange(window.localStorage, key, selected.id));
+      setSelected(null); setRemote(null); setStatus('');
+      window.dispatchEvent(new Event('oge:vault-offline-changed'));
+      await onSynced();
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
+  function keepBoth() {
+    if (!selected || status !== 'conflict' || busy ||
+        !window.confirm('Keep the current GitHub Note and create a separate Note from your offline text?')) return;
+    try {
+      const duplicate = { ...selected, id: crypto.randomUUID(),
+        action: 'create', baseSha: null };
+      // Queue the new stable ID before removing the old one; never discard
+      // the original unless the new local copy is durable.
+      enqueueVaultOfflineChange(window.localStorage, key, duplicate);
+      setItems(removeVaultOfflineChange(window.localStorage, key, selected.id));
+      setSelected(null); setRemote(null); setStatus('');
+      setError('');
+      window.dispatchEvent(new Event('oge:vault-offline-changed'));
+    } catch (err) { setError(err.message || 'Could not preserve your separate Note.'); }
+  }
+
   function discard(item) {
     if (!window.confirm('Discard this local offline edit? This cannot be undone.')) return;
     try {
@@ -132,12 +163,17 @@ export default function VaultOfflineQueue({ ownerId, repoId, notesApi, onSynced 
     {selected && <div className="hub-card oge-module-card">
       <h3>Review: {selected.heading}</h3>
       <p>{status === 'ready' ? 'GitHub is unchanged. You can save this version.' :
+        status === 'already-synced' ? 'GitHub already contains this exact Note. No second save is needed.' :
         'Conflict: the GitHub Note was changed, deleted or recreated. Nothing will be overwritten automatically.'}</p>
       <details open><summary>Your offline version</summary><p style={{ whiteSpace: 'pre-wrap' }}>{selected.answer}</p></details>
       {remote && <details><summary>Current GitHub version</summary><p style={{ whiteSpace: 'pre-wrap' }}>{remote.answer}</p></details>}
       <div className="oge-settings-data-actions">
         {status === 'ready' && <button type="button" disabled={busy}
           onClick={() => { void save(false); }}>Save reviewed version to GitHub</button>}
+        {status === 'already-synced' && <button type="button" disabled={busy}
+          onClick={() => { void clearAlreadySaved(); }}>Confirm already saved &amp; clear pending</button>}
+        {status === 'conflict' && <button type="button" disabled={busy}
+          onClick={keepBoth}>Keep both as separate Notes</button>}
         {status === 'conflict' && remote && selected.action === 'update' &&
           remote.subjectSlug === selected.subjectId &&
           <button type="button" disabled={busy} onClick={() => { void save(true); }}>
