@@ -134,3 +134,15 @@ test('normal editor renders Gemini review after workspace and before Save contro
   assert.match(css, /#noteForm>\.oge-gemini-review\s*\{/);
   assert.match(css, /#noteForm>\.oge-editor-save-footer\s*\{/);
 });
+
+test('scrollbar tracks are hidden but Notes form and textarea remain scrollable', async () => {
+  const css = await readFile(new URL('../public/extra.css', import.meta.url), 'utf8');
+  const finalRules = css.slice(css.lastIndexOf('/* Safari/Chromium: hide decorative scrollbars'));
+  assert.match(finalRules, /#noteForm textarea#answer/);
+  assert.match(finalRules, /scrollbar-width:none/);
+  assert.match(finalRules, /::-webkit-scrollbar/);
+  assert.match(finalRules, /display:none/);
+  assert.match(finalRules, /scrollbar-gutter:auto/);
+  assert.match(finalRules, /overflow-y:auto/);
+  assert.doesNotMatch(finalRules, /overflow-y:hidden/);
+});
