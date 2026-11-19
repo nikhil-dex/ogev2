@@ -86,3 +86,18 @@ test('cleanup is offered for newly created Notes and discarded on editor switch/
   assert.match(page, /function closeNoteEditor\(\)[\s\S]*?cancelGeminiReview\(\)/);
   assert.match(page, /geminiRequestRef\.current\?\.abort\(\)/);
 });
+
+test('Gemini review automatically becomes visible and keeps deliberate Apply/Cancel controls', async () => {
+  const review = await readFile(new URL('../app/components/gemini-note-review.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/extra.css', import.meta.url), 'utf8');
+  assert.match(review, /scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/);
+  assert.match(review, /useEffect\(\(\) => \{[\s\S]*?\}, \[suggestion\]\)/);
+  assert.match(review, /Not applied yet/);
+  assert.match(review, /Original draft/);
+  assert.match(review, /Gemini suggestion/);
+  assert.match(review, /disabled=\{stale\}/);
+  assert.match(review, /Apply to draft/);
+  assert.match(review, /Cancel suggestion/);
+  assert.match(css, /\.oge-gemini-review-footer\{position:sticky/);
+  assert.match(css, /@media\(max-width:680px\)/);
+});
