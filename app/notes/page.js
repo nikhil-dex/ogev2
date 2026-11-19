@@ -874,6 +874,30 @@ export default function NotesPage({
         setMessage('GitHub saved the submitted version. New edits remain in the editor.');
         return;
       }
+      if (vaultMode && !hybridDrafts) {
+        if (JSON.stringify(liveEditorRef.current) !== submittedEditor) {
+          setNotes((existing) => mergeRecentVaultNotes(existing, [note]));
+          setEditingId(note.id);
+          setNewDraftId('');
+          const baseline = { heading: note.heading, answer: note.answer,
+            tags: (note.tags || []).join(', ') };
+          editorInitialRef.current = baseline;
+          setEditorBaseline(baseline);
+          setDraftStatus('Newer edits pending — earlier version saved');
+          setMessage('GitHub saved the earlier version. Your newer edits are still here.');
+          return;
+        }
+        try {
+          const raw = window.sessionStorage.getItem(hybridKey(note.id));
+          if (raw) {
+            const copy = JSON.parse(raw)?.draft;
+            if (copy?.heading === heading && copy?.answer === answer)
+              window.sessionStorage.removeItem(hybridKey(note.id));
+          }
+          if (!editingId && window.sessionStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+            window.sessionStorage.removeItem(newDraftPointerKey(activeSubject));
+        } catch { /* Browser storage must not block a confirmed GitHub Save. */ }
+      }
       hybridGenerationRef.current += 1;
       setNewDraftId('');
       editorInitialRef.current = null;
