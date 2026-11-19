@@ -49,7 +49,7 @@ export default async function CustomsPage({ searchParams }) {
         {!connected ? (
           <div className="home-dashboard-empty">
             <strong>Connect your GitHub Vault first.</strong>
-            <p>Customs reads files from your private Vault repository, not from OgeV2's source code.</p>
+            <p>Customs reads files from your private Vault repository, not from OgeV2 source code.</p>
             <Link className="home-dashboard-action-link" href="/vault">Open Vault setup →</Link>
           </div>
         ) : error ? <p className="home-dashboard-error" role="status">{error}</p> : !customs?.exists ? (
