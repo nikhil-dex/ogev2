@@ -29,7 +29,11 @@ export default function VaultStudyClient() {
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => { if (active) void load(); });
+    return () => { active = false; };
+  }, [load]);
   const note = notes[0] || null;
 
   async function rate(rating) {
