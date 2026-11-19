@@ -67,6 +67,18 @@ test('learned state is metadata only and maps to good or easy recall', async () 
   assert.equal(marked.reviewCount, 4);
 });
 
+test('Notes reader navigates with keyboard arrows without interfering with typing', async () => {
+  const ui = await read('../app/notes/page.js');
+  assert.match(ui, /event\.key === 'ArrowLeft' \|\| event\.key === 'ArrowRight'/);
+  assert.match(ui, /!readerNote \|\| noteDialog \|\| event\.defaultPrevented \|\| event\.repeat/);
+  assert.match(ui, /event\.altKey \|\| event\.ctrlKey \|\| event\.metaKey \|\| event\.shiftKey/);
+  assert.match(ui, /target\.closest\('input, textarea, select, \[contenteditable\], \[role="textbox"\]'\)/);
+  assert.match(ui, /event\.key === 'ArrowRight' \? 1 : -1/);
+  assert.match(ui, /const next = readerSequence\[readerIndex \+ step\]/);
+  assert.match(ui, /if \(!next\) return;\s*event\.preventDefault\(\);\s*setReaderNote\(next\)/);
+  assert.match(ui, /Use ← and → keyboard arrows to browse Notes/);
+});
+
 test('Notes interface wires all six parity improvements to existing APIs', async () => {
   const ui = await read('../app/notes/page.js');
   const vault = await read('../app/api/vault/notes-main/route.js');
