@@ -1078,6 +1078,11 @@ export default function NotesPage({
   return (
     <main className="shell">
       <SiteNavbar notesHref={vaultMode ? '/vault/notes' : '/notes'} showFiles={vaultMode} actions={<ThemeToggle />} />
+      {vaultMode && <nav aria-label="GitHub Vault study tools" className="oge-settings-data-actions">
+        <Link className="oge-settings-secondary-link" href="/vault/study">Revision &amp; Study ↻</Link>
+        <Link className="oge-settings-secondary-link" href="/vault/history">GitHub Note History ◷</Link>
+        <Link className="oge-settings-secondary-link" href="/vault/backup">Backup &amp; Recovery ▣</Link>
+      </nav>}
 
       <nav className="subject-nav" aria-label="Subjects">
         {subjects.map((subject) => (
