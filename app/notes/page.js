@@ -567,8 +567,17 @@ export default function NotesPage({
 
   function closeNoteEditor() {
     if (saving || (hybridDrafts && !hybridReady)) return;
-    if (hasUnsavedEditorChanges() &&
+    const changed = hasUnsavedEditorChanges();
+    if (changed &&
         !window.confirm('Discard unsaved GitHub note edits? These changes have not been committed to your vault.')) return;
+    if (changed && vaultMode && !hybridDrafts) {
+      try {
+        window.sessionStorage.removeItem(hybridKey(editingId || newDraftId));
+        if (!editingId &&
+            window.sessionStorage.getItem(newDraftPointerKey(activeSubject)) === newDraftId)
+          window.sessionStorage.removeItem(newDraftPointerKey(activeSubject));
+      } catch { /* Discard still closes the editor when storage is blocked. */ }
+    }
     hybridGenerationRef.current += 1;
     setNoteDialog(false);
     setPreview(false);
