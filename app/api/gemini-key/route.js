@@ -2,7 +2,7 @@ import { auth } from '../../../auth.js';
 import { getDatabase } from '../../../lib/mongodb.js';
 import { readLimitedBody } from '../../../lib/read-limited-body.js';
 import { encryptGeminiKey, decryptGeminiKey, maskGeminiKey } from '../../../lib/gemini-key.js';
-import { GeminiConnectionError, validateGeminiApiKey, testGeminiApiKey } from '../../../lib/oge-gemini-connection.js';
+import { GeminiConnectionError, testGeminiApiKey } from '../../../lib/oge-gemini-connection.js';
 import { checkRateLimit, rateLimitResponse } from '../../../lib/rate-limit.js';
 import { ownerMutationFilter } from '../../../lib/active-owner-mutation.js';
 
@@ -87,17 +87,16 @@ export async function POST(request) {
         message: 'Gemini connection successful (' + result.model + ').' });
     }
 
-    // Saving a valid key does not depend on the current model quota. A
-    // generation failure belongs to Test only, not credential persistence.
-    const availability = await validateGeminiApiKey(apiKey);
+    // Save is deliberately independent of Gemini network availability and
+    // generation quota. The user can verify their stored key separately.
+    if (!apiKey || apiKey.length < 10 || apiKey.length > 512 || /\s/.test(apiKey))
+      return json({ error: 'Enter a valid-looking Google Gemini API key.' }, 400);
     const encrypted = encryptGeminiKey(apiKey);
     const result = await users.updateOne(accountFilter, { $set: { geminiApiKey: encrypted, updatedAt: new Date() } });
     if (result.matchedCount !== 1) return json({ error: 'Your account is no longer available. Sign in again.' }, 401);
-    const note = availability.models.length
-      ? ' Select Test connection to check generation access.'
-      : ' The key is valid, but no supported Gemini Flash text model is currently listed for your project.';
     return json({ configured: true, updatedAt: encrypted.updatedAt,
-      maskedKey: maskGeminiKey(apiKey), message: 'Gemini API key saved.' + note });
+      maskedKey: maskGeminiKey(apiKey),
+      message: 'Gemini API key saved. Select Test saved key to check your Google model access.' });
   } catch (error) {
     if (error?.message === 'GEMINI_KEY_ENCRYPTION_SECRET must be configured with at least 32 characters.') {
       return json({ error: 'Gemini BYOK is not configured on this deployment yet. Set GEMINI_KEY_ENCRYPTION_SECRET on the server.' }, 503);
