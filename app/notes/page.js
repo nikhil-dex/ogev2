@@ -1549,9 +1549,9 @@ export default function NotesPage({
               <div className="editor-toolbar" aria-label="Answer formatting"><button type="button" onClick={() => insertFormatting('bold')} title="Bold">B</button><button type="button" onClick={() => insertFormatting('code')} title="Inline code">&lt;/&gt;</button><button type="button" onClick={() => insertFormatting('list')} title="Bullet list">• List</button><button type="button" onClick={() => insertFormatting('codeblock')} title="Code block">{'{ }'}</button><span>Formatting shortcuts</span><span className="draft-status" role="status" aria-live="polite">{draftStatus}</span></div>
               <div className="editor-tabs"><button type="button" className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Write</button><button type="button" className={preview ? 'active' : ''} onClick={() => setPreview(true)}>Preview</button></div>
               {!preview ? <textarea ref={answerRef} id="answer" rows={8} maxLength={20000} placeholder="Write your explanation here…" value={answer} onChange={(event) => { setAnswer(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} required /> : <div className="answer-preview">{answer ? <div dangerouslySetInnerHTML={{ __html: markdownHtml(answer) }} /> : <p className="preview-placeholder">Nothing to preview yet.</p>}</div>}
-              <GeminiNoteReview suggestion={geminiSuggestion} current={currentGeminiDraft}
-                  onApply={applyGeminiSuggestion} onCancel={() => setGeminiSuggestion(null)} />
             </div>}
+            {!answerFullscreen && <GeminiNoteReview suggestion={geminiSuggestion} current={currentGeminiDraft}
+              onApply={applyGeminiSuggestion} onCancel={() => setGeminiSuggestion(null)} />}
             <p className={'oge-editor-feedback oge-editor-feedback--' + editorFeedback.kind}
               role="status" aria-live="polite">{editorFeedback.label}</p>
             {vaultMode && hybridDrafts && draftStatus && <p className="oge-editor-draft-detail">
