@@ -7,6 +7,8 @@ import SiteNavbar from '../components/site-navbar';
 import VaultOfflineQueue from '../components/vault-offline-queue';
 import { vaultOfflineQueueKey, enqueueVaultOfflineChange } from '../../lib/oge-vault-offline-queue.js';
 import { markdownHtml } from '../../lib/markdown.js';
+import { relatedNoteLinks } from '../../lib/oge-note-links.js';
+import { notePdfFile, saveNotePdfToVault } from '../../lib/oge-note-pdf.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
 import { vaultReadCacheKey, saveVaultReadCache, readVaultReadCache } from '../../lib/oge-vault-read-cache.js';
@@ -47,6 +49,7 @@ export default function NotesPage({
   const [query, setQuery] = useState('');
   const [globalSearch, setGlobalSearch] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [pinnedOnly, setPinnedOnly] = useState(false);
   const [selectedTag, setSelectedTag] = useState('');
   const [sortOrder, setSortOrder] = useState('latest');
   const [loading, setLoading] = useState(true);
@@ -69,6 +72,8 @@ export default function NotesPage({
   const createNoteAfterSubjectRef = useRef(false);
   const [subjectSaving, setSubjectSaving] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [savingReaderPdf, setSavingReaderPdf] = useState(false);
+  const readerSwipeRef = useRef(null);
   const [preview, setPreview] = useState(false);
   const [answerFullscreen, setAnswerFullscreen] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
@@ -323,7 +328,7 @@ export default function NotesPage({
         setNextNotesCursor(null);
         setTotalVaultNotes(null);
         setOfflineReadOnly(true);
-        setError('GitHub is unavailable. Showing the last notes read in this tab (read-only). Reconnect and refresh before editing.');
+        setError('Showing cached Notes. Save changes locally, then reconnect and review pending edits before syncing to GitHub.');
       } else {
         setError(err.message || 'Could not load your notes.');
       }
@@ -436,14 +441,25 @@ export default function NotesPage({
       .filter((note) => globalSearch || !activeSubject || note.subjectSlug === activeSubject)
       .filter((note) => !needle || (note.heading + ' ' + note.answer + ' ' + (note.tags || []).join(' ')).toLocaleLowerCase().includes(needle))
       .filter((note) => !favoritesOnly || note.favorite)
+      .filter((note) => !pinnedOnly || note.pinned)
       .filter((note) => !selectedTag || (note.tags || []).includes(selectedTag))
       .sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
         if (sortOrder === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
         if (sortOrder === 'title-asc') return a.heading.localeCompare(b.heading);
         if (sortOrder === 'title-desc') return b.heading.localeCompare(a.heading);
         return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
       });
-  }, [notes, activeSubject, query, globalSearch, favoritesOnly, selectedTag, sortOrder]);
+  }, [notes, activeSubject, query, globalSearch, favoritesOnly, pinnedOnly, selectedTag, sortOrder]);
+  const readerSequence = readerNote ? visibleNotes.filter((note) => note.subjectSlug === readerNote.subjectSlug) : [];
+  const readerIndex = readerNote ? readerSequence.findIndex((note) => note.id === readerNote.id) : -1;
+  const readerLinks = relatedNoteLinks(readerNote, notes);
+  function moveReaderNote(step) {
+    const next = readerSequence[readerIndex + step];
+    if (!next) return;
+    setReaderNote(next);
+    setShareMenuOpen(false);
+  }
 
   const active = subjects.find((subject) => subject.slug === activeSubject);
   const editorMetrics = noteBodyMetrics(answer);
@@ -468,7 +484,7 @@ export default function NotesPage({
     setNewDraftId('');
     setHybridReady(!hybridDrafts || offlineReadOnly || !navigator.onLine);
     hybridRevisionRef.current = 0;
-    const freshId = hybridDrafts ? crypto.randomUUID() : '';
+    const freshId = vaultMode ? crypto.randomUUID() : '';
     setNewDraftId(freshId);
     setHybridError('');
     hybridConflictRef.current = false;
@@ -623,10 +639,6 @@ export default function NotesPage({
       return;
     }
     const current = notes.find((item) => item.id === editingId);
-    if (!editingId && !hybridDrafts) {
-      setError('Offline new Notes need the GitHub Vault draft feature. Existing Notes can be queued.');
-      return;
-    }
     if (editingId && !current?.sha) {
       setError('Cannot queue this Note without its original GitHub revision.');
       return;
@@ -708,7 +720,7 @@ export default function NotesPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingId ? { ...payload, id: editingId,
           ...(vaultMode ? { sha: current.sha } : {}) } :
-          (hybridDrafts ? { ...payload, id: newDraftId } : payload)),
+          (vaultMode ? { ...payload, id: newDraftId } : payload)),
       }));
       if (vaultMode) rememberSavedNote(note.id);
       // The submitted revision really was committed, but newer keystrokes
@@ -919,7 +931,7 @@ export default function NotesPage({
 
 
   async function cleanupWithGemini() {
-    if (aiCleanupBusy || !editingId || vaultMode) return;
+    if (aiCleanupBusy || !editingId) return;
     if (!heading.trim() || !answer.trim()) {
       setError('Add a heading and note content before using Gemini.');
       return;
@@ -966,6 +978,22 @@ export default function NotesPage({
     } catch (err) {
       setError(err.message || 'Could not update favorite.');
     }
+  }
+
+  async function togglePinned(note) {
+    if (offlineReadOnly || !navigator.onLine) {
+      setError('Reconnect before changing pinned Notes.');
+      return;
+    }
+    setError('');
+    try {
+      await responseJson(await fetch(notesApi, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: note.id, pinned: !note.pinned,
+          ...(vaultMode ? { sha: note.sha } : {}) }),
+      }));
+      await load(activeSubject);
+    } catch (err) { setError(err.message || 'Could not update pin.'); }
   }
 
   async function deleteNote(note) {
@@ -1035,6 +1063,21 @@ export default function NotesPage({
       if (err?.name !== 'AbortError') setError('Sharing failed. You can try Print / Save PDF instead.');
     }
     setShareMenuOpen(false);
+  }
+
+  async function saveReaderPdfToFiles() {
+    if (!readerNote || !vaultMode || savingReaderPdf) return;
+    setSavingReaderPdf(true);
+    setShareMenuOpen(false);
+    try {
+      if (!navigator.onLine) throw new Error('Connect to save a PDF to My Files.');
+      const subject = subjects.find((item) => item.slug === readerNote.subjectSlug);
+      const pdf = await notePdfFile(readerNote, subject?.name || 'Notes');
+      await saveNotePdfToVault(pdf);
+      window.alert('PDF saved to My Files. Open My Files to preview or download it.');
+    } catch (err) {
+      window.alert(err.message || 'PDF save failed. Try Print / Save PDF instead.');
+    } finally { setSavingReaderPdf(false); }
   }
 
   function printReaderNote() {
@@ -1260,14 +1303,14 @@ export default function NotesPage({
             <input id="noteTags" maxLength={260} placeholder="e.g. arrays, exam, important" value={tagsText} onChange={(event) => { setTagsText(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} />
             {answerFullscreen ? createPortal(
               <div className="answer-workspace is-fullscreen">
-                <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span>{editingId && !vaultMode && <button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button>}<button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(false)} aria-label="Exit full-screen writing area" title="Exit full screen (Esc)">↙ Exit full screen</button></div>
+                <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span>{editingId && <button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button>}<button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(false)} aria-label="Exit full-screen writing area" title="Exit full screen (Esc)">↙ Exit full screen</button></div>
                 <div className="editor-toolbar" aria-label="Answer formatting"><button type="button" onClick={() => insertFormatting('bold')} title="Bold">B</button><button type="button" onClick={() => insertFormatting('code')} title="Inline code">&lt;/&gt;</button><button type="button" onClick={() => insertFormatting('list')} title="Bullet list">• List</button><button type="button" onClick={() => insertFormatting('codeblock')} title="Code block">{'{ }'}</button><span>Formatting shortcuts</span><span className="draft-status" role="status" aria-live="polite">{draftStatus}</span></div>
                 <div className="editor-tabs"><button type="button" className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Write</button><button type="button" className={preview ? 'active' : ''} onClick={() => setPreview(true)}>Preview</button></div>
                 {!preview ? <textarea ref={answerRef} form="noteForm" id="answer" rows={6} maxLength={20000} placeholder="Write your explanation here…" value={answer} onChange={(event) => { setAnswer(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} required /> : <div className="answer-preview">{answer ? <div dangerouslySetInnerHTML={{ __html: markdownHtml(answer) }} /> : <p className="preview-placeholder">Nothing to preview yet.</p>}</div>}
               </div>,
               document.body
             ) : <div className="answer-workspace">
-              <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span>{editingId && !vaultMode && <button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button>}<button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(true)} aria-label="Expand writing area to full screen" title="Expand writing area">⛶ Expand</button></div>
+              <div className="label-row"><label htmlFor="answer">ANSWER</label><span>Markdown · use headings, lists, quotes, links, and code blocks</span>{editingId && <button type="button" className="answer-expand-button oge-gemini-cleanup-button" onClick={cleanupWithGemini} disabled={aiCleanupBusy || saving} title="Ask Gemini to improve clarity and Markdown; review before saving">{aiCleanupBusy ? '✦ Cleaning…' : '✦ Gemini clean up'}</button>}<button type="button" className="answer-expand-button" onClick={() => setAnswerFullscreen(true)} aria-label="Expand writing area to full screen" title="Expand writing area">⛶ Expand</button></div>
               <div className="editor-toolbar" aria-label="Answer formatting"><button type="button" onClick={() => insertFormatting('bold')} title="Bold">B</button><button type="button" onClick={() => insertFormatting('code')} title="Inline code">&lt;/&gt;</button><button type="button" onClick={() => insertFormatting('list')} title="Bullet list">• List</button><button type="button" onClick={() => insertFormatting('codeblock')} title="Code block">{'{ }'}</button><span>Formatting shortcuts</span><span className="draft-status" role="status" aria-live="polite">{draftStatus}</span></div>
               <div className="editor-tabs"><button type="button" className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>Write</button><button type="button" className={preview ? 'active' : ''} onClick={() => setPreview(true)}>Preview</button></div>
               {!preview ? <textarea ref={answerRef} id="answer" rows={8} maxLength={20000} placeholder="Write your explanation here…" value={answer} onChange={(event) => { setAnswer(event.target.value); setDraftStatus('Unsaved changes'); }} disabled={hybridDrafts && (!hybridReady || saving)} required /> : <div className="answer-preview">{answer ? <div dangerouslySetInnerHTML={{ __html: markdownHtml(answer) }} /> : <p className="preview-placeholder">Nothing to preview yet.</p>}</div>}
