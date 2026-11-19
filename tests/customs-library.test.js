@@ -83,20 +83,21 @@ test('Opening a Custom HTML file reads immutable blob bytes', async () => {
   await assert.rejects(readVaultCustomFile(client, 'no.html'));
 });
 
-test('Homepage and file route use signed-in owner Vault access, not public/customs', async () => {
+test('Home always links to dedicated Customs indexing page', async () => {
   const home = await readFile(new URL('../app/page.js', import.meta.url), 'utf8');
+  const page = await readFile(new URL('../app/customs/page.js', import.meta.url), 'utf8');
   const route = await readFile(new URL('../app/api/vault/customs/route.js', import.meta.url), 'utf8');
-  assert.match(home, /getVaultNoteClient\(db,/);
-  assert.match(home, /await listVaultCustoms\(client\)/);
-  assert.match(home, /\{customs\.exists && \(/);
-  assert.match(home, /customs\.files\.map/);
-  assert.match(home, /customsUnavailable = true/);
-  assert.match(home, /Could not check the Customs folder in your GitHub Vault/);
-  assert.doesNotMatch(home, /listCustomsFiles|public\/customs/);
-  assert.match(route, /await auth\(\)/);
+  assert.match(home, /title: 'Customs'/);
+  assert.match(home, /href: '\/customs'/);
+  assert.doesNotMatch(home, /await listVaultCustoms\(client\)/);
+  assert.match(page, /await getIndexedCustoms\(db, client, ownerId,/);
+  assert.match(page, /refresh: params\?\.refresh === 'true'/);
+  assert.match(page, /Connect your GitHub Vault first/);
+  assert.match(page, /href="\/customs\?refresh=true"/);
   assert.match(route, /ownerMutationFilter\(ownerId, \{ sessionVersion \}\)/);
   assert.match(route, /connectedVaultStorageAvailable\(account\)/);
   assert.match(route, /getVaultNoteClient\(db, \{ ownerId, sessionVersion \}, \{ readOnly: true \}\)/);
+  assert.match(route, /getIndexedCustoms\(db, client, ownerId, \{ refresh \}\)/);
   assert.match(route, /Content-Security-Policy/);
   assert.match(route, /sandbox allow-scripts/);
 });
