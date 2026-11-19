@@ -8,6 +8,7 @@ import VaultOfflineQueue from '../components/vault-offline-queue';
 import { vaultOfflineQueueKey, enqueueVaultOfflineChange } from '../../lib/oge-vault-offline-queue.js';
 import { markdownHtml } from '../../lib/markdown.js';
 import { relatedNoteLinks } from '../../lib/oge-note-links.js';
+import { scanAllVaultNoteLinks } from '../../lib/oge-vault-all-note-links.js';
 import { notePdfFile, saveNotePdfToVault } from '../../lib/oge-note-pdf.js';
 import ThemeToggle from '../components/theme-toggle';
 import { loadVaultSearchPages } from '../../lib/oge-vault-search-pages.js';
@@ -74,6 +75,10 @@ export default function NotesPage({
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [savingReaderPdf, setSavingReaderPdf] = useState(false);
   const readerSwipeRef = useRef(null);
+  const linkScanRef = useRef(null);
+  const [linkScan, setLinkScan] = useState(null);
+  const [linkScanBusy, setLinkScanBusy] = useState(false);
+  const [linkScanProgress, setLinkScanProgress] = useState('');
   const [preview, setPreview] = useState(false);
   const [answerFullscreen, setAnswerFullscreen] = useState(false);
   const [draftStatus, setDraftStatus] = useState('');
@@ -453,12 +458,66 @@ export default function NotesPage({
   }, [notes, activeSubject, query, globalSearch, favoritesOnly, pinnedOnly, selectedTag, sortOrder]);
   const readerSequence = readerNote ? visibleNotes.filter((note) => note.subjectSlug === readerNote.subjectSlug) : [];
   const readerIndex = readerNote ? readerSequence.findIndex((note) => note.id === readerNote.id) : -1;
-  const readerLinks = relatedNoteLinks(readerNote, notes);
+  const readerLinks = linkScan?.complete && linkScan.noteId === readerNote?.id
+    ? linkScan : relatedNoteLinks(readerNote, notes, { allSubjects: true });
+  function stopLinkScan() {
+    linkScanRef.current?.abort();
+    linkScanRef.current = null;
+    setLinkScanBusy(false);
+  }
   function moveReaderNote(step) {
     const next = readerSequence[readerIndex + step];
     if (!next) return;
+    stopLinkScan();
     setReaderNote(next);
     setShareMenuOpen(false);
+  }
+  async function openRelatedNote(note) {
+    stopLinkScan();
+    try {
+      const current = vaultMode
+        ? await responseJson(await fetch(notesApi + '?id=' + encodeURIComponent(note.id),
+          { cache: 'no-store' }))
+        : note;
+      setReaderNote(current);
+      setShareMenuOpen(false);
+    } catch (err) { setLinkScanProgress(err.message || 'Could not open linked Note.'); }
+  }
+  async function scanCompleteLinks() {
+    if (!vaultMode || !readerNote || linkScanBusy) return;
+    stopLinkScan();
+    const target = readerNote;
+    const controller = new AbortController();
+    linkScanRef.current = controller;
+    setLinkScanBusy(true);
+    setLinkScanProgress('Scanning linked Notes across your Vault…');
+    try {
+      const found = await scanAllVaultNoteLinks({
+        reader: target,
+        shouldStop: () => controller.signal.aborted,
+        fetchPage: async (cursor) => responseJson(await fetch(
+          notesApi + '?paged=true&limit=25' +
+          (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
+          { cache: 'no-store', signal: controller.signal },
+        )),
+        onProgress: ({ scanned, total }) => {
+          if (!controller.signal.aborted)
+            setLinkScanProgress('Checked ' + scanned + ' of ' + total + ' Notes…');
+        },
+      });
+      if (!found.cancelled && !controller.signal.aborted) {
+        setLinkScan({ ...found, noteId: target.id });
+        setLinkScanProgress('Checked all ' + found.total + ' GitHub Notes.');
+      }
+    } catch (err) {
+      if (!controller.signal.aborted)
+        setLinkScanProgress(err.message || 'Could not finish link scan. Try again.');
+    } finally {
+      if (linkScanRef.current === controller) {
+        linkScanRef.current = null;
+        setLinkScanBusy(false);
+      }
+    }
   }
 
   const active = subjects.find((subject) => subject.slug === activeSubject);
@@ -1454,7 +1513,7 @@ export default function NotesPage({
                   {vaultMode && <button type="button" role="menuitem" onClick={() => void saveReaderPdfToFiles()} disabled={savingReaderPdf}><strong>{savingReaderPdf ? 'Saving PDF…' : 'Save PDF to My Files'}</strong><small>Store a readable PDF in your private Vault</small></button>}
                 </div>}
               </div>
-              <button type="button" className="close-button reader-close" onClick={() => { setShareMenuOpen(false); setReaderNote(null); }} aria-label="Close note">×</button>
+              <button type="button" className="close-button reader-close" onClick={() => { stopLinkScan(); setShareMenuOpen(false); setReaderNote(null); }} aria-label="Close note">×</button>
             </div>
           </div>
           <div className="reader-content">
@@ -1465,15 +1524,26 @@ export default function NotesPage({
             {(readerNote.tags || []).length > 0 && <div className="reader-tags">{readerNote.tags.map((tag) => <span key={tag} className="tag-chip">{tag}</span>)}</div>}
             <section className="note-links-section" aria-label="Linked notes">
               <h3>Linked notes</h3>
+              {vaultMode && <div className="oge-settings-data-actions">
+                <button type="button" className="oge-settings-secondary-button"
+                  disabled={linkScanBusy} onClick={() => { void scanCompleteLinks(); }}>
+                  {linkScanBusy ? 'Scanning…' : 'Check links in entire Vault'}
+                </button>
+                {linkScanBusy && <button type="button" className="oge-settings-secondary-button"
+                  onClick={stopLinkScan}>Stop</button>}
+              </div>}
+              {vaultMode && linkScanProgress && <p role="status">{linkScanProgress}</p>}
               {readerLinks.outgoing.length ? <ul>{readerLinks.outgoing.map((note) =>
-                <li key={note.id}><button type="button" onClick={() => setReaderNote(note)}>{note.heading} →</button></li>)}</ul>
-                : <p>Use [[Exact note heading]] to link another loaded Note in this subject.</p>}
+                <li key={note.id}><button type="button" onClick={() => { void openRelatedNote(note); }}>
+                  {note.heading} · {subjects.find((item) => item.slug === note.subjectSlug)?.name || 'Subject'} →</button></li>)}</ul>
+                : <p>Use [[Exact note heading]] to link Notes. Check the entire Vault to find older or cross-subject links.</p>}
             </section>
             <section className="note-links-section backlinks-section" aria-label="Backlinks">
               <h3>Backlinks</h3>
               {readerLinks.backlinks.length ? <ul>{readerLinks.backlinks.map((note) =>
-                <li key={note.id}><button type="button" onClick={() => setReaderNote(note)}>{note.heading} ↗</button></li>)}</ul>
-                : <p>No backlinks from loaded Notes.</p>}
+                <li key={note.id}><button type="button" onClick={() => { void openRelatedNote(note); }}>
+                  {note.heading} · {subjects.find((item) => item.slug === note.subjectSlug)?.name || 'Subject'} ↗</button></li>)}</ul>
+                : <p>No backlinks found in {linkScan?.complete && linkScan.noteId === readerNote?.id ? 'your complete Vault' : 'loaded Notes'}.</p>}
             </section>
           </div>
         </article>
