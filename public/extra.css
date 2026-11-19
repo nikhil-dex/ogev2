@@ -2776,3 +2776,31 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .editor-backdrop .editor-dialog #noteForm:has(.oge-gemini-review)>.answer-workspace:not(.is-fullscreen) textarea#answer,
   .editor-backdrop .editor-dialog #noteForm:has(.oge-gemini-review)>.answer-workspace:not(.is-fullscreen) .answer-preview{height:190px;min-height:160px}
 }
+
+/* Gemini review now follows the writing workspace as a sibling, before Save. */
+.editor-backdrop .editor-dialog #noteForm>.oge-gemini-review{
+  display:block;
+  flex:0 0 auto;
+  margin:12px 0 8px;
+  min-height:0;
+  height:auto;
+  max-height:none;
+  overflow:visible;
+  scroll-margin-top:18px;
+  scroll-margin-bottom:18px;
+}
+.editor-backdrop .editor-dialog #noteForm>.oge-editor-feedback{
+  flex:0 0 auto;
+  margin:10px 0 2px;
+}
+.editor-backdrop .editor-dialog #noteForm>.oge-editor-save-footer{
+  flex:0 0 auto;
+  position:static;
+  margin:8px 0 0;
+  padding:12px 0 4px;
+  border-top:1px solid var(--line);
+  box-shadow:none;
+}
+.editor-backdrop .editor-dialog #noteForm>.oge-editor-save-footer .field-hint{
+  margin:8px 0 0;
+}
