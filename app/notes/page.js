@@ -501,6 +501,18 @@ export default function NotesPage({
     setDraftStatus('');
     setNoteDialog(true);
     if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverNewHybridDraft(subjectId, generation);
+    if (vaultMode && !hybridDrafts) {
+      try {
+        const localId = window.sessionStorage.getItem(newDraftPointerKey(subjectId));
+        const local = JSON.parse(window.sessionStorage.getItem(hybridKey(localId)) || 'null')?.draft;
+        if (localId && local?.subjectId === subjectId && local.baseSha === null) {
+          setNewDraftId(localId);
+          setHeading(local.heading || ''); setAnswer(local.answer || '');
+          setTagsText((local.tags || []).join(', '));
+          setDraftStatus('Recovered unsaved browser draft');
+        }
+      } catch { /* Browser drafts are optional. */ }
+    }
   }
 
   function editNote(note) {
@@ -526,6 +538,16 @@ export default function NotesPage({
     setDraftStatus('');
     setNoteDialog(true);
     if (hybridDrafts && !offlineReadOnly && navigator.onLine) void recoverHybridDraft(note, generation);
+    if (vaultMode && !hybridDrafts) {
+      try {
+        const local = JSON.parse(window.sessionStorage.getItem(hybridKey(note.id)) || 'null')?.draft;
+        if (local?.subjectId === note.subjectSlug && local.baseSha === note.sha) {
+          setHeading(local.heading); setAnswer(local.answer);
+          setTagsText((local.tags || []).join(', '));
+          setDraftStatus('Recovered unsaved browser draft');
+        }
+      } catch { /* Keep GitHub content when recovery fails. */ }
+    }
   }
 
   // Focus the title when the editor opens and when draft recovery finishes.
@@ -555,7 +577,7 @@ export default function NotesPage({
   // Temporary draft writes are serialized. Browser storage is updated before
   // the request, so fast typing never creates parallel out-of-order revisions.
   useEffect(() => {
-    if (!hybridDrafts || !hybridReady || !noteDialog || (!editingId && !newDraftId) ||
+    if (!vaultMode || !hybridReady || !noteDialog || (!editingId && !newDraftId) ||
         !hasUnsavedEditorChanges()) return undefined;
     const current = notes.find((note) => note.id === editingId);
     if (editingId && !current?.sha) return undefined;
@@ -568,8 +590,9 @@ export default function NotesPage({
       window.sessionStorage.setItem(key, JSON.stringify({ draft }));
       if (!editingId) window.sessionStorage.setItem(newDraftPointerKey(activeSubject), noteId);
     } catch { /* Server copy still available if the next request succeeds. */ }
+    // The browser autosaves even if temporary Mongo draft preview is off.
+    if (!hybridDrafts) return undefined;
     // Even while Save is running, preserve newer keystrokes in sessionStorage.
-    // Server autosave remains paused until Save returns.
     if (saving) return undefined;
     // A conflicting edit is not a transient outage; keep the user's local
     // copy, but never overwrite the other device automatically.
@@ -655,6 +678,11 @@ export default function NotesPage({
       const key = vaultOfflineQueueKey(vaultOwnerId, vaultRepoId);
       enqueueVaultOfflineChange(window.localStorage, key, offline);
       window.dispatchEvent(new Event('oge:vault-offline-changed'));
+      try {
+        window.sessionStorage.removeItem(hybridKey(offline.id));
+        if (!editingId && window.sessionStorage.getItem(newDraftPointerKey(activeSubject)) === offline.id)
+          window.sessionStorage.removeItem(newDraftPointerKey(activeSubject));
+      } catch { /* The queued localStorage copy is authoritative until GitHub sync. */ }
       setError('');
       setDraftStatus('Saved locally — review and sync when online');
       setMessage('Note saved to this browser. Review the pending offline edit before syncing to GitHub.');
