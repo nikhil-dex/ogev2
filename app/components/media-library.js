@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import SiteNavbar from './site-navbar';
-import { canPreviewMediaFile } from '../../lib/oge-vault-media-validation.js';
+import { canPreviewMediaFile, canPreviewDocumentFile } from '../../lib/oge-vault-media-validation.js';
+import { previewDocxText } from '../../lib/oge-vault-docx-preview.js';
 
 async function readResponse(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || 'The request could not be completed.');
   return data;
 }
+
+const canViewFile = file => canPreviewMediaFile(file) || canPreviewDocumentFile(file);
 
 function formatBytes(value) {
   if (value < 1024) return `${value} B`;
@@ -32,6 +35,7 @@ export default function MediaLibrary() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const uploadRef = useRef(null);
   const pendingUploadsRef = useRef(new Map());
 
@@ -51,6 +55,10 @@ export default function MediaLibrary() {
   }, []);
 
   useEffect(() => { Promise.resolve().then(() => { void loadLibrary(null); }); }, [loadLibrary]);
+  // Revoke private, tab-local preview URLs when the dialog closes or changes.
+  useEffect(() => () => {
+    if (preview?.url?.startsWith('blob:')) URL.revokeObjectURL(preview.url);
+  }, [preview]);
 
   const currentFolder = folders.find((folder) => folder.id === folderId);
   const visibleFolders = useMemo(() => folders.filter((folder) => folder.name.toLowerCase().includes(query.trim().toLowerCase())), [folders, query]);
@@ -150,15 +158,35 @@ export default function MediaLibrary() {
   }
 
   async function openPreview(file) {
-    if (!canPreviewMediaFile(file)) {
+    if (!canViewFile(file)) {
       await downloadFile(file);
       return;
     }
     setError('');
+    setPreviewLoading(true);
     try {
-      const result = await readResponse(await fetch('/api/vault/media?action=download&id=' + encodeURIComponent(file.id), { cache: 'no-store' }));
-      setPreview({ ...file, url: result.url });
-    } catch (err) { setError(err.message || 'Could not open this file.'); }
+      // Retrieve the authenticated bytes directly; never send private Vault
+      // links or file content to an external document preview service.
+      const response = await fetch('/api/vault/media?action=content&id=' +
+        encodeURIComponent(file.id), { cache: 'no-store', credentials: 'same-origin' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Could not retrieve this Vault file.');
+      }
+      const bytes = await response.arrayBuffer();
+      if (canPreviewDocumentFile(file)) {
+        const text = await previewDocxText(bytes);
+        setPreview({ ...file, kind: 'docx', text });
+      } else {
+        // Browser PDF/image viewers need the correct MIME on the local blob.
+        // This also avoids embedding an authenticated API response subject to
+        // the app-wide X-Frame-Options: DENY header.
+        const url = URL.createObjectURL(new Blob([bytes], { type: file.type }));
+        setPreview({ ...file, kind: file.type === 'application/pdf' ? 'pdf' : 'image', url });
+      }
+    } catch (err) {
+      setError(err.message || 'Could not open this file. Download it to view locally.');
+    } finally { setPreviewLoading(false); }
   }
 
   async function downloadFile(file) {
@@ -271,12 +299,20 @@ export default function MediaLibrary() {
         {loading ? <p className="media-empty">Loading your private library…</p> : (
           <>
             {!query && visibleFolders.length > 0 && <div className="media-folder-grid">{visibleFolders.map((folder) => <article className="media-folder-card" key={folder.id}><button className="media-folder-open" type="button" onClick={() => loadLibrary(folder.id)}><span className="media-folder-icon">▰</span><strong>{folder.name}</strong><small>Folder</small></button><div className="media-folder-actions"><button type="button" onClick={() => renameFolder(folder)} disabled={busy} aria-label={`Rename ${folder.name}`}>Rename</button><button type="button" onClick={() => deleteFolder(folder)} disabled={busy} aria-label={`Delete ${folder.name}`}>Delete</button></div></article>)}</div>}
-            {visibleFiles.length > 0 ? <div className="media-file-grid">{visibleFiles.map((file) => <article className="media-file-card" key={file.id}><button className="media-file-preview" type="button" onClick={() => openPreview(file)} aria-label={(canPreviewMediaFile(file) ? 'Preview ' : 'Download ') + file.name}>{canPreviewMediaFile(file) && file.type.startsWith('image/') ? <span className="media-file-image">▧</span> : <span className="media-file-pdf">{file.type === 'application/pdf' ? 'PDF' : file.type === 'application/zip' ? 'ZIP' : (file.name.split('.').at(-1) || 'FILE').slice(0, 5).toUpperCase()}</span>}</button><div className="media-file-info"><strong title={file.name}>{file.name}</strong><span>{formatBytes(file.size)} · {formatDate(file.updatedAt || file.createdAt)}</span><div className="media-file-actions">{canPreviewMediaFile(file) && <button type="button" onClick={() => openPreview(file)}>Preview</button>}<button type="button" onClick={() => downloadFile(file)} disabled={busy}>Download</button><button type="button" onClick={() => renameFile(file)} disabled={busy}>Rename</button><button type="button" onClick={() => shareFile(file)} disabled={busy}>Share</button><button type="button" onClick={() => moveFile(file)} disabled={busy}>Move</button><button type="button" onClick={() => deleteFile(file)} disabled={busy}>Delete</button></div></div></article>)}</div> : <div className="media-empty"><span className="media-empty-icon">▧</span><h2>{query ? 'No matches found' : 'Nothing here yet'}</h2><p>{query ? 'Try another filename or clear your search.' : 'Upload any file, or create a folder to get started.'}</p></div>}
+            {visibleFiles.length > 0 ? <div className="media-file-grid">{visibleFiles.map((file) => <article className="media-file-card" key={file.id}><button className="media-file-preview" type="button" onClick={() => openPreview(file)} aria-label={(canViewFile(file) ? 'Preview ' : 'Download ') + file.name}>{canViewFile(file) && file.type.startsWith('image/') ? <span className="media-file-image">▧</span> : <span className="media-file-pdf">{file.type === 'application/pdf' ? 'PDF' : file.type === 'application/zip' ? 'ZIP' : (file.name.split('.').at(-1) || 'FILE').slice(0, 5).toUpperCase()}</span>}</button><div className="media-file-info"><strong title={file.name}>{file.name}</strong><span>{formatBytes(file.size)} · {formatDate(file.updatedAt || file.createdAt)}</span><div className="media-file-actions">{canViewFile(file) && <button type="button" onClick={() => openPreview(file)}>Preview</button>}<button type="button" onClick={() => downloadFile(file)} disabled={busy}>Download</button><button type="button" onClick={() => renameFile(file)} disabled={busy}>Rename</button><button type="button" onClick={() => shareFile(file)} disabled={busy}>Share</button><button type="button" onClick={() => moveFile(file)} disabled={busy}>Move</button><button type="button" onClick={() => deleteFile(file)} disabled={busy}>Delete</button></div></div></article>)}</div> : <div className="media-empty"><span className="media-empty-icon">▧</span><h2>{query ? 'No matches found' : 'Nothing here yet'}</h2><p>{query ? 'Try another filename or clear your search.' : 'Upload any file, or create a folder to get started.'}</p></div>}
           </>
         )}
       </section>
       <footer><span>Keep useful files close at hand.</span><span>OGENOTES · PRIVATE FILE LIBRARY</span></footer>
-      {preview && <div className="media-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreview(null); }}><section className="media-preview-dialog" role="dialog" aria-modal="true" aria-label={`Preview ${preview.name}`}><div className="media-preview-header"><div><strong>{preview.name}</strong><span>{formatBytes(preview.size)}</span></div><div><button type="button" onClick={() => downloadFile(preview)} disabled={busy}>Download</button><button type="button" onClick={() => renameFile(preview)} disabled={busy}>Rename</button><button type="button" onClick={() => shareFile(preview)} disabled={busy}>Share</button><button className="media-preview-close" type="button" onClick={() => setPreview(null)} aria-label="Close preview">×</button></div></div>{canPreviewMediaFile(preview) && preview.type === 'application/pdf' ? <iframe title={preview.name} src={preview.url} className="media-pdf-frame" /> : canPreviewMediaFile(preview) ? <img src={preview.url} alt={preview.name} className="media-image-preview" /> : <div className="media-empty"><p>Download this file to open it.</p></div>}</section></div>}
+      {previewLoading && <p className="media-inline-status" role="status">Opening your private file preview…</p>}
+      {preview && <div className="media-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreview(null); }}><section className="media-preview-dialog" role="dialog" aria-modal="true" aria-label={`Preview ${preview.name}`}><div className="media-preview-header"><div><strong>{preview.name}</strong><span>{formatBytes(preview.size)}</span></div><div><button type="button" onClick={() => downloadFile(preview)} disabled={busy}>Download</button><button type="button" onClick={() => renameFile(preview)} disabled={busy}>Rename</button><button type="button" onClick={() => shareFile(preview)} disabled={busy}>Share</button><button className="media-preview-close" type="button" onClick={() => setPreview(null)} aria-label="Close preview">×</button></div></div>{preview.kind === 'pdf' ? <>
+        <iframe title={preview.name} src={preview.url} className="media-pdf-frame" />
+        <p className="media-inline-status">If your browser disables PDF viewing, select Download to open the original file.</p>
+      </> : preview.kind === 'image' ? <img src={preview.url} alt={preview.name} className="media-image-preview" /> :
+      preview.kind === 'docx' ? <div className="media-docx-preview" role="document">
+        <p className="media-inline-status">Word document text preview · complex layout, drawings and embedded pictures may differ from Word.</p>
+        <div className="media-docx-page" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{preview.text}</div>
+      </div> : <div className="media-empty"><p>Download this file to open it.</p></div>}</section></div>}
     </>
   );
 }
