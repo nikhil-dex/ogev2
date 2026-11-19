@@ -3,6 +3,8 @@ import { getDatabase } from '../../../../lib/mongodb.js';
 import { readLimitedBody } from '../../../../lib/read-limited-body.js';
 import { decryptGeminiKey } from '../../../../lib/gemini-key.js';
 import { ObjectId } from 'mongodb';
+import { getVaultNoteClient, readVaultNote } from '../../../../lib/oge-vault-notes.js';
+import { ownerMutationFilter } from '../../../../lib/active-owner-mutation.js';
 import { checkRateLimit, rateLimitResponse } from '../../../../lib/rate-limit.js';
 import { inspectLegacyCutoverForOwner, legacyCutoverBlockedResponse } from '../../../../lib/oge-vault-cutover-guard.js';
 
@@ -19,9 +21,6 @@ export async function POST(request) {
     const ownerId = session?.user?.id;
     if (!ownerId) return json({ error: 'Sign in to clean up notes.' }, 401);
     const throttleDb = await getDatabase();
-    const cutover = await inspectLegacyCutoverForOwner(throttleDb, ownerId,
-      { sessionVersion: session.user.sessionVersion });
-    if (cutover.blocked) return legacyCutoverBlockedResponse(cutover);
     const throttle = await checkRateLimit(throttleDb, { scope: 'gemini-cleanup', identifier: ownerId, limit: 10, windowMs: 60 * 60 * 1000 });
     if (!throttle.allowed) return rateLimitResponse(throttle);
 
@@ -36,16 +35,33 @@ export async function POST(request) {
     const heading = String(data?.heading || '').trim();
     const answer = String(data?.answer || '').trim();
     const tags = Array.isArray(data?.tags) ? data.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 10) : [];
-    if (!ObjectId.isValid(id)) return json({ error: 'Save the note first, then use Gemini clean up.' }, 400);
+    const vaultNoteId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    if (!vaultNoteId && !ObjectId.isValid(id))
+      return json({ error: 'Save the note first, then use Gemini clean up.' }, 400);
     if (!heading || heading.length > 160 || !answer || answer.length > 20000) {
       return json({ error: 'Add a heading and content within the allowed lengths before using Gemini.' }, 400);
     }
 
-    const db = await getDatabase();
-    const note = await db.collection('notes').findOne({ _id: new ObjectId(id), ownerId }, { projection: { _id: 1 } });
-    if (!note) return json({ error: 'Note not found.' }, 404);
+    const db = throttleDb;
+    if (vaultNoteId) {
+      // Only suggest edits for a committed Note in the signed-in owner's Vault.
+      // Gemini never writes to GitHub: the user reviews and presses Save.
+      const client = await getVaultNoteClient(db, {
+        ownerId, sessionVersion: session.user.sessionVersion,
+      }, { readOnly: true });
+      await readVaultNote(client, id.toLowerCase());
+    } else {
+      const cutover = await inspectLegacyCutoverForOwner(db, ownerId,
+        { sessionVersion: session.user.sessionVersion });
+      if (cutover.blocked) return legacyCutoverBlockedResponse(cutover);
+      const note = await db.collection('notes').findOne({ _id: new ObjectId(id), ownerId },
+        { projection: { _id: 1 } });
+      if (!note) return json({ error: 'Note not found.' }, 404);
+    }
 
-    const user = await db.collection('users').findOne({ googleSub: ownerId }, { projection: { geminiApiKey: 1 } });
+    const user = await db.collection('users').findOne(
+      ownerMutationFilter(ownerId, { sessionVersion: session.user.sessionVersion }),
+      { projection: { geminiApiKey: 1 } });
     if (!user?.geminiApiKey?.ciphertext) {
       return json({ error: 'Add your Gemini API key in Settings → Gemini AI before cleaning up notes.' }, 409);
     }
