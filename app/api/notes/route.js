@@ -33,7 +33,7 @@ export async function GET(request) {
     const notes = await ctx.db.collection('notes').find(filter).sort({ updatedAt: -1, createdAt: -1 }).limit(500).toArray();
     return json(notes.map((note) => ({
       id: String(note._id), subjectSlug: note.subjectSlug, heading: note.heading,
-      answer: note.answer, tags: note.tags || [], favorite: Boolean(note.favorite),
+      answer: note.answer, tags: note.tags || [], favorite: Boolean(note.favorite), pinned: Boolean(note.pinned),
       createdAt: note.createdAt, updatedAt: note.updatedAt,
     })));
   } catch (error) {
@@ -69,9 +69,9 @@ export async function POST(request) {
       const subject = await ctx.db.collection('subjects').findOne({ ownerId: ctx.ownerId, slug: subjectSlug }, { session });
       if (!subject) return json({ error: 'Subject not found.' }, 404);
       const now = new Date();
-      const note = { ownerId: ctx.ownerId, subjectSlug, heading, answer, tags, favorite: false, createdAt: now, updatedAt: now, revisions: [] };
+      const note = { ownerId: ctx.ownerId, subjectSlug, heading, answer, tags, favorite: false, pinned: false, createdAt: now, updatedAt: now, revisions: [] };
       await ctx.db.collection('notes').insertOne(note, { session });
-      return json({ id: String(note._id), subjectSlug, heading, answer, tags, favorite: false, createdAt: now, updatedAt: now }, 201);
+      return json({ id: String(note._id), subjectSlug, heading, answer, tags, favorite: false, pinned: false, createdAt: now, updatedAt: now }, 201);
     }, { sessionVersion: ctx.sessionVersion });
   } catch (error) {
     console.error('POST /api/notes failed:', error?.name);
@@ -160,16 +160,18 @@ export async function PATCH(request) {
     let data;
     try { data = JSON.parse(await readLimitedBody(request, 4 * 1024)); } catch (error) { return json({ error: error?.status === 413 ? 'Request body is too large.' : 'Enter valid JSON.' }, error?.status || 400); }
     const id = String(data?.id || '');
-    if (!ObjectId.isValid(id) || typeof data?.favorite !== 'boolean') return json({ error: 'Choose a note and a valid favorite value.' }, 400);
+    if (!ObjectId.isValid(id) || (typeof data?.favorite !== 'boolean' && typeof data?.pinned !== 'boolean')) return json({ error: 'Choose a note and a valid favorite value.' }, 400);
     return await withActiveOwnerMutation(ctx.db, ctx.ownerId, async (session) => {
       // Repeat under the signed account transaction: a Vault connection
       // established after preflight must not allow a legacy content write.
       const lockedCutover = await inspectLegacyCutoverForOwner(ctx.db, ctx.ownerId,
         { sessionVersion: ctx.sessionVersion }, { session });
       if (lockedCutover.blocked) return legacyCutoverBlockedResponse(lockedCutover);
-      const result = await ctx.db.collection('notes').updateOne({ _id: new ObjectId(id), ownerId: ctx.ownerId }, { $set: { favorite: data.favorite, updatedAt: new Date() } }, { session });
+      const result = await ctx.db.collection('notes').updateOne({ _id: new ObjectId(id), ownerId: ctx.ownerId }, { $set: { ...(typeof data.favorite === 'boolean' ? { favorite: data.favorite } : {}),
+        ...(typeof data.pinned === 'boolean' ? { pinned: data.pinned } : {}), updatedAt: new Date() } }, { session });
       if (!result.matchedCount) return json({ error: 'Note not found.' }, 404);
-      return json({ id, favorite: data.favorite });
+      return json({ id, ...(typeof data.favorite === 'boolean' ? { favorite: data.favorite } : {}),
+        ...(typeof data.pinned === 'boolean' ? { pinned: data.pinned } : {}) });
     }, { sessionVersion: ctx.sessionVersion });
   } catch (error) {
     console.error('PATCH /api/notes failed:', error?.name);
