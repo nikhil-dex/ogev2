@@ -88,14 +88,17 @@ test('Home always links to dedicated Customs indexing page', async () => {
   const page = await readFile(new URL('../app/customs/page.js', import.meta.url), 'utf8');
   const route = await readFile(new URL('../app/api/vault/customs/route.js', import.meta.url), 'utf8');
   assert.match(home, /title: 'Customs'/);
+  assert.match(home, /account\.notesStorage === 'github' && filesReady/);
   assert.match(home, /href: '\/customs'/);
   assert.doesNotMatch(home, /await listVaultCustoms\(client\)/);
   assert.match(page, /await getIndexedCustoms\(db, client, ownerId,/);
+  assert.match(page, /account\.notesStorage !== 'github'\) redirect\('\/'\)/);
   assert.match(page, /refresh: params\?\.refresh === 'true'/);
   assert.match(page, /Connect your GitHub Vault first/);
   assert.match(page, /href="\/customs\?refresh=true"/);
   assert.match(route, /ownerMutationFilter\(ownerId, \{ sessionVersion \}\)/);
   assert.match(route, /connectedVaultStorageAvailable\(account\)/);
+  assert.match(route, /account\.notesStorage !== 'github'/);
   assert.match(route, /getVaultNoteClient\(db, \{ ownerId, sessionVersion \}, \{ readOnly: true \}\)/);
   assert.match(route, /getIndexedCustoms\(db, client, ownerId, \{ refresh \}\)/);
   assert.match(route, /Content-Security-Policy/);
