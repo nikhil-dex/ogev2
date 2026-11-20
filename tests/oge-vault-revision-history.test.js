@@ -41,7 +41,7 @@ function fixture({ commits = [latestCommit, oldCommit], deleted = [], corrupt = 
       if (url === '/git/ref/heads/main')
         return { object: { sha: changeHead && ++refReads > 1 ? H('raced') : latestCommit } };
       if (url === '/commits?sha=' + latestCommit + '&path=' +
-          encodeURIComponent(path) + '&per_page=6')
+          encodeURIComponent(path) + '&per_page=5')
         return commits.map((sha) => ({ sha }));
       if (url.startsWith('/git/commits/')) {
         const commitSha = url.slice('/git/commits/'.length);
@@ -214,4 +214,36 @@ test('D3 new preview API requires auth, rate limit, owner subject and encrypted-
   assert.doesNotMatch(engine, /collection\(|insertOne\(|deleteOne\(|updateOne\(/);
   assert.doesNotMatch(route, /collection\(['"]notes['"]\)|collection\(['"]quickNotes['"]\)/);
   assert.doesNotMatch(production, /restoreVaultNoteRevision/);
+});
+
+test('history pagination is bounded and cursor pages retain the same GitHub snapshot', async () => {
+  const f = fixture();
+  const history = await listVaultNoteRevisions(f.client, id, { page: 0 });
+  assert.equal(history.page, 0);
+  assert.equal(history.snapshot, latestCommit);
+  const oldPage = await listVaultNoteRevisions(f.client, id, {
+    page: 1, expectedHead: latestCommit,
+    commitsReader: async () => [{ sha: oldCommit }],
+  });
+  assert.equal(oldPage.page, 1);
+  assert.equal(oldPage.items[0].isCurrent, true);
+  assert.ok(oldPage.items.some((entry) => entry.commitSha === oldCommit));
+  await assert.rejects(listVaultNoteRevisions(f.client, id, {
+    page: 1, expectedHead: H('not-current'),
+  }), /vault-history-stale/);
+  await assert.rejects(listVaultNoteRevisions(f.client, id, { page: 20 }), TypeError);
+  await assert.rejects(listVaultNoteRevisions(f.client, id, { page: -1 }), TypeError);
+});
+
+test('Vault History UI has searchable Notes, Markdown comparison and older history navigation', async () => {
+  const view = await readFile(new URL('../app/vault/history/history-client.js', import.meta.url), 'utf8');
+  const route = await readFile(new URL('../app/api/vault/revision-history/route.js', import.meta.url), 'utf8');
+  assert.match(view, /markdownHtml\(entry.answer/);
+  assert.match(view, /Compare versions/);
+  assert.match(view, /vault-history-search/);
+  assert.match(view, /vault-history-subject/);
+  assert.match(view, /Load older versions/);
+  assert.match(view, /snapshot: history.snapshot/);
+  assert.match(route, /const page = data\?\.page/);
+  assert.match(route, /expectedHead/);
 });
