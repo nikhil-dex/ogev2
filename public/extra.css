@@ -2884,3 +2884,33 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .oge-vh-actions button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:850px){.oge-vh-layout{grid-template-columns:minmax(0,1fr)}.oge-vh-note-list{max-height:240px}}
 @media(max-width:620px){.oge-vh-sidebar,.oge-vh-main{padding:14px}.oge-vh-panes{grid-template-columns:1fr}.oge-vh-markdown{max-height:320px}.oge-vh-actions button{width:100%}}
+
+
+/* Vault Study parity: compact flashcard controls and readable Markdown answers. */
+.oge-study-settings{display:grid;gap:9px}
+.oge-study-settings>label{font:700 12px var(--sans)}
+.oge-study-settings>select{width:fit-content;max-width:100%;min-height:38px}
+.oge-study-settings progress,.oge-study-card progress{width:100%;height:8px;accent-color:var(--green)}
+.oge-study-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px;padding-top:13px;border-top:1px solid var(--line)}
+.oge-study-filters>div{display:flex;flex-direction:column;gap:6px}
+.oge-study-filters label{font:700 11px var(--sans);color:var(--muted)}
+.oge-study-filters select{box-sizing:border-box;width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:9px;background:var(--paper);color:var(--ink)}
+.oge-study-card{display:flex;flex-direction:column;gap:15px;max-width:100%;min-width:0}
+.oge-study-card-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.oge-study-card h2{font:750 clamp(21px,3vw,30px)/1.4 var(--display);letter-spacing:-.03em;overflow-wrap:anywhere}
+.oge-study-hidden{padding:36px 15px;border:1px dashed var(--line);border-radius:10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.oge-study-hidden p{margin:0;color:var(--muted);font:13px/1.6 var(--sans)}
+.oge-study-answer{min-height:100px;max-height:min(55vh,480px);overflow:auto;padding:18px;border:1px solid var(--line);border-radius:10px;overflow-wrap:anywhere;font:13px/1.8 var(--sans)}
+.oge-study-answer>:first-child{margin-top:0}
+.oge-study-answer h1,.oge-study-answer h2,.oge-study-answer h3{font-weight:750;margin:1em 0 .5em;letter-spacing:normal}
+.oge-study-answer pre{max-width:100%;overflow:auto;padding:13px;border-radius:8px;border:1px solid var(--line);background:var(--paper);font:12px/1.6 var(--mono)}
+.oge-study-answer code{font-family:var(--mono)}
+.oge-study-answer blockquote{padding-left:12px;border-left:3px solid var(--green)}
+.oge-study-answer a{color:var(--green);text-decoration:underline}
+.oge-study-ratings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.oge-study-ratings button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:62px}
+.oge-study-ratings small{font:10px/1.5 var(--sans);color:var(--muted);text-align:center}
+.oge-study-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding-top:14px;border-top:1px solid var(--line)}
+.oge-study-navigation button{flex:1 1 110px;min-height:39px}
+.oge-study-navigation button:disabled,.oge-study-ratings button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:620px){.oge-study-filters{grid-template-columns:1fr}.oge-study-ratings{grid-template-columns:repeat(2,minmax(0,1fr))}.oge-study-answer{max-height:55vh}}
