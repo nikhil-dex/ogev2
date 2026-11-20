@@ -85,3 +85,27 @@ test('Viewer fetches authenticated bytes, uses private blob URLs and never exter
   assert.match(backend, /context\(\{ readOnly: true \}\)/);
   assert.match(backend, /readVaultMediaBlob\(ctx\.client/);
 });
+
+
+test('My Files usability: drag upload, safe text preview, sort controls and retry progress', async () => {
+  const ui = await readFile(new URL('../app/components/media-library.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../public/extra.css', import.meta.url), 'utf8');
+  assert.match(ui, /onDragEnter={onDragEnter}/);
+  assert.match(ui, /onDrop={onDrop}/);
+  assert.match(ui, /event\.dataTransfer\?\.files/);
+  assert.match(ui, /TEXT_PREVIEW_EXTENSIONS/);
+  assert.match(ui, /MAX_TEXT_PREVIEW_BYTES = 1024 \* 1024/);
+  assert.match(ui, /new TextDecoder\('utf-8', \{ fatal: true \}\)\.decode\(bytes\)/);
+  assert.match(ui, /preview\.kind === 'text'/);
+  assert.match(ui, /<pre className="media-text-preview">\{preview\.text\}<\/pre>/);
+  assert.match(ui, /sortFileList\(files\.filter/);
+  assert.match(ui, /value="date">Newest/);
+  assert.match(ui, /value="name">Name/);
+  assert.match(ui, /value="size">Largest/);
+  assert.match(ui, /setRetryFiles\(selected\.slice\(uploaded\)\)/);
+  assert.match(ui, /uploadSelectedFiles\(retryFiles\)/);
+  assert.match(ui, /setUploadProgress/);
+  assert.match(ui, /<progress value=\{uploadProgress\.percent\}/);
+  assert.match(css, /\.media-drop-active/);
+  assert.match(css, /\.media-text-preview/);
+});

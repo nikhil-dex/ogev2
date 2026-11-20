@@ -1242,3 +1242,14 @@ These criteria are release blockers, not optional polish:
 - [x] Keep 20-note pagination and append newly scanned Notes without dropping existing session cards.
 - [x] Extend regression tests for adaptive scheduling and UI source paths.
 - [ ] Verify CI and real GitHub-connected browser workflow before merging or deployment.
+
+
+## My Files usability — November 2026
+
+- [x] Drag and drop files into the currently selected GitHub Vault folder.
+- [x] Plain-text previews for Markdown, text and common source formats, with a 1 MB preview cap.
+- [x] Sort files by newest, filename and size.
+- [x] Show per-file upload chunk progress and retry unfinished files in the current tab.
+- [x] Keep the existing GitHub Vault file APIs, size limits, folder actions and storage architecture.
+- [x] Add focused UI regression coverage.
+- [ ] Confirm CI and signed-in local browser drop/upload/preview/retry behavior before merge or deployment.
