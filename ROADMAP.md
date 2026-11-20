@@ -1230,3 +1230,15 @@ These criteria are release blockers, not optional polish:
 - [x] Preserve explicit Restore, current SHA checks, GitHub-only content, and pending-draft conflict handling.
 - [x] Add focused source and pagination regression tests.
 - [ ] Verify full CI and perform real-account Chrome/Safari manual acceptance before merge or deployment.
+
+
+## Revision & Study parity — November 2026
+
+- [x] Adopt adaptive OgeNotes review scheduling for GitHub Vault: Again 10 minutes; Hard, Good, Easy grow from previous interval.
+- [x] Retain cross-device scheduling and daily goals as metadata in MongoDB; Note bodies stay in GitHub.
+- [x] Add Review Due and Study All modes for scanned committed Notes.
+- [x] Add subject filter, Previous/Next, Skip, Shuffle and per-card progress in Vault Study.
+- [x] Render answer with existing escaped Markdown renderer; keep reveal-before-rate.
+- [x] Keep 20-note pagination and append newly scanned Notes without dropping existing session cards.
+- [x] Extend regression tests for adaptive scheduling and UI source paths.
+- [ ] Verify CI and real GitHub-connected browser workflow before merging or deployment.

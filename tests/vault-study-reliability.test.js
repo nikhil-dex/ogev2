@@ -1,14 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { nextReviewDate, progressKey, recordVaultReview, annotateVaultStudyPage } from '../lib/oge-vault-study.js';
+import { nextReviewDate, nextReviewSchedule, progressKey, recordVaultReview, annotateVaultStudyPage } from '../lib/oge-vault-study.js';
 import { vaultReadCacheKey, saveVaultReadCache, readVaultReadCache } from '../lib/oge-vault-read-cache.js';
 import { readVaultBackupManifest } from '../lib/oge-vault-backup-manifest.js';
 
 test('GitHub study due intervals and identity are bounded', () => {
   const now = new Date('2026-11-19T10:00:00Z');
-  assert.equal(nextReviewDate('again', now).toISOString(), '2026-11-20T10:00:00.000Z');
-  assert.equal(nextReviewDate('easy', now).toISOString(), '2026-12-03T10:00:00.000Z');
+  assert.equal(nextReviewDate('again', now).toISOString(), '2026-11-19T10:10:00.000Z');
+  assert.equal(nextReviewDate('easy', now).toISOString(), '2026-11-23T10:00:00.000Z');
+  assert.equal(nextReviewSchedule('good', { intervalDays: 3 }, now).intervalDays, 6);
+  assert.equal(nextReviewSchedule('hard', { intervalDays: 5 }, now).intervalDays, 6);
+  assert.equal(nextReviewSchedule('easy', { intervalDays: 4 }, now).intervalDays, 10);
   assert.throws(() => nextReviewDate('invalid'));
   assert.equal(progressKey('owner', 2, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
     'owner:2:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
@@ -18,6 +21,7 @@ test('GitHub study due intervals and identity are bounded', () => {
 test('Study progress stores metadata, not the note body', async () => {
   const calls = [];
   const db = { collection() { return {
+    async findOne() { return null; },
     async updateOne(filter, update, options) { calls.push({ filter, update, options }); },
     find() { return { toArray: async () => [] }; },
   }; } };
@@ -28,6 +32,7 @@ test('Study progress stores metadata, not the note body', async () => {
     new Date('2026-11-19T10:00:00Z'));
   assert.equal(result.rating, 'good');
   assert.equal(calls.length, 1);
+  assert.equal(calls[0].update.$set.intervalDays, 1);
   assert.ok(!JSON.stringify(calls).includes('Private answer'));
   assert.ok(!JSON.stringify(calls).includes('Secret heading'));
   const annotated = await annotateVaultStudyPage(db, client, 'owner', [note]);
@@ -75,4 +80,33 @@ test('New Vault-only workspaces and Customs recovery are wired into home', async
   assert.match(customs, /customs\?\.stale/);
   assert.match(study, /readVaultNote\(ctx\.client/);
   assert.match(study, /recordVaultReview\(ctx\.db/);
+});
+
+
+test('Adaptive Vault review reads previous interval and stores only progress metadata', async () => {
+  const calls = [];
+  const db = { collection() { return {
+    async findOne() { return { intervalDays: 3 }; },
+    async updateOne(filter, update) { calls.push({ filter, update }); },
+  }; } };
+  const note = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    subjectId: 'machine-learning', heading: 'Private heading', answer: 'Private answer' };
+  const result = await recordVaultReview(db, { vault: { repoId: 7 } }, 'owner',
+    note, 'good', new Date('2026-11-19T10:00:00Z'));
+  assert.equal(result.intervalDays, 6);
+  assert.equal(result.reviewDueAt, '2026-11-25T10:00:00.000Z');
+  assert.ok(!JSON.stringify(calls).includes('Private answer'));
+  assert.ok(!JSON.stringify(calls).includes('Private heading'));
+});
+
+test('Vault flashcards support study modes, subject filtering, navigation and Markdown', async () => {
+  const source = await readFile(new URL('../app/vault/study/study-client.js', import.meta.url), 'utf8');
+  for (const feature of ['Review Due', 'Study All', 'study-subject',
+    'Previous', 'Next', 'Shuffle', 'Skip for now', 'Reveal answer']) {
+    assert.ok(source.includes(feature), feature);
+  }
+  assert.match(source, /markdownHtml\(note\.answer\)/);
+  assert.match(source, /reviewedIds/);
+  assert.match(source, /setCompleted\(\(n\) => n \+ 1\)/);
+  assert.match(source, /Scan next 20 Notes/);
 });

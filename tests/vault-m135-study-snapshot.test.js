@@ -25,10 +25,10 @@ test('Skipping changes the displayed card without marking it as reviewed', () =>
 
 test('Study UI preserves queue, shows scan progress, and acknowledges review only after Save', async () => {
   const source = await readFile(new URL('../app/vault/study/study-client.js', import.meta.url), 'utf8');
-  assert.match(source, /next \? appendStudyDueNotes\(existing, page\.notes\)/);
-  assert.match(source, /removeReviewedStudyNote\(items, note\.id\)/);
+  assert.match(source, /setAllNotes\(\(existing\) => next \?/);
+  assert.match(source, /setReviewedIds\(\(ids\) => \[\.\.\.ids, note\.id\]\)/);
   assert.match(source, /setCompleted\(\(n\) => n \+ 1\)/);
-  assert.match(source, /skipStudyNote\(items\)/);
+  assert.match(source, /function skip\(\)/);
   assert.match(source, /Scan next 20 Notes/);
 });
 
