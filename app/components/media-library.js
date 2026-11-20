@@ -11,7 +11,20 @@ async function readResponse(response) {
   return data;
 }
 
-const canViewFile = file => canPreviewMediaFile(file) || canPreviewDocumentFile(file);
+const TEXT_PREVIEW_EXTENSIONS = new Set([
+  'txt', 'md', 'markdown', 'js', 'jsx', 'ts', 'tsx', 'json', 'css', 'html',
+  'htm', 'py', 'java', 'c', 'cpp', 'h', 'sh', 'yaml', 'yml', 'xml', 'csv', 'log',
+]);
+const MAX_TEXT_PREVIEW_BYTES = 1024 * 1024; // Keep browser text previews lightweight.
+const canPreviewTextFile = file => Boolean(file && file.size <= MAX_TEXT_PREVIEW_BYTES &&
+  TEXT_PREVIEW_EXTENSIONS.has(file.name.split('.').pop()?.toLowerCase()));
+const canViewFile = file => canPreviewMediaFile(file) || canPreviewDocumentFile(file) || canPreviewTextFile(file);
+const sortFileList = (items, sortBy) => [...items].sort((a, b) => {
+  if (sortBy === 'name') return a.name.localeCompare(b.name, undefined, { numeric: true });
+  if (sortBy === 'size') return b.size - a.size || a.name.localeCompare(b.name);
+  return new Date(b.updatedAt || b.createdAt || 0).getTime() -
+    new Date(a.updatedAt || a.createdAt || 0).getTime() || a.name.localeCompare(b.name);
+});
 
 function formatBytes(value) {
   if (value < 1024) return `${value} B`;
@@ -30,6 +43,10 @@ export default function MediaLibrary() {
   const [folderId, setFolderId] = useState(null);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date');
+  const [dragging, setDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [retryFiles, setRetryFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +55,7 @@ export default function MediaLibrary() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const uploadRef = useRef(null);
   const pendingUploadsRef = useRef(new Map());
+  const dragDepthRef = useRef(0);
 
   const loadLibrary = useCallback(async (selectedFolder = null) => {
     setLoading(true);
@@ -62,14 +80,14 @@ export default function MediaLibrary() {
 
   const currentFolder = folders.find((folder) => folder.id === folderId);
   const visibleFolders = useMemo(() => folders.filter((folder) => folder.name.toLowerCase().includes(query.trim().toLowerCase())), [folders, query]);
-  const visibleFiles = useMemo(() => files.filter((file) => {
+  const visibleFiles = useMemo(() => sortFileList(files.filter((file) => {
     const matchesQuery = file.name.toLowerCase().includes(query.trim().toLowerCase());
     const category = file.type === 'application/pdf' ? 'pdf'
       : file.type === 'application/zip' ? 'zip'
         : file.type.startsWith('image/') ? 'images' : 'other';
     const matchesType = typeFilter === 'all' || typeFilter === category;
     return matchesQuery && matchesType;
-  }), [files, query, typeFilter]);
+  }), sortBy), [files, query, typeFilter, sortBy]);
 
   async function createFolder() {
     const name = window.prompt('Folder name');
@@ -109,11 +127,39 @@ export default function MediaLibrary() {
   async function uploadFiles(event) {
     const selected = Array.from(event.target.files || []);
     event.target.value = '';
+    await uploadSelectedFiles(selected);
+  }
+
+  function onDragEnter(event) {
+    if (!event.dataTransfer?.types?.includes('Files')) return;
+    event.preventDefault();
+    dragDepthRef.current++;
+    setDragging(true);
+  }
+  function onDragOver(event) {
+    if (!event.dataTransfer?.types?.includes('Files')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = busy ? 'none' : 'copy';
+  }
+  function onDragLeave(event) {
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDragging(false);
+  }
+  function onDrop(event) {
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setDragging(false);
+    if (!busy) void uploadSelectedFiles(Array.from(event.dataTransfer?.files || []));
+  }
+
+  async function uploadSelectedFiles(selected) {
     if (!selected.length || busy) return;
-    setBusy(true); setError(''); setMessage('');
+    setBusy(true); setError(''); setMessage(''); setRetryFiles([]);
     let uploaded = 0;
     try {
-      for (const file of selected) {
+      for (const [index, file] of selected.entries()) {
+        setUploadProgress({ name: file.name, current: index + 1, total: selected.length, percent: 0 });
         const type = file.name.toLowerCase().endsWith('.zip')
           ? 'application/zip' : (file.type || 'application/octet-stream');
         const size = file.size;
@@ -129,6 +175,8 @@ export default function MediaLibrary() {
         const chunks = pending.chunks;
         const chunkSize = 2 * 1024 * 1024;
         const count = Math.ceil(size / chunkSize);
+        if (chunks.length) setUploadProgress({ name: file.name, current: index + 1,
+          total: selected.length, percent: Math.round(chunks.length / count * 100) });
         for (let part = chunks.length; part < count; part++) {
           const piece = file.slice(part * chunkSize, Math.min(size, (part + 1) * chunkSize));
           const result = await readResponse(await fetch('/api/vault/media?action=upload-chunk&id=' +
@@ -138,8 +186,10 @@ export default function MediaLibrary() {
             body: piece,
           }));
           chunks.push({ sha: result.sha, size: result.size });
-          setMessage('Uploading ' + file.name + ' · ' + Math.round((part + 1) / count * 100) + '%');
+          setUploadProgress({ name: file.name, current: index + 1,
+            total: selected.length, percent: Math.round((part + 1) / count * 100) });
         }
+        setUploadProgress({ name: file.name, current: index + 1, total: selected.length, percent: 100, finalizing: true });
         await readResponse(await fetch('/api/vault/media', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -152,9 +202,10 @@ export default function MediaLibrary() {
       setMessage(uploaded + ' file' + (uploaded === 1 ? '' : 's') + ' uploaded.');
       await loadLibrary(folderId);
     } catch (err) {
-      setError(err.message || 'Upload failed. Files completed before this may already be saved.');
+      setRetryFiles(selected.slice(uploaded));
       await loadLibrary(folderId);
-    } finally { setBusy(false); }
+      setError((err.message || 'Upload failed.') + ' Retry to resume unfinished files.');
+    } finally { setBusy(false); setUploadProgress(null); }
   }
 
   async function openPreview(file) {
@@ -177,6 +228,9 @@ export default function MediaLibrary() {
       if (canPreviewDocumentFile(file)) {
         const text = await previewDocxText(bytes);
         setPreview({ ...file, kind: 'docx', text });
+      } else if (canPreviewTextFile(file)) {
+        const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        setPreview({ ...file, kind: 'text', text });
       } else {
         // Browser PDF/image viewers need the correct MIME on the local blob.
         // This also avoids embedding an authenticated API response subject to
@@ -282,7 +336,8 @@ export default function MediaLibrary() {
         <div className="media-title-row"><div><h1>My Files<span className="period">.</span></h1><p className="hub-lead">Keep files of any type organized in private folders.</p></div><span className="media-private-pill">♢ Private storage</span></div>
       </section>
 
-      <section className="media-workspace" aria-label="Private file library">
+      <section className={"media-workspace" + (dragging ? " media-drop-active" : "")} aria-label="Private file library"
+        onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
         <div className="media-toolbar">
           <div className="media-search"><span aria-hidden="true">⌕</span><input aria-label="Search files and folders" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search this folder…" /></div>
           <div className="media-toolbar-actions">
@@ -291,11 +346,14 @@ export default function MediaLibrary() {
             <input ref={uploadRef} className="media-hidden-input" type="file" multiple onChange={uploadFiles} />
           </div>
         </div>
-        <div className="media-breadcrumbs"><button type="button" onClick={() => loadLibrary(null)}>My Files</button>{currentFolder && <><span>/</span><strong>{currentFolder.name}</strong></>}</div>
-        <div className="media-filter-row"><span>{currentFolder ? 'CURRENT FOLDER' : 'ALL FILES'}</span><div className="media-type-filters">{[['all','All'],['pdf','PDFs'],['zip','ZIPs'],['images','Images'],['other','Other']].map(([value,label]) => <button key={value} className={typeFilter === value ? 'active' : ''} type="button" onClick={() => setTypeFilter(value)}>{label}</button>)}</div></div>
+        <p className="media-drop-hint">Drop files here to upload into {currentFolder?.name || "My Files"}.</p>
+        <div className="media-breadcrumbs"><button type="button" disabled={busy} onClick={() => loadLibrary(null)}>My Files</button>{currentFolder && <><span>/</span><strong>{currentFolder.name}</strong></>}</div>
+        <div className="media-filter-row"><span>{currentFolder ? 'CURRENT FOLDER' : 'ALL FILES'}</span><div className="media-type-filters">{[['all','All'],['pdf','PDFs'],['zip','ZIPs'],['images','Images'],['other','Other']].map(([value,label]) => <button key={value} className={typeFilter === value ? 'active' : ''} type="button" onClick={() => setTypeFilter(value)}>{label}</button>)}</div><label className="media-sort-label" htmlFor="media-sort">Sort by <select id="media-sort" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="date">Newest</option><option value="name">Name</option><option value="size">Largest</option></select></label></div>
         {error && <p className="media-feedback is-error" role="alert">{error}</p>}
         {message && <p className="media-feedback" role="status">{message}</p>}
-        {busy && <p className="media-inline-status" role="status">Working… Keep this page open until the operation finishes.</p>}
+        {uploadProgress && <div className="media-upload-progress" role="status"><span>File {uploadProgress.current} of {uploadProgress.total}: {uploadProgress.name} · {uploadProgress.finalizing ? "Saving to GitHub…" : uploadProgress.percent + "%"}</span><progress value={uploadProgress.percent} max={100} aria-label="Upload progress" /></div>}
+        {retryFiles.length > 0 && !busy && <button className="study-button" type="button" onClick={() => void uploadSelectedFiles(retryFiles)}>Retry {retryFiles.length} unfinished file{retryFiles.length === 1 ? "" : "s"}</button>}
+        {busy && !uploadProgress && <p className="media-inline-status" role="status">Working… Keep this page open until the operation finishes.</p>}
         {loading ? <p className="media-empty">Loading your private library…</p> : (
           <>
             {!query && visibleFolders.length > 0 && <div className="media-folder-grid">{visibleFolders.map((folder) => <article className="media-folder-card" key={folder.id}><button className="media-folder-open" type="button" onClick={() => loadLibrary(folder.id)}><span className="media-folder-icon">▰</span><strong>{folder.name}</strong><small>Folder</small></button><div className="media-folder-actions"><button type="button" onClick={() => renameFolder(folder)} disabled={busy} aria-label={`Rename ${folder.name}`}>Rename</button><button type="button" onClick={() => deleteFolder(folder)} disabled={busy} aria-label={`Delete ${folder.name}`}>Delete</button></div></article>)}</div>}
@@ -309,6 +367,7 @@ export default function MediaLibrary() {
         <iframe title={preview.name} src={preview.url} className="media-pdf-frame" />
         <p className="media-inline-status">If your browser disables PDF viewing, select Download to open the original file.</p>
       </> : preview.kind === 'image' ? <img src={preview.url} alt={preview.name} className="media-image-preview" /> :
+      preview.kind === 'text' ? <div className="media-docx-preview" role="document"><pre className="media-text-preview">{preview.text}</pre></div> :
       preview.kind === 'docx' ? <div className="media-docx-preview" role="document">
         <p className="media-inline-status">Word document text preview · complex layout, drawings and embedded pictures may differ from Word.</p>
         <div className="media-docx-page" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{preview.text}</div>
