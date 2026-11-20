@@ -54,6 +54,7 @@ test('learned state is metadata only and maps to good or easy recall', async () 
   const calls = [];
   const rows = [{ noteId: ID, rating: 'easy', dueAt: new Date('2026-11-18'), reviewCount: 4 }];
   const db = { collection: () => ({
+    async findOne() { return { intervalDays: 4 }; },
     updateOne: async (...args) => { calls.push(args); },
     find: () => ({ toArray: async () => rows }),
   }) };
