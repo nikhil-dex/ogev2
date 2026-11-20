@@ -1262,3 +1262,13 @@ These criteria are release blockers, not optional polish:
 - [x] Preserve existing GitHub Vault capture internals and Learning Tracks links for compatibility; no storage migration or deletion.
 - [x] Update homepage module regression check.
 - [ ] Validate CI and local homepage after merge.
+
+
+## Plain-language module names — November 2026
+
+- [x] Rename visible Vault Study card to Revision.
+- [x] Rename visible Vault History card to Note History.
+- [x] Rename visible Vault Backup card to Backup & Recovery.
+- [x] Rename the Customs card and page heading to Custom Pages.
+- [x] Keep existing URLs, GitHub Vault connections and feature behavior unchanged.
+- [ ] Verify CI and local navigation.

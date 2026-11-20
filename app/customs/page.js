@@ -8,7 +8,7 @@ import { getVaultNoteClient } from '../../lib/oge-vault-notes.js';
 import { getIndexedCustoms } from '../../lib/customs-index.js';
 import SiteNavbar from '../components/site-navbar';
 
-export const metadata = { title: 'Customs | Oge Vault' };
+export const metadata = { title: 'Custom Pages | Oge' };
 export const dynamic = 'force-dynamic';
 
 export default async function CustomsPage({ searchParams }) {
@@ -41,7 +41,7 @@ export default async function CustomsPage({ searchParams }) {
       <section className="oge-module-section" aria-labelledby="customs-title">
         <div className="oge-section-heading">
           <div><span className="oge-section-kicker">YOUR PRIVATE GITHUB VAULT</span>
-            <h1 id="customs-title">Customs<span>.</span></h1>
+            <h1 id="customs-title">Custom Pages<span>.</span></h1>
             <p>Your HTML pages, PDFs and images from the root <code>customs/</code> folder of your own Vault repository.</p>
           </div>
           {connected && <Link className="oge-primary-link" href="/customs?refresh=true">↻ Refresh files</Link>}
