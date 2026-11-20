@@ -9,7 +9,7 @@ import BackupCoverage from './backup-coverage.js';
 import VaultZipRestore from './restore-client.js';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Vault Backup | Oge', robots: { index: false } };
+export const metadata = { title: 'Backup & Recovery | Oge', robots: { index: false } };
 export default async function VaultBackupPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/register');
