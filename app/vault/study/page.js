@@ -8,7 +8,7 @@ import SiteNavbar from '../../components/site-navbar';
 import VaultStudyClient from './study-client.js';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Vault Study | Oge' };
+export const metadata = { title: 'Revision | Oge' };
 export default async function VaultStudyPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/register');
