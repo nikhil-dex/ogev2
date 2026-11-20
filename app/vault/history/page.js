@@ -8,7 +8,7 @@ import SiteNavbar from '../../components/site-navbar';
 import VaultHistoryClient from './history-client.js';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Vault History | Oge' };
+export const metadata = { title: 'Note History | Oge' };
 export default async function VaultHistoryPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/register');
