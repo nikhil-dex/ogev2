@@ -1253,3 +1253,12 @@ These criteria are release blockers, not optional polish:
 - [x] Keep the existing GitHub Vault file APIs, size limits, folder actions and storage architecture.
 - [x] Add focused UI regression coverage.
 - [ ] Confirm CI and signed-in local browser drop/upload/preview/retry behavior before merge or deployment.
+
+
+## Quick Capture simplification — November 2026
+
+- [x] Remove the redundant Quick Capture card from the OgeV2 homepage.
+- [x] Keep Quick Notes as the extension-only capture inbox and AirNotes as the website writing area.
+- [x] Preserve existing GitHub Vault capture internals and Learning Tracks links for compatibility; no storage migration or deletion.
+- [x] Update homepage module regression check.
+- [ ] Validate CI and local homepage after merge.

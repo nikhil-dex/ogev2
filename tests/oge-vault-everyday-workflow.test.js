@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
-test('M104 home routes connected owners to GitHub Notes and exposes Quick Capture directly', async () => {
+test('M104 home routes connected owners to GitHub Notes without duplicate capture tile', async () => {
   const home = await read('../app/page.js');
   assert.match(home, /onboardingComplete: 1, vault: 1/);
   assert.match(home, /const vaultNotesReady = vaultNotesAvailable\(account\)/);
@@ -14,9 +14,9 @@ test('M104 home routes connected owners to GitHub Notes and exposes Quick Captur
   assert.match(home, /vaultNotesReady \? '\/vault\/notes' : '\/vault\?setup=onboarding'/);
   assert.match(home, /<SiteNavbar notesHref=\{notesHref\}/);
   assert.match(home, /item\.href === '\/notes' \? notesHref : item\.href/);
-  assert.match(home, /title: 'Quick Capture'/);
-  assert.match(home, /href: '\/vault\/capture'/);
-  assert.match(home, /captureReady \? \[/);
+  assert.doesNotMatch(home, /title: 'Quick Capture'/);
+  assert.match(home, /title: 'My Files'/);
+  assert.match(home, /Open AirNotes/);
 });
 
 test('M104 Notes navigation stays in GitHub workspace; legacy users keep classic route', async () => {

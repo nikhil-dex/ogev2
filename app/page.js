@@ -74,13 +74,8 @@ export default async function HomePage() {
       description: 'Store documents, code, media and other files in your private GitHub Vault.',
       href: '/files', icon: '▣',
     }] : []),
-    ...(captureReady ? [{
-      number: filesReady ? '07' : '06', group: 'CAPTURE', title: 'Quick Capture',
-      description: 'Write a note fast. Choose a subject and press Save.',
-      href: '/vault/capture', icon: '✎',
-    }] : []),
     ...(process.env.OGE_LEARNING_TRACKS_PREVIEW === 'true' ? [{
-      number: String(6 + Number(captureReady) + Number(filesReady)).padStart(2, '0'), group: 'LEARN',
+      number: String(6 + Number(filesReady)).padStart(2, '0'), group: 'LEARN',
       title: 'Learning Tracks', description: 'Turn video playlists into daily learning goals.',
       href: '/learning-tracks', icon: '▷',
     }] : []),
