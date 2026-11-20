@@ -158,7 +158,7 @@ export default function VaultStudyClient() {
       <div className="oge-workflow-stat"><span className="oge-section-kicker">LEARNED NOTES</span><strong>{learnedCount}</strong></div>
     </div>
     <div className="hub-card oge-module-card oge-study-settings">
-      <label htmlFor="vault-daily-goal">Today's revision goal</label>
+      <label htmlFor="vault-daily-goal">Today&apos;s revision goal</label>
       <select id="vault-daily-goal" value={daily.goal} disabled={goalSaving}
         onChange={(event) => void changeDailyGoal(Number(event.target.value))}>
         {[5, 10, 15, 20, 30].map((n) => <option key={n} value={n}>{n} Notes</option>)}
