@@ -83,11 +83,11 @@ test('Opening a Custom HTML file reads immutable blob bytes', async () => {
   await assert.rejects(readVaultCustomFile(client, 'no.html'));
 });
 
-test('Home always links to dedicated Customs indexing page', async () => {
+test('Home links Custom Pages to the existing Customs indexing page', async () => {
   const home = await readFile(new URL('../app/page.js', import.meta.url), 'utf8');
   const page = await readFile(new URL('../app/customs/page.js', import.meta.url), 'utf8');
   const route = await readFile(new URL('../app/api/vault/customs/route.js', import.meta.url), 'utf8');
-  assert.match(home, /title: 'Customs'/);
+  assert.match(home, /title: 'Custom Pages'/);
   assert.match(home, /account\.notesStorage === 'github' && filesReady/);
   assert.match(home, /href: '\/customs'/);
   assert.doesNotMatch(home, /await listVaultCustoms\(client\)/);
