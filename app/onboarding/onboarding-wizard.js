@@ -8,8 +8,8 @@ import { saveNewsInterests } from './actions.js';
 const HEADINGS = [
   ['Welcome to Oge', 'A simpler space for everything you learn and create.'],
   ['Your news, your interests', 'Pick up to 10 topics or skip for a general news feed.'],
-  ['Choose where Notes live', 'Select the home for your saved Notes. This choice does not move existing data.'],
-  ['Make your workspace yours', 'Choose the tools you want on your homepage. This step comes before GitHub setup.'],
+  ['Make your workspace yours', 'Choose the tools you want on your homepage. You can change this later in Settings.'],
+  ['Choose where Notes live', 'One final choice before entering your workspace or connecting GitHub.'],
 ];
 
 export default function OnboardingWizard({ initialInterests = [], initialStorage = '' }) {
@@ -21,10 +21,6 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
   const [submitting, setSubmitting] = useState(false);
 
   function advance() {
-    if (step === 2 && !storage) {
-      setError('Choose where your Notes will be stored before continuing.');
-      return;
-    }
     setError('');
     setStep((current) => Math.min(current + 1, 3));
   }
@@ -58,14 +54,14 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
       <form action={saveNewsInterests} onSubmit={(event) => {
         if (step !== 3) {
           event.preventDefault();
-          setError('Choose your homepage modules before finishing setup.');
+          setError('Finish the storage step before completing onboarding.');
           setStep(3);
           return;
         }
         if (!storage) {
           event.preventDefault();
           setError('Select a Notes storage option.');
-          setStep(2);
+          setStep(3);
           return;
         }
         setSubmitting(true);
@@ -94,7 +90,23 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
           </div>
           <p className="oge-onboarding-description">{interests.length}/10 selected · All choices optional.</p>
         </>}
-        {step === 2 && <div className="oge-storage-options">
+        {step === 2 && <>
+          <div className="oge-wizard-choice-grid oge-wizard-modules">
+            {HOME_MODULES.map((item) => <button key={item.id} type="button"
+              className={`oge-wizard-choice oge-wizard-module ${modules.includes(item.id) ? 'is-selected' : ''}`}
+              aria-pressed={modules.includes(item.id)}
+              onClick={() => toggleModule(item.id)}>
+              <span aria-hidden="true">{modules.includes(item.id) ? '✓' : '+'}</span>
+              <span><strong>{item.label}</strong><small>{item.description}</small></span>
+            </button>)}
+          </div>
+          <div className="oge-wizard-module-tools">
+            <span>{modules.length} chosen · Hidden modules still work when available.</span>
+            <button type="button" onClick={() => setModules([...DEFAULT_HOME_MODULES])}>Use recommended</button>
+            <button type="button" onClick={() => setModules([])}>Choose later</button>
+          </div>
+        </>}
+        {step === 3 && <div className="oge-storage-options">
           <button type="button" className={`oge-wizard-storage ${storage === 'mongodb' ? 'is-selected' : ''}`}
             aria-pressed={storage === 'mongodb'} onClick={() => { setStorage('mongodb'); setError(''); }}>
             <span className="oge-wizard-storage-icon" aria-hidden="true">☁</span>
@@ -111,22 +123,6 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
           </button>
           <p className="oge-onboarding-description oge-wizard-storage-help">Account details and preferences use MongoDB for both choices. GitHub requires a separate connection before Notes are ready.</p>
         </div>}
-        {step === 3 && <>
-          <div className="oge-wizard-choice-grid oge-wizard-modules">
-            {HOME_MODULES.map((item) => <button key={item.id} type="button"
-              className={`oge-wizard-choice oge-wizard-module ${modules.includes(item.id) ? 'is-selected' : ''}`}
-              aria-pressed={modules.includes(item.id)}
-              onClick={() => toggleModule(item.id)}>
-              <span aria-hidden="true">{modules.includes(item.id) ? '✓' : '+'}</span>
-              <span><strong>{item.label}</strong><small>{item.description}</small></span>
-            </button>)}
-          </div>
-          <div className="oge-wizard-module-tools">
-            <span>{modules.length} chosen · Hidden modules still work when available.</span>
-            <button type="button" onClick={() => setModules([...DEFAULT_HOME_MODULES])}>Use recommended</button>
-            <button type="button" onClick={() => setModules([])}>Choose later</button>
-          </div>
-        </>}
         {error && <p role="alert" className="oge-wizard-error">{error}</p>}
         <div className="oge-wizard-actions">
           {step > 0
