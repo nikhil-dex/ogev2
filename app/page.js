@@ -9,6 +9,7 @@ import EnglishWordExplainer from './components/english-word-explainer';
 import HomeDashboard from './components/home-dashboard';
 import QuickNotesPanel from './components/quick-notes-panel';
 import { githubVaultFilesEnabled } from '../lib/oge-vault-media-validation.js';
+import { parseHomeModules, homeModuleVisible, homeModuleIdForHref } from '../lib/home-modules.js';
 import { vaultNotesAvailable, vaultCaptureAvailable } from '../lib/oge-vault-workspace-routing.js';
 
 const modules = [
@@ -25,7 +26,7 @@ export default async function HomePage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/register');
   const db = await getDatabase();
-  const account = await db.collection('users').findOne({ googleSub: session.user.id }, { projection: { onboardingComplete: 1, vault: 1, notesStorage: 1 } });
+  const account = await db.collection('users').findOne({ googleSub: session.user.id }, { projection: { onboardingComplete: 1, vault: 1, notesStorage: 1, homeModules: 1 } });
   if (!account?.onboardingComplete) redirect('/onboarding');
   // Once GitHub Notes is enabled for a connected owner, the main Notes card
   // should open the actual GitHub-backed editor, not the older MongoDB UI.
@@ -35,6 +36,7 @@ export default async function HomePage() {
     : account.notesStorage === 'mongodb' ? '/notes'
       : vaultNotesReady ? '/vault/notes' : '/notes';
   const captureReady = vaultCaptureAvailable(account);
+  const homeModules = parseHomeModules(account.homeModules);
   // Home's Quick Notes widget must share the signed user's selected storage.
   // A temporarily disconnected GitHub Vault is NOT permission to write to
   // the legacy MongoDB Quick Notes collection.
@@ -79,7 +81,10 @@ export default async function HomePage() {
       title: 'Learning Tracks', description: 'Turn video playlists into daily learning goals.',
       href: '/learning-tracks', icon: '▷',
     }] : []),
-  ];
+  ].filter((module) => {
+    const id = homeModuleIdForHref(module.href);
+    return id === null || homeModuleVisible(homeModules, id);
+  });
 
   return (
     <main className="shell hub-shell oge-shell">
@@ -89,9 +94,10 @@ export default async function HomePage() {
 
       <EnglishWordExplainer />
 
-      <HomeDashboard vaultMode={account.notesStorage === 'github' || (account.notesStorage !== 'mongodb' && filesReady)} notesHref={notesHref} quickNotesApi={quickNotesApi} quickNotesAvailable={showQuickNotes} />
+      {(homeModules === null || ['notes', 'links', 'quick-notes', 'extension'].some((id) => homeModuleVisible(homeModules, id))) &&
+        <HomeDashboard vaultMode={account.notesStorage === 'github' || (account.notesStorage !== 'mongodb' && filesReady)} notesHref={notesHref} quickNotesApi={quickNotesApi} quickNotesAvailable={showQuickNotes && homeModuleVisible(homeModules, 'quick-notes')} homeModules={homeModules} />}
 
-      <section className="quick-notes-section oge-airnotes-preview" aria-labelledby="airnotes-heading">
+      {homeModuleVisible(homeModules, 'airnotes') && <section className="quick-notes-section oge-airnotes-preview" aria-labelledby="airnotes-heading">
         <div className="quick-notes-heading-row">
           <div>
             <p className="eyebrow">PERSONAL KNOWLEDGE SPACE</p>
@@ -107,12 +113,12 @@ export default async function HomePage() {
           <p>Keep longer thoughts and working drafts separate from quick, temporary notes.</p>
           <span className="hub-card-link">Go to AirNotes <span aria-hidden="true">→</span></span>
         </Link>
-      </section>
+      </section>}
 
       <section className="oge-module-section" aria-labelledby="modules-title">
         <div className="oge-section-heading">
           <div><span className="oge-section-kicker">YOUR TOOLKIT</span><h2 id="modules-title">Everything in its place.</h2></div>
-          <span className="oge-count">{String(visibleModules.length).padStart(2, "0")} MODULES</span>
+          <span className="oge-count">{String(visibleModules.length).padStart(2, "0")} MODULES · <Link href="/settings#homepage-modules">Customize</Link></span>
         </div>
         <div className="hub-grid oge-module-grid">
           {visibleModules.map((item) => (
@@ -126,7 +132,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {showQuickNotes && <section className="oge-quick-notes-bottom" aria-label="Quick Notes">
+      {showQuickNotes && homeModuleVisible(homeModules, 'quick-notes') && <section className="oge-quick-notes-bottom" aria-label="Quick Notes">
         <QuickNotesPanel apiPath={quickNotesApi} />
       </section>}
 

@@ -22,7 +22,8 @@ function relativeDate(value) {
   return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-export default function HomeDashboard({ vaultMode = false, notesHref = '/notes', quickNotesApi = '/api/quick-notes', quickNotesAvailable = true }) {
+export default function HomeDashboard({ vaultMode = false, notesHref = '/notes', quickNotesApi = '/api/quick-notes', quickNotesAvailable = true, homeModules = null }) {
+  const visible = (id) => homeModules === null || homeModules.includes(id);
   const [data, setData] = useState({
     loading: true, notes: [], noteCount: 0, subjectCount: 0, linkCount: 0, quickNoteCount: 0, error: '',
   });
@@ -97,34 +98,34 @@ export default function HomeDashboard({ vaultMode = false, notesHref = '/notes',
           <h2 id="home-dashboard-title">Pick up where you left off.</h2>
           <p className="home-dashboard-lead">Your latest notes and most-used destinations, all in one place.</p>
         </div>
-        <Link className="home-dashboard-view-all" href={notesHref}>Open notes <span aria-hidden="true">→</span></Link>
+        {visible("notes") && <Link className="home-dashboard-view-all" href={notesHref}>Open notes <span aria-hidden="true">→</span></Link>}
       </div>
 
       <div className="home-dashboard-stats" aria-label="Workspace statistics">
-        <Link className="home-dashboard-stat" href={notesHref}>
+        {visible("notes") && <Link className="home-dashboard-stat" href={notesHref}>
           <span className="home-dashboard-stat-icon" aria-hidden="true">▤</span>
           <span className="home-dashboard-stat-label">Notes</span>
           <strong>{data.loading || data.noteCount === null ? '—' : data.noteCount}</strong>
-        </Link>
-        <Link className="home-dashboard-stat" href="/saved-links">
+        </Link>}
+        {visible("links") && <Link className="home-dashboard-stat" href="/saved-links">
           <span className="home-dashboard-stat-icon" aria-hidden="true">↗</span>
           <span className="home-dashboard-stat-label">Saved links</span>
           <strong>{data.loading ? '—' : data.linkCount}</strong>
-        </Link>
+        </Link>}
         <Link className="home-dashboard-stat" href="/settings">
           <span className="home-dashboard-stat-icon" aria-hidden="true">◫</span>
           <span className="home-dashboard-stat-label">Subjects</span>
           <strong>{data.loading ? '—' : data.subjectCount}</strong>
         </Link>
-        <Link className="home-dashboard-stat" href="/quick-notes">
+        {visible("quick-notes") && <Link className="home-dashboard-stat" href="/quick-notes">
           <span className="home-dashboard-stat-icon" aria-hidden="true">✳</span>
           <span className="home-dashboard-stat-label">Quick notes</span>
           <strong>{data.loading ? '—' : data.quickNoteCount}</strong>
-        </Link>
+        </Link>}
       </div>
 
       <div className="home-dashboard-content">
-        <section className="home-dashboard-recent" aria-labelledby="home-recent-title">
+        {visible("notes") && <section className="home-dashboard-recent" aria-labelledby="home-recent-title">
           <div className="home-dashboard-section-heading">
             <div>
               <p className="eyebrow">RECENTLY UPDATED</p>
@@ -157,15 +158,15 @@ export default function HomeDashboard({ vaultMode = false, notesHref = '/notes',
             </div>
           )}
           {data.error && <p className="home-dashboard-error" role="status">{data.error} Some dashboard counts may be unavailable.</p>}
-        </section>
+        </section>}
 
         <section className="home-dashboard-actions" aria-labelledby="home-actions-title">
           <p className="eyebrow">SHORTCUTS</p>
           <h3 id="home-actions-title">Quick actions</h3>
-          <Link href={notesHref}><span className="home-dashboard-action-icon" aria-hidden="true">＋</span><span><strong>Write a note</strong><small>Capture what you&apos;re learning</small></span><span aria-hidden="true">→</span></Link>
-          <Link href="/saved-links"><span className="home-dashboard-action-icon" aria-hidden="true">↗</span><span><strong>Save a link</strong><small>Keep a useful resource close</small></span><span aria-hidden="true">→</span></Link>
-          <Link href="/quick-notes"><span className="home-dashboard-action-icon" aria-hidden="true">✳</span><span><strong>Open Quick Notes</strong><small>Capture a passing thought</small></span><span aria-hidden="true">→</span></Link>
-          <Link href="/extension"><span className="home-dashboard-action-icon" aria-hidden="true">⌁</span><span><strong>Browser extension</strong><small>Capture ideas from websites</small></span><span aria-hidden="true">→</span></Link>
+          {visible("notes") && <Link href={notesHref}><span className="home-dashboard-action-icon" aria-hidden="true">＋</span><span><strong>Write a note</strong><small>Capture what you&apos;re learning</small></span><span aria-hidden="true">→</span></Link>}
+          {visible("links") && <Link href="/saved-links"><span className="home-dashboard-action-icon" aria-hidden="true">↗</span><span><strong>Save a link</strong><small>Keep a useful resource close</small></span><span aria-hidden="true">→</span></Link>}
+          {visible("quick-notes") && <Link href="/quick-notes"><span className="home-dashboard-action-icon" aria-hidden="true">✳</span><span><strong>Open Quick Notes</strong><small>Capture a passing thought</small></span><span aria-hidden="true">→</span></Link>}
+          {visible("extension") && <Link href="/extension"><span className="home-dashboard-action-icon" aria-hidden="true">⌁</span><span><strong>Browser extension</strong><small>Capture ideas from websites</small></span><span aria-hidden="true">→</span></Link>}
         </section>
       </div>
     </section>

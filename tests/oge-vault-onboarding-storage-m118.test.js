@@ -35,17 +35,19 @@ test('M118 GitHub choice has no legacy content fallback before or after setup', 
   assert.equal(legacyNotesWorkspaceDestination(vaultLegacyCutoverDecision(ready, { env })), 'vault');
 });
 
-test('M118 onboarding offers both stores beside news, even when news is skipped', async () => {
+test('M118 onboarding wizard offers required storage and skippable news', async () => {
   const page = await read('../app/onboarding/page.js');
+  const wizard = await read('../app/onboarding/onboarding-wizard.js');
   const action = await read('../app/onboarding/actions.js');
-  assert.match(page, /name="notesStorage" value="mongodb" required/);
-  assert.match(page, /name="notesStorage" value="github" required/);
-  assert.match(page, /private GitHub repository/);
-  assert.match(page, /temporary draft autosave/);
-  assert.match(page, /Skip news topics/);
-  assert.doesNotMatch(page, /formNoValidate/);
+  assert.match(page, /<OnboardingWizard/);
+  assert.match(wizard, /Oge Cloud/);
+  assert.match(wizard, /My GitHub Repository/);
+  assert.match(wizard, /temporary autosave|temporarily autosave/);
+  assert.match(wizard, /Skip news/);
+  assert.match(wizard, /Choose later/);
+  assert.match(wizard, /name="notesStorage" value=\{storage\}/);
   assert.match(action, /\['mongodb', 'github'\]\.includes\(storageChoice\)/);
-  assert.match(action, /fromSettings \? \{\} : \{ notesStorage: storageChoice, onboardingComplete: true \}/);
+  assert.match(action, /homeModules: selectedModules, onboardingComplete: true/);
   assert.match(action, /redirect\('\/vault\?setup=onboarding'\)/);
   assert.match(action, /ownerMutationFilter\(ownerId, \{ sessionVersion: session\.user\.sessionVersion \}\)/);
 });
