@@ -43,7 +43,8 @@ export default async function OgeAdminPage({ searchParams }) {
       notesStorage: 1, onboardingComplete: 1, createdAt: 1, lastLoginAt: 1,
     } }).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
   ]);
-  const status = { deleted: 'Account and its supported MongoDB data were deleted.',
+  const status = { 'deleted-repo-kept': 'Oge account deleted. The private GitHub repository was left untouched.',
+    deleted: 'Account and its supported MongoDB data were deleted.',
     blocked: 'Deletion failed. No account deletion was confirmed. Check server logs and database availability.',
     'vault-connected': 'This account has a connected GitHub Vault. Admin deletion currently supports MongoDB-only accounts. The GitHub repository and Oge account were left unchanged.',
     'vault-recovery': 'This account has unsaved GitHub drafts or Vault recovery records. Resolve or back up that data before deletion; nothing was deleted.',
@@ -89,7 +90,7 @@ export default async function OgeAdminPage({ searchParams }) {
                 </form>}
               {user.googleSub !== admin.ownerId && user.email?.trim().toLowerCase() !== admin.email && <details className="oge-admin-delete">
                 <summary>Delete account</summary>
-                <p>Permanently remove this account and its supported Oge data. If it has a connected GitHub Vault or unsaved drafts, deletion is blocked and the GitHub repository is never deleted.</p>
+                <p>Permanently remove the Oge account and its Oge data. For GitHub-backed accounts, select Keep GitHub repository. Unsaved drafts and unfinished operations must be resolved first.</p>
                 <form action={deleteManagedAccount}>
                   <input type="hidden" name="account" value={user.googleSub} />
                   <label>Type DELETE ACCOUNT to confirm
@@ -98,7 +99,8 @@ export default async function OgeAdminPage({ searchParams }) {
                   <label>Type the account email to confirm
                     <input type="text" name="targetEmail" placeholder={user.email || 'Account email'} autoComplete="off" required />
                   </label>
-                  <button type="submit" className="oge-admin-delete-button">Delete permanently</button>
+                  <label className="oge-admin-confirm"><input type="checkbox" name="keepGithubRepository" value="yes" /> Keep the user’s GitHub repository (required for GitHub-backed accounts)</label>
+                  <button type="submit" className="oge-admin-delete-button">Delete Oge account permanently</button>
                 </form>
               </details>}</td>
             </tr>)}
@@ -109,7 +111,7 @@ export default async function OgeAdminPage({ searchParams }) {
           {page > 1 && <a href={`/ogeadmin?page=${page-1}&q=${encodeURIComponent(search)}`}>← Previous</a>}
           {page * PAGE_SIZE < totalMatches && <a href={`/ogeadmin?page=${page+1}&q=${encodeURIComponent(search)}`}>Next →</a>}
         </nav>
-        <p className="oge-admin-footnote">Revoking sessions signs a user out; they can sign in again. Deletion is irreversible, but the existing deletion engine blocks connected GitHub Vault accounts and unreconciled Vault data. No GitHub repository is deleted.</p>
+        <p className="oge-admin-footnote">Revoking sessions signs a user out; they can sign in again. Deletion is irreversible. Choose Keep GitHub repository for connected accounts; unsaved drafts or unfinished Vault operations still block deletion. GitHub repositories are never deleted.</p>
       </section>
     </main>
   );
