@@ -1276,7 +1276,7 @@ These criteria are release blockers, not optional polish:
 
 ## Professional onboarding & personalized homepage — November 2026
 
-- [x] Replace the one-page first-login form with a four-step wizard: welcome, optional news, required Notes storage, optional modules.
+- [x] Replace the one-page first-login form with a four-step wizard: welcome, optional news, optional homepage modules, required Notes storage last.
 - [x] Provide previous/next navigation, preserved selections, visible progress, responsive layout and clear validation.
 - [x] Preserve existing owner-scoped onboarding storage selection and GitHub setup redirect.
 - [x] Store a validated small homeModules array on the signed-in MongoDB user, without new collections.
