@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOgeAdmin } from '../../lib/oge-admin.js';
 import { deleteAccountDataAtomically } from '../../lib/account-deletion-transaction.js';
 import { sessionVersionOf } from '../../lib/session-revocation.js';
+import { adminDeletionFailureStatus } from '../../lib/oge-admin-delete-status.js';
 
 export async function revokeAccountSessions(formData) {
   const admin = await requireOgeAdmin();
@@ -61,7 +62,7 @@ export async function deleteManagedAccount(formData) {
     // The shared deletion engine refuses connected GitHub repositories,
     // pending Vault drafts, conflicts and unsupported transactions.
     console.error('Admin account deletion failed:', error?.name);
-    redirect('/ogeadmin?status=blocked');
+    redirect('/ogeadmin?status=' + adminDeletionFailureStatus(error));
   }
   redirect('/ogeadmin?status=deleted');
 }
