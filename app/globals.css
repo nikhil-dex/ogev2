@@ -891,3 +891,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .oge-admin-pagination a{color:var(--green);font-weight:700;font-size:12px}
 @media(max-width:780px){.oge-admin-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.oge-admin-section{padding:16px}}
 @media(max-width:400px){.oge-admin-stats{grid-template-columns:1fr 1fr}.oge-admin-stats article{padding:12px}.oge-admin-search>div{flex-wrap:wrap}}
+
+
+.oge-admin-delete{min-width:170px;margin-top:10px;font-size:12px}
+.oge-admin-delete summary{cursor:pointer;color:#b45555;font-weight:750}
+.oge-admin-delete p{font-size:11px;max-width:260px;margin:8px 0}
+.oge-admin-delete form{display:flex;flex-direction:column;gap:8px;margin-top:9px}
+.oge-admin-delete label{display:flex;flex-direction:column;gap:5px;font-size:11px;line-height:1.5}
+.oge-admin-delete input{padding:9px;min-width:175px;max-width:240px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink)}
+.oge-admin-delete-button{padding:9px 12px;border:1px solid #b45555;border-radius:9px;background:transparent;color:#b45555;font-size:12px;font-weight:750;cursor:pointer}
+.oge-admin-delete-button:hover{background:color-mix(in srgb,#b45555 10%,transparent)}
