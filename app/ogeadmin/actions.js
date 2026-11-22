@@ -53,16 +53,19 @@ export async function deleteManagedAccount(formData) {
   const email = typeof target.email === 'string' ? target.email.trim().toLowerCase() : '';
   if (!email || email === admin.email) redirect('/ogeadmin?status=self');
   if (enteredEmail.trim().toLowerCase() !== email) redirect('/ogeadmin?status=invalid');
+  const keepGithubRepository = formData.get('keepGithubRepository') === 'yes';
+  if (formData.get('keepGithubRepository') !== 'yes' && formData.get('keepGithubRepository') !== null)
+    redirect('/ogeadmin?status=invalid');
   const version = sessionVersionOf(target);
   if (version === null) redirect('/ogeadmin?status=blocked');
 
   try {
-    await deleteAccountDataAtomically(admin.db, targetId, version);
+    await deleteAccountDataAtomically(admin.db, targetId, version, { keepGithubRepository });
   } catch (error) {
     // The shared deletion engine refuses connected GitHub repositories,
     // pending Vault drafts, conflicts and unsupported transactions.
     console.error('Admin account deletion failed:', error?.name);
     redirect('/ogeadmin?status=' + adminDeletionFailureStatus(error));
   }
-  redirect('/ogeadmin?status=deleted');
+  redirect('/ogeadmin?status=' + (keepGithubRepository ? 'deleted-repo-kept' : 'deleted'));
 }
