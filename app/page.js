@@ -94,7 +94,8 @@ export default async function HomePage() {
 
       <EnglishWordExplainer />
 
-      <HomeDashboard vaultMode={account.notesStorage === 'github' || (account.notesStorage !== 'mongodb' && filesReady)} notesHref={notesHref} quickNotesApi={quickNotesApi} quickNotesAvailable={showQuickNotes && homeModuleVisible(homeModules, 'quick-notes')} homeModules={homeModules} />
+      {(homeModules === null || ['notes', 'links', 'quick-notes', 'extension'].some((id) => homeModuleVisible(homeModules, id))) &&
+        <HomeDashboard vaultMode={account.notesStorage === 'github' || (account.notesStorage !== 'mongodb' && filesReady)} notesHref={notesHref} quickNotesApi={quickNotesApi} quickNotesAvailable={showQuickNotes && homeModuleVisible(homeModules, 'quick-notes')} homeModules={homeModules} />}
 
       {homeModuleVisible(homeModules, 'airnotes') && <section className="quick-notes-section oge-airnotes-preview" aria-labelledby="airnotes-heading">
         <div className="quick-notes-heading-row">
