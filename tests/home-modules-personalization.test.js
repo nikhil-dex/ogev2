@@ -51,3 +51,15 @@ test('onboarding and Settings persist module choices via owner-scoped actions', 
   assert.match(settingsPage, /name="homeModule"/);
   assert.match(dashboard, /visible\("links"\)/);
 });
+
+test('GitHub storage cannot bypass the homepage module step', async () => {
+  const wizard = await read('../app/onboarding/onboarding-wizard.js');
+  const action = await read('../app/onboarding/actions.js');
+  assert.match(wizard, /step !== 3/);
+  assert.match(wizard, /step === 3 && <input type="hidden" name="wizardComplete" value="true"/);
+  assert.match(wizard, /step < 3/);
+  assert.match(action, /formData\.get\('wizardComplete'\) !== 'true'/);
+  const completionGuard = action.indexOf("formData.get('wizardComplete')");
+  const gitHubRedirect = action.indexOf("redirect('/vault?setup=onboarding')");
+  assert.ok(completionGuard >= 0 && gitHubRedirect > completionGuard);
+});
