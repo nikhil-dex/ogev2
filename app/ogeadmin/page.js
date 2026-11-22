@@ -44,7 +44,11 @@ export default async function OgeAdminPage({ searchParams }) {
     } }).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
   ]);
   const status = { deleted: 'Account and its supported MongoDB data were deleted.',
-    blocked: 'Deletion was blocked. Connected GitHub repositories, Vault recovery data or transaction conflicts require separate handling. No deletion was confirmed.',
+    blocked: 'Deletion failed. No account deletion was confirmed. Check server logs and database availability.',
+    'vault-connected': 'This account has a connected GitHub Vault. Admin deletion currently supports MongoDB-only accounts. The GitHub repository and Oge account were left unchanged.',
+    'vault-recovery': 'This account has unsaved GitHub drafts or Vault recovery records. Resolve or back up that data before deletion; nothing was deleted.',
+    conflict: 'The account changed during deletion. Refresh this page and try again; nothing was deleted.',
+    transaction: 'Database transactions are unavailable. Use a MongoDB replica set or Atlas to delete accounts atomically; no deletion was confirmed.',
     revoked: 'All existing sessions for that account were revoked.',
     self: 'The administrator account cannot be revoked here.',
     missing: 'Account not found or changed. Nothing was revoked.',
@@ -85,7 +89,7 @@ export default async function OgeAdminPage({ searchParams }) {
                 </form>}
               {user.googleSub !== admin.ownerId && user.email?.trim().toLowerCase() !== admin.email && <details className="oge-admin-delete">
                 <summary>Delete account</summary>
-                <p>Permanently remove this account and its supported Oge data. Connected GitHub accounts with a Vault cannot be deleted by this action.</p>
+                <p>Permanently remove this account and its supported Oge data. If it has a connected GitHub Vault or unsaved drafts, deletion is blocked and the GitHub repository is never deleted.</p>
                 <form action={deleteManagedAccount}>
                   <input type="hidden" name="account" value={user.googleSub} />
                   <label>Type DELETE ACCOUNT to confirm
