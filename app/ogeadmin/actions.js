@@ -3,6 +3,8 @@
 import { randomUUID } from 'node:crypto';
 import { redirect } from 'next/navigation';
 import { requireOgeAdmin } from '../../lib/oge-admin.js';
+import { deleteAccountDataAtomically } from '../../lib/account-deletion-transaction.js';
+import { sessionVersionOf } from '../../lib/session-revocation.js';
 
 export async function revokeAccountSessions(formData) {
   const admin = await requireOgeAdmin();
@@ -24,4 +26,42 @@ export async function revokeAccountSessions(formData) {
     { $set: { sessionVersion: randomUUID(), updatedAt: new Date() } },
   );
   redirect('/ogeadmin?status=' + (result.matchedCount ? 'revoked' : 'missing'));
+}
+
+/**
+ * Delete a non-admin account using the same atomic data deletion engine
+ * as self-service deletion. Connected GitHub Vaults / unfinished recovery
+ * state are deliberately rejected by that engine, with no partial writes.
+ */
+export async function deleteManagedAccount(formData) {
+  const admin = await requireOgeAdmin();
+  if (!admin) redirect('/');
+  const targetId = formData.get('account');
+  const enteredEmail = formData.get('targetEmail');
+  const confirmation = formData.get('confirmation');
+  if (typeof targetId !== 'string' || !targetId || targetId.length > 180 ||
+      typeof enteredEmail !== 'string' ||
+      confirmation !== 'DELETE ACCOUNT') redirect('/ogeadmin?status=invalid');
+  if (targetId === admin.ownerId) redirect('/ogeadmin?status=self');
+
+  const target = await admin.db.collection('users').findOne(
+    { googleSub: targetId },
+    { projection: { email: 1, sessionVersion: 1 } },
+  );
+  if (!target) redirect('/ogeadmin?status=missing');
+  const email = typeof target.email === 'string' ? target.email.trim().toLowerCase() : '';
+  if (!email || email === admin.email) redirect('/ogeadmin?status=self');
+  if (enteredEmail.trim().toLowerCase() !== email) redirect('/ogeadmin?status=invalid');
+  const version = sessionVersionOf(target);
+  if (version === null) redirect('/ogeadmin?status=blocked');
+
+  try {
+    await deleteAccountDataAtomically(admin.db, targetId, version);
+  } catch (error) {
+    // The shared deletion engine refuses connected GitHub repositories,
+    // pending Vault drafts, conflicts and unsupported transactions.
+    console.error('Admin account deletion failed:', error?.name);
+    redirect('/ogeadmin?status=blocked');
+  }
+  redirect('/ogeadmin?status=deleted');
 }
