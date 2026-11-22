@@ -72,7 +72,7 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
         {step === 0 && <div className="oge-wizard-welcome">
           <span className="oge-wizard-monogram" aria-hidden="true">O</span>
           <h2>One home for your ideas.</h2>
-          <p>Keep Notes, useful links and study tools together. We'll only ask for a few preferences to get you started.</p>
+          <p>Keep Notes, useful links and study tools together. We&apos;ll only ask for a few preferences to get you started.</p>
           <p className="oge-onboarding-description">This setup takes just a few choices. You can personalize your homepage again at any time.</p>
         </div>}
         {step === 1 && <>
@@ -92,7 +92,7 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
             aria-pressed={storage === 'mongodb'} onClick={() => { setStorage('mongodb'); setError(''); }}>
             <span className="oge-wizard-storage-icon" aria-hidden="true">☁</span>
             <strong>Oge Cloud</strong><small>MongoDB · Ready immediately</small>
-            <span>Your Notes are saved in Oge's managed database. No GitHub account needed.</span>
+            <span>Your Notes are saved in Oge&apos;s managed database. No GitHub account needed.</span>
             <em>{storage === 'mongodb' ? '✓ Selected' : 'Select Oge Cloud'}</em>
           </button>
           <button type="button" className={`oge-wizard-storage ${storage === 'github' ? 'is-selected' : ''}`}
