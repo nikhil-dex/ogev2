@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { requireOgeAdmin } from '../../lib/oge-admin.js';
-import { revokeAccountSessions } from './actions.js';
+import { revokeAccountSessions, deleteManagedAccount } from './actions.js';
 
 export const metadata = { title: 'Administration · Oge', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -43,7 +43,9 @@ export default async function OgeAdminPage({ searchParams }) {
       notesStorage: 1, onboardingComplete: 1, createdAt: 1, lastLoginAt: 1,
     } }).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).toArray(),
   ]);
-  const status = { revoked: 'All existing sessions for that account were revoked.',
+  const status = { deleted: 'Account and its supported MongoDB data were deleted.',
+    blocked: 'Deletion was blocked. Connected GitHub repositories, Vault recovery data or transaction conflicts require separate handling. No deletion was confirmed.',
+    revoked: 'All existing sessions for that account were revoked.',
     self: 'The administrator account cannot be revoked here.',
     missing: 'Account not found or changed. Nothing was revoked.',
     invalid: 'Invalid confirmation. Nothing was changed.' }[query?.status];
@@ -59,7 +61,7 @@ export default async function OgeAdminPage({ searchParams }) {
         <article><span>Learning tracks</span><strong>{tracks}</strong></article>
       </section>
       <section className="oge-admin-section" aria-labelledby="accounts-heading">
-        <div className="oge-admin-heading"><div><span className="oge-admin-eyebrow">MANAGEMENT</span><h2 id="accounts-heading">User accounts</h2><p>Search accounts and revoke sessions. Notes and files remain private.</p></div></div>
+        <div className="oge-admin-heading"><div><span className="oge-admin-eyebrow">MANAGEMENT</span><h2 id="accounts-heading">User accounts</h2><p>Search accounts, revoke sessions or delete eligible accounts. Notes and files remain private.</p></div></div>
         {status && <p className="oge-admin-alert" role="status">{status}</p>}
         <form method="GET" action="/ogeadmin" className="oge-admin-search">
           <label htmlFor="admin-search">Search email, username or name</label>
@@ -80,7 +82,19 @@ export default async function OgeAdminPage({ searchParams }) {
                   <input type="hidden" name="confirmation" value="REVOKE" />
                   <label className="oge-admin-confirm"><input type="checkbox" required /> Confirm</label>
                   <button type="submit" className="oge-admin-revoke" title="Sign out this account from all existing sessions">Revoke sessions</button>
-                </form>}</td>
+                </form>}
+              {user.googleSub !== admin.ownerId && user.email?.trim().toLowerCase() !== admin.email && <details className="oge-admin-delete">
+                <summary>Delete account</summary>
+                <p>Permanently remove this account and its supported Oge data. Connected GitHub accounts with a Vault cannot be deleted by this action.</p>
+                <form action={deleteManagedAccount}>
+                  <input type="hidden" name="account" value={user.googleSub} />
+                  <input type="hidden" name="confirmation" value="DELETE ACCOUNT" />
+                  <label>Type the account email to confirm
+                    <input type="text" name="targetEmail" placeholder={user.email || 'Account email'} autoComplete="off" required />
+                  </label>
+                  <button type="submit" className="oge-admin-delete-button">Delete permanently</button>
+                </form>
+              </details>}</td>
             </tr>)}
             {records.length === 0 && <tr><td colSpan="6">No accounts found.</td></tr>}
             </tbody></table>
@@ -89,7 +103,7 @@ export default async function OgeAdminPage({ searchParams }) {
           {page > 1 && <a href={`/ogeadmin?page=${page-1}&q=${encodeURIComponent(search)}`}>← Previous</a>}
           {page * PAGE_SIZE < totalMatches && <a href={`/ogeadmin?page=${page+1}&q=${encodeURIComponent(search)}`}>Next →</a>}
         </nav>
-        <p className="oge-admin-footnote">Revoking sessions signs a user out of their existing devices. They can sign in again. This does not delete their data or disable their account.</p>
+        <p className="oge-admin-footnote">Revoking sessions signs a user out; they can sign in again. Deletion is irreversible, but the existing deletion engine blocks connected GitHub Vault accounts and unreconciled Vault data. No GitHub repository is deleted.</p>
       </section>
     </main>
   );
