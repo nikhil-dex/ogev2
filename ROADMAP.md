@@ -1306,3 +1306,9 @@ These criteria are release blockers, not optional polish:
 - [x] Block connected GitHub Vault accounts and accounts with pending Vault recovery data. Do not delete GitHub repositories.
 - [x] Add regression coverage for the delete action.
 - [ ] Verify CI and a real authenticated, disposable-account deletion before merging.
+
+### Admin deletion diagnostic improvement
+
+- [x] Show specific, non-sensitive reasons for GitHub Vault, pending recovery data, stale account, and unsupported MongoDB transactions.
+- [x] Retain the existing fail-closed GitHub Vault restriction; no implicit GitHub repository deletion or draft loss.
+- [ ] Plan an explicit GitHub-account removal workflow separately, with clear ownership and draft-retention choices.
