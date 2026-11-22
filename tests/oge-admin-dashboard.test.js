@@ -40,3 +40,20 @@ test('account management is limited to session revocation and does not delete us
   assert.match(action, /sessionVersion: randomUUID\(\)/);
   assert.doesNotMatch(action, /deleteOne|deleteMany|drop\(/);
 });
+
+test('admin can delete only an eligible non-admin account with explicit email and phrase', async () => {
+  const page = await read('../app/ogeadmin/page.js');
+  const action = await read('../app/ogeadmin/actions.js');
+  const deletion = await read('../lib/account-deletion-transaction.js');
+  assert.match(page, /action=\{deleteManagedAccount\}/);
+  assert.match(page, /name="targetEmail"/);
+  assert.match(page, /name="confirmation" placeholder="DELETE ACCOUNT"/);
+  assert.match(action, /confirmation !== 'DELETE ACCOUNT'/);
+  assert.match(action, /enteredEmail\.trim\(\)\.toLowerCase\(\) !== email/);
+  assert.match(action, /targetId === admin\.ownerId/);
+  assert.match(action, /email === admin\.email/);
+  assert.match(action, /await deleteAccountDataAtomically\(admin\.db, targetId, version\)/);
+  assert.match(deletion, /Vault account deletion is disabled/);
+  assert.match(deletion, /Vault recovery data exists/);
+  assert.match(page, /No GitHub repository is deleted/);
+});
