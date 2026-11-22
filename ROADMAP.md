@@ -1297,3 +1297,12 @@ These criteria are release blockers, not optional polish:
 - [x] Keep admin dashboard read-only for private note content and never display credentials.
 - [x] Document env setup and add access-control/regression tests.
 - [ ] Verify CI and a real signed-in admin/non-admin browser scenario before merging or deployment.
+
+### Admin account deletion follow-up
+
+- [x] Add an explicit permanent account deletion action on `/ogeadmin`, restricted to `ADMIN_EMAIL`.
+- [x] Require typed `DELETE ACCOUNT` and exact target email; prevent the administrator from deleting their own account.
+- [x] Reuse the existing atomic account deletion engine to remove eligible accounts and associated MongoDB records.
+- [x] Block connected GitHub Vault accounts and accounts with pending Vault recovery data. Do not delete GitHub repositories.
+- [x] Add regression coverage for the delete action.
+- [ ] Verify CI and a real authenticated, disposable-account deletion before merging.
