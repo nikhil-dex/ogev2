@@ -9,7 +9,7 @@ const HEADINGS = [
   ['Welcome to Oge', 'A simpler space for everything you learn and create.'],
   ['Your news, your interests', 'Pick up to 10 topics or skip for a general news feed.'],
   ['Choose where Notes live', 'Select the home for your saved Notes. This choice does not move existing data.'],
-  ['Make your workspace yours', 'Choose the tools you want on your homepage. You can change this in Settings.'],
+  ['Make your workspace yours', 'Choose the tools you want on your homepage. This step comes before GitHub setup.'],
 ];
 
 export default function OnboardingWizard({ initialInterests = [], initialStorage = '' }) {
@@ -56,6 +56,12 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
       </div>
 
       <form action={saveNewsInterests} onSubmit={(event) => {
+        if (step !== 3) {
+          event.preventDefault();
+          setError('Choose your homepage modules before finishing setup.');
+          setStep(3);
+          return;
+        }
         if (!storage) {
           event.preventDefault();
           setError('Select a Notes storage option.');
@@ -69,6 +75,7 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
         {interests.map((topic) => <input key={topic} type="hidden" name="interest" value={topic} />)}
         {modules.map((id) => <input key={id} type="hidden" name="homeModule" value={id} />)}
         <input type="hidden" name="notesStorage" value={storage} />
+        {step === 3 && <input type="hidden" name="wizardComplete" value="true" />}
         {step === 0 && <div className="oge-wizard-welcome">
           <span className="oge-wizard-monogram" aria-hidden="true">O</span>
           <h2>One home for your ideas.</h2>
