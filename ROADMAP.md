@@ -1285,3 +1285,15 @@ These criteria are release blockers, not optional polish:
 - [x] Preserve pre-existing users' homepage layout until they explicitly save module preferences.
 - [x] Add module catalogue validation and regression tests.
 - [ ] Run CI and verify authenticated first-login and Settings workflow in browser before merging.
+
+
+## Private administrator dashboard — November 2026
+
+- [x] Add direct-only `/ogeadmin` dashboard with no homepage, Settings or navigation links.
+- [x] Authorize access from the signed-in account's persisted verified email matching server-only `ADMIN_EMAIL` and current session version.
+- [x] Return a not-found page when unauthorized or when `ADMIN_EMAIL` is missing.
+- [x] Display lightweight usage totals and a searchable, paginated user account list.
+- [x] Allow admin to revoke other users' active sessions with explicit confirmation, without deleting notes, files or accounts.
+- [x] Keep admin dashboard read-only for private note content and never display credentials.
+- [x] Document env setup and add access-control/regression tests.
+- [ ] Verify CI and a real signed-in admin/non-admin browser scenario before merging or deployment.
