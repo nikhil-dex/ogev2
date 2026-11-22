@@ -1088,3 +1088,44 @@ test('real MongoDB M49 verifies signed import lock and owner subjects without to
     assert.equal(wrongLock.status, 'ARCHIVE_APPROVAL_OR_IMPORT_LOCK_MISMATCH');
   });
 });
+
+test('real MongoDB deletes a connected Oge account while retaining its GitHub repository', realDatabase, async () => {
+  await isolatedDatabase(async (db) => {
+    await db.collection('users').insertMany([
+      { googleSub: 'owner-A', sessionVersion: epochA,
+        vault: { status: 'connected', repoId: 101, installationId: 102 } },
+      { googleSub: 'owner-B', sessionVersion: epochB },
+    ]);
+    await db.collection('notes').insertMany([
+      { ownerId: 'owner-A', heading: 'delete' },
+      { ownerId: 'owner-B', heading: 'keep' },
+    ]);
+    await db.collection('vault_files').insertOne({ ownerId: 'owner-A', repoId: 101, noteId: 'saved' });
+    await db.collection('vault_file_index_state').insertOne({ ownerId: 'owner-A', repoId: 101, state: 'ready' });
+    await db.collection('vault_save_receipts').insertOne({ ownerId: 'owner-A', repoId: 101, noteId: 'saved' });
+    await assert.rejects(deleteAccountDataAtomically(db, 'owner-A', epochA), /Vault account deletion is disabled/);
+    assert.equal(await db.collection('users').countDocuments({ googleSub: 'owner-A' }), 1);
+    assert.deepEqual(await deleteAccountDataAtomically(db, 'owner-A', epochA, { keepGithubRepository: true }), { deleted: true });
+    assert.equal(await db.collection('users').countDocuments({ googleSub: 'owner-A' }), 0);
+    assert.equal(await db.collection('users').countDocuments({ googleSub: 'owner-B' }), 1);
+    assert.equal(await db.collection('notes').countDocuments({ ownerId: 'owner-A' }), 0);
+    for (const name of ['vault_files', 'vault_file_index_state', 'vault_save_receipts'])
+      assert.equal(await db.collection(name).countDocuments({ ownerId: 'owner-A' }), 0);
+  });
+});
+
+test('real MongoDB blocks GitHub account deletion with standalone unsaved drafts', realDatabase, async () => {
+  await isolatedDatabase(async (db) => {
+    await db.collection('users').insertOne({
+      googleSub: 'owner-A', sessionVersion: epochA,
+      vault: { status: 'connected', repoId: 101, installationId: 102 },
+    });
+    await db.collection('vault_standalone_drafts').insertOne({ ownerId: 'owner-A', repoId: 101 });
+    await assert.rejects(
+      deleteAccountDataAtomically(db, 'owner-A', epochA, { keepGithubRepository: true }),
+      /Vault recovery data exists/,
+    );
+    assert.equal(await db.collection('users').countDocuments({ googleSub: 'owner-A' }), 1);
+    assert.equal(await db.collection('vault_standalone_drafts').countDocuments({ ownerId: 'owner-A' }), 1);
+  });
+});
