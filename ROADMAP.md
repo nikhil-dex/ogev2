@@ -1272,3 +1272,16 @@ These criteria are release blockers, not optional polish:
 - [x] Rename the Customs card and page heading to Custom Pages.
 - [x] Keep existing URLs, GitHub Vault connections and feature behavior unchanged.
 - [ ] Verify CI and local navigation.
+
+
+## Professional onboarding & personalized homepage — November 2026
+
+- [x] Replace the one-page first-login form with a four-step wizard: welcome, optional news, required Notes storage, optional modules.
+- [x] Provide previous/next navigation, preserved selections, visible progress, responsive layout and clear validation.
+- [x] Preserve existing owner-scoped onboarding storage selection and GitHub setup redirect.
+- [x] Store a validated small homeModules array on the signed-in MongoDB user, without new collections.
+- [x] Filter homepage module cards, AirNotes, Quick Notes and common dashboard shortcuts according to the owner's selection.
+- [x] Add Customize homepage section in Settings with a Save button; hidden modules remain accessible via direct navigation.
+- [x] Preserve pre-existing users' homepage layout until they explicitly save module preferences.
+- [x] Add module catalogue validation and regression tests.
+- [ ] Run CI and verify authenticated first-login and Settings workflow in browser before merging.
