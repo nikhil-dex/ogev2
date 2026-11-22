@@ -90,7 +90,7 @@ test('All GitHub Vault features share one connected-storage eligibility rule', a
 test('Home only renders the Quick Notes inbox when its selected API is available', () => {
   const home = readFileSync(new URL('../app/page.js', import.meta.url), 'utf8');
   assert.match(home, /const showQuickNotes = captureReady/);
-  assert.match(home, /\{showQuickNotes && <section/);
+  assert.match(home, /showQuickNotes && homeModuleVisible\(homeModules, 'quick-notes'\) && <section/);
   assert.match(home, /const quickNotesApi = captureReady \?/);
 });
 
