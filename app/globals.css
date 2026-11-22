@@ -807,3 +807,47 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .oge-vault-subject-form button{align-self:flex-start}
 .oge-vault-preview-editor .oge-primary-link{align-self:flex-start}
 @media(max-width:800px){.oge-vault-preview-layout{grid-template-columns:1fr}.oge-vault-preview-list{max-height:180px}}
+
+
+/* Personal, focused first-run onboarding. Inherits the Oge theme tokens. */
+.oge-onboarding-shell{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding-top:36px;padding-bottom:65px}
+.oge-onboarding-shell>.oge-brand{align-self:flex-start;margin:0 0 34px}
+.oge-onboarding-wizard{width:100%;max-width:840px;padding:clamp(22px,4vw,48px);border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 24px 80px rgba(0,0,0,.045)}
+.oge-wizard-header,.oge-wizard-actions,.oge-wizard-actions-right,.oge-wizard-module-tools{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.oge-wizard-step{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+.oge-wizard-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:20px 0 34px}
+.oge-wizard-progress span{height:5px;border-radius:10px;background:var(--line)}
+.oge-wizard-progress span.is-active{background:var(--green)}
+.oge-wizard-intro{margin-bottom:26px}
+.oge-wizard-intro h1{font-size:clamp(29px,5vw,48px);letter-spacing:-.055em;line-height:1.12;margin:0 0 12px}
+.oge-wizard-intro h1 span{color:var(--green)}
+.oge-wizard-intro p,.oge-wizard-welcome p{color:var(--muted);font-size:14px;line-height:1.75}
+.oge-wizard-welcome{min-height:235px;padding:16px 0 24px}
+.oge-wizard-welcome h2{font-size:22px;margin:15px 0 10px}
+.oge-wizard-welcome p{max-width:560px}
+.oge-wizard-monogram{display:inline-flex;align-items:center;justify-content:center;width:76px;height:76px;border:1px solid var(--green);border-radius:20px;color:var(--green);font-weight:850;font-size:40px}
+.oge-wizard-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.oge-wizard-choice{display:flex;align-items:center;gap:9px;text-align:left;padding:12px 13px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:12px;cursor:pointer;min-height:49px}
+.oge-wizard-choice.is-selected,.oge-wizard-storage.is-selected{border-color:var(--green);background:color-mix(in srgb,var(--green) 7%,var(--paper))}
+.oge-wizard-choice:focus-visible,.oge-wizard-storage:focus-visible,.oge-wizard-module-tools button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.oge-wizard-choice>span:first-child{font-weight:800;color:var(--green);font-size:15px}
+.oge-wizard-modules{grid-template-columns:repeat(2,minmax(0,1fr))}
+.oge-wizard-module{align-items:flex-start}
+.oge-wizard-module strong,.oge-home-module-option strong{display:block;font-size:13px}
+.oge-wizard-module small,.oge-home-module-option small{display:block;font-size:11px;color:var(--muted);font-weight:400;line-height:1.6;margin-top:2px}
+.oge-wizard-storage{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:9px;text-align:left;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--paper);color:var(--ink);font:inherit;cursor:pointer;line-height:1.6;min-height:220px}
+.oge-wizard-storage-icon{font-size:26px;color:var(--green)}
+.oge-wizard-storage strong{font-size:17px}
+.oge-wizard-storage small,.oge-wizard-storage>span:not(.oge-wizard-storage-icon){font-size:12px;color:var(--muted)}
+.oge-wizard-storage em{font-style:normal;font-size:12px;font-weight:750;color:var(--green);margin-top:auto}
+.oge-wizard-storage-help{grid-column:1/-1;margin:0}
+.oge-wizard-module-tools{margin-top:14px;color:var(--muted);font-size:12px;justify-content:flex-start}
+.oge-wizard-module-tools button{background:transparent;color:var(--green);border:0;text-decoration:underline;cursor:pointer;font:inherit}
+.oge-wizard-actions{margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
+.oge-wizard-actions .oge-google-button{margin:0}
+.oge-wizard-error{color:#b23a35;font-size:13px}
+.oge-home-module-option{align-items:flex-start}
+.oge-home-module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.oge-onboarding-wizard button:disabled{opacity:.65;cursor:wait}
+@media(max-width:700px){.oge-wizard-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oge-wizard-modules{grid-template-columns:1fr}.oge-home-module-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.oge-onboarding-wizard{padding:22px 18px;border-radius:15px}.oge-onboarding-shell{padding-top:16px}.oge-wizard-actions-right{width:100%;justify-content:flex-end}.oge-wizard-choice-grid:not(.oge-wizard-modules){grid-template-columns:repeat(2,minmax(0,1fr))}}
