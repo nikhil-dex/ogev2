@@ -63,3 +63,17 @@ test('GitHub storage cannot bypass the homepage module step', async () => {
   const gitHubRedirect = action.indexOf("redirect('/vault?setup=onboarding')");
   assert.ok(completionGuard >= 0 && gitHubRedirect > completionGuard);
 });
+
+test('module preferences come before storage; the storage submit is the only GitHub handoff', async () => {
+  const wizard = await read('../app/onboarding/onboarding-wizard.js');
+  const action = await read('../app/onboarding/actions.js');
+  const headingModules = wizard.indexOf("['Make your workspace yours'");
+  const headingStorage = wizard.indexOf("['Choose where Notes live'");
+  assert.ok(headingModules >= 0 && headingStorage > headingModules);
+  assert.match(wizard, /step === 2 && <>/);
+  assert.match(wizard, /step === 3 && <div className="oge-storage-options">/);
+  assert.match(wizard, /step === 3 && <input type="hidden" name="wizardComplete"/);
+  assert.match(wizard, /if \(!storage\)/);
+  assert.match(action, /homeModules: selectedModules, onboardingComplete: true/);
+  assert.ok(action.indexOf('homeModules: selectedModules') < action.indexOf("redirect('/vault?setup=onboarding')"));
+});
