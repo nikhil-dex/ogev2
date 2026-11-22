@@ -88,7 +88,9 @@ export default async function OgeAdminPage({ searchParams }) {
                 <p>Permanently remove this account and its supported Oge data. Connected GitHub accounts with a Vault cannot be deleted by this action.</p>
                 <form action={deleteManagedAccount}>
                   <input type="hidden" name="account" value={user.googleSub} />
-                  <input type="hidden" name="confirmation" value="DELETE ACCOUNT" />
+                  <label>Type DELETE ACCOUNT to confirm
+                    <input type="text" name="confirmation" placeholder="DELETE ACCOUNT" autoComplete="off" required />
+                  </label>
                   <label>Type the account email to confirm
                     <input type="text" name="targetEmail" placeholder={user.email || 'Account email'} autoComplete="off" required />
                   </label>
