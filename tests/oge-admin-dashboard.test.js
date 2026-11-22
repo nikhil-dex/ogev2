@@ -71,3 +71,17 @@ test('admin deletion errors identify the cause rather than show one generic bloc
   assert.match(page, /'vault-connected':/);
   assert.match(page, /'vault-recovery':/);
 });
+
+test('connected GitHub accounts require an explicit keep-repository selection', async () => {
+  const action = await read('../app/ogeadmin/actions.js');
+  const page = await read('../app/ogeadmin/page.js');
+  const transaction = await read('../lib/account-deletion-transaction.js');
+  assert.match(page, /name="keepGithubRepository" value="yes"/);
+  assert.match(action, /formData\.get\('keepGithubRepository'\) === 'yes'/);
+  assert.match(action, /deleted-repo-kept/);
+  assert.match(transaction, /connectedVault && !keepGithubRepository/);
+  assert.match(transaction, /vault_standalone_drafts/);
+  assert.match(transaction, /vaultImportLock/);
+  assert.match(transaction, /vault_files', 'vault_file_index_state', 'vault_save_receipts'/);
+  assert.match(page, /GitHub repository was left untouched/);
+});
