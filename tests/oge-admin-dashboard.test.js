@@ -53,10 +53,10 @@ test('admin can delete only an eligible non-admin account with explicit email an
   assert.match(action, /enteredEmail\.trim\(\)\.toLowerCase\(\) !== email/);
   assert.match(action, /targetId === admin\.ownerId/);
   assert.match(action, /email === admin\.email/);
-  assert.match(action, /await deleteAccountDataAtomically\(admin\.db, targetId, version\)/);
+  assert.match(action, /await deleteAccountDataAtomically\(admin\.db, targetId, version, \{ keepGithubRepository \}\)/);
   assert.match(deletion, /Vault account deletion is disabled/);
   assert.match(deletion, /Vault recovery data exists/);
-  assert.match(page, /No GitHub repository is deleted/);
+  assert.match(page, /GitHub repositories are never deleted/);
 });
 
 test('admin deletion errors identify the cause rather than show one generic blocker', async () => {
