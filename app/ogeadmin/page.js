@@ -78,6 +78,7 @@ export default async function OgeAdminPage({ searchParams }) {
                 : <form action={revokeAccountSessions}>
                   <input type="hidden" name="account" value={user.googleSub} />
                   <input type="hidden" name="confirmation" value="REVOKE" />
+                  <label className="oge-admin-confirm"><input type="checkbox" required /> Confirm</label>
                   <button type="submit" className="oge-admin-revoke" title="Sign out this account from all existing sessions">Revoke sessions</button>
                 </form>}</td>
             </tr>)}
