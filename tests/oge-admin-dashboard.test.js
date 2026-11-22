@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { adminDeletionFailureStatus } from '../lib/oge-admin-delete-status.js';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
@@ -56,4 +57,17 @@ test('admin can delete only an eligible non-admin account with explicit email an
   assert.match(deletion, /Vault account deletion is disabled/);
   assert.match(deletion, /Vault recovery data exists/);
   assert.match(page, /No GitHub repository is deleted/);
+});
+
+test('admin deletion errors identify the cause rather than show one generic blocker', async () => {
+  assert.equal(adminDeletionFailureStatus(new Error('Vault account deletion is disabled until safe cross-store deletion is implemented')), 'vault-connected');
+  assert.equal(adminDeletionFailureStatus(new Error('Vault recovery data exists: account deletion requires manual reconciliation')), 'vault-recovery');
+  assert.equal(adminDeletionFailureStatus(new Error('Account session changed')), 'conflict');
+  assert.equal(adminDeletionFailureStatus(new Error('Transaction numbers are only allowed on a replica set member or mongos')), 'transaction');
+  assert.equal(adminDeletionFailureStatus(new Error('unexpected MongoDB error')), 'blocked');
+  const action = await read('../app/ogeadmin/actions.js');
+  const page = await read('../app/ogeadmin/page.js');
+  assert.match(action, /adminDeletionFailureStatus\(error\)/);
+  assert.match(page, /'vault-connected':/);
+  assert.match(page, /'vault-recovery':/);
 });
