@@ -14,6 +14,9 @@ export async function saveNewsInterests(formData) {
 
   const fromSettings = formData.get('returnTo') === '/settings';
   const storageChoice = fromSettings ? null : formData.get('notesStorage');
+  // Storage choice alone must never complete onboarding before module choices.
+  if (!fromSettings && formData.get('wizardComplete') !== 'true')
+    throw new Error('Finish the homepage module selection step before connecting GitHub.');
   if (!fromSettings && !['mongodb', 'github'].includes(storageChoice))
     throw new Error('Choose MongoDB or GitHub Vault to store your Notes.');
 
