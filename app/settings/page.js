@@ -4,6 +4,8 @@ import { getDatabase } from '../../lib/mongodb.js';
 import { redirect } from 'next/navigation';
 import { saveNewsInterests } from '../onboarding/actions.js';
 import { NEWS_TOPICS } from '../../lib/news-topics.js';
+import { HOME_MODULES, parseHomeModules } from '../../lib/home-modules.js';
+import { saveHomeModules } from './module-actions.js';
 import { vaultConfigured } from '../../lib/oge-vault-github.js';
 import SettingsClient from './settings-client.js';
 import { ownerMutationFilter } from '../../lib/active-owner-mutation.js';
@@ -21,7 +23,7 @@ export default async function SettingsPage() {
   const accountFilter = ownerMutationFilter(ownerId, { sessionVersion: session.user.sessionVersion });
   const user = await db.collection('users').findOne(
     accountFilter,
-    { projection: { newsInterests: 1, notesStorage: 1, vault: 1 } },
+    { projection: { newsInterests: 1, notesStorage: 1, vault: 1, homeModules: 1 } },
   );
   if (!user) redirect('/register');
   const vaultConnected = user.vault?.status === 'connected';
@@ -46,6 +48,7 @@ export default async function SettingsPage() {
           <a href="#gemini-ai">Gemini AI</a>
           <a href="#pixel-strip">Pixel Strip</a>
           <a href="#news-preferences">News preferences</a>
+          <a href="#homepage-modules">Homepage modules</a>
           <a href="#vault-connection">GitHub Vault</a>
           <a href="#data">Your data</a>
         </aside>
@@ -75,6 +78,26 @@ export default async function SettingsPage() {
                 ))}
               </div>
               <div className="oge-settings-form-actions"><button className="oge-google-button" name="action" value="save" type="submit">Save news preferences <span aria-hidden="true">→</span></button></div>
+            </form>
+          </section>
+
+          <section className="oge-settings-card" id="homepage-modules" aria-labelledby="homepage-modules-heading">
+            <div className="oge-settings-card-heading">
+              <div><span className="oge-section-kicker">PERSONALIZATION</span><h2 id="homepage-modules-heading">Customize homepage</h2></div>
+            </div>
+            <p className="oge-settings-description">Show only the modules you want to see. Hidden modules remain available elsewhere when your account supports them. Your choices sync across devices.</p>
+            <form action={saveHomeModules} className="oge-interest-form oge-settings-interest-form">
+              <div className="oge-interest-grid oge-home-module-grid">
+                {HOME_MODULES.map((module) => (
+                  <label key={module.id} className="oge-interest-option oge-home-module-option">
+                    <input type="checkbox" name="homeModule" value={module.id}
+                      defaultChecked={parseHomeModules(user.homeModules)?.includes(module.id) ?? true} />
+                    <span><strong>{module.label}</strong><small>{module.description}</small></span>
+                  </label>
+                ))}
+              </div>
+              <p className="oge-onboarding-description">Uncheck all modules for a minimal workspace. Home, Settings, and navigation remain accessible.</p>
+              <div className="oge-settings-form-actions"><button className="oge-google-button" type="submit">Save homepage modules →</button></div>
             </form>
           </section>
 
