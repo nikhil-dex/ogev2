@@ -1312,3 +1312,11 @@ These criteria are release blockers, not optional polish:
 - [x] Show specific, non-sensitive reasons for GitHub Vault, pending recovery data, stale account, and unsupported MongoDB transactions.
 - [x] Retain the existing fail-closed GitHub Vault restriction; no implicit GitHub repository deletion or draft loss.
 - [ ] Plan an explicit GitHub-account removal workflow separately, with clear ownership and draft-retention choices.
+
+### Connected GitHub account removal (repository retained)
+
+- [x] Add an opt-in Keep GitHub repository choice to admin account deletion.
+- [x] Atomically remove the Oge user and eligible owner-scoped records, including committed-file index metadata and verified Save receipts.
+- [x] Leave the GitHub repository untouched; refuse deletion when temporary Notes/AirNotes drafts, import locks, uncertain file-index states or recovery operations exist.
+- [x] Add MongoDB replica-set tests for success and unsaved-draft rollback.
+- [ ] Verify authenticated admin workflow before production usage; no GitHub repository deletion is supported.
