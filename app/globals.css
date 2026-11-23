@@ -901,3 +901,85 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .oge-admin-delete input{padding:9px;min-width:175px;max-width:240px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink)}
 .oge-admin-delete-button{padding:9px 12px;border:1px solid #b45555;border-radius:9px;background:transparent;color:#b45555;font-size:12px;font-weight:750;cursor:pointer}
 .oge-admin-delete-button:hover{background:color-mix(in srgb,#b45555 10%,transparent)}
+
+
+/* Settings contrast/layout fixes: retro Settings cards stay light even when
+   the user's global theme is dark. Scope to Settings, not Profile or Vault. */
+.oge-settings-page.oge-retro-workspace .oge-settings-card{
+  min-width:0;
+  scroll-margin-top:24px;
+}
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-interest-option{
+  color:#253f34;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.oge-settings-page.oge-retro-workspace .oge-home-module-option strong,
+.oge-settings-page.oge-retro-workspace .oge-settings-control-row strong,
+.oge-settings-page.oge-retro-workspace .oge-settings-control-block>strong,
+.oge-settings-page.oge-retro-workspace .oge-gemini-key-form>label,
+.oge-settings-page.oge-retro-workspace .oge-gemini-security-note strong{
+  color:#253f34;
+}
+.oge-settings-page.oge-retro-workspace .oge-home-module-option small,
+.oge-settings-page.oge-retro-workspace .oge-settings-control-row span,
+.oge-settings-page.oge-retro-workspace .oge-settings-control-block>span,
+.oge-settings-page.oge-retro-workspace .oge-gemini-security-note span{
+  color:#52695b;
+}
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-segmented button,
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-swatch,
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-secondary-button,
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-secondary-link,
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-delete{
+  color:#365747;
+}
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-segmented button.is-selected{
+  color:#fffaf0;
+  background:#315c49;
+}
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-control-row select{
+  color:#243d33;
+  background:#fffdfa;
+}
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-control-row,
+.oge-settings-page.oge-retro-workspace .oge-settings-card .oge-settings-control-block{
+  border-color:#c3cabd;
+}
+.oge-settings-page .oge-settings-interest-form,
+.oge-settings-page .oge-settings-interest-form .oge-interest-grid,
+.oge-settings-page .oge-settings-card .oge-gemini-key-form{
+  min-width:0;
+  max-width:100%;
+}
+.oge-settings-page .oge-settings-card .oge-settings-form-actions,
+.oge-settings-page .oge-settings-card .oge-gemini-key-actions{
+  flex-wrap:wrap;
+}
+.oge-settings-page .oge-settings-sidebar a{
+  overflow-wrap:anywhere;
+}
+@media(max-width:850px){
+  .oge-settings-page.oge-retro-workspace .oge-settings-sidebar{
+    max-width:100%;
+    min-width:0;
+    white-space:nowrap;
+    overscroll-behavior-inline:contain;
+  }
+  .oge-settings-page.oge-retro-workspace .oge-settings-sidebar a{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+}
+@media(max-width:540px){
+  .oge-settings-page .oge-settings-card .oge-settings-form-actions .oge-google-button,
+  .oge-settings-page .oge-settings-card .oge-settings-data-actions>*{
+    max-width:100%;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .oge-settings-page .oge-settings-card .oge-settings-data-actions>*{
+    flex:1 1 170px;
+    text-align:center;
+  }
+}
