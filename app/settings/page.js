@@ -6,6 +6,8 @@ import { saveNewsInterests } from '../onboarding/actions.js';
 import { NEWS_TOPICS } from '../../lib/news-topics.js';
 import { HOME_MODULES, parseHomeModules } from '../../lib/home-modules.js';
 import { saveHomeModules } from './module-actions.js';
+import { OPTIONAL_FEATURES, optionalFeatureEnabled } from '../../lib/optional-features.js';
+import { saveOptionalFeatures } from './feature-actions.js';
 import { vaultConfigured } from '../../lib/oge-vault-github.js';
 import SettingsClient from './settings-client.js';
 import { ownerMutationFilter } from '../../lib/active-owner-mutation.js';
@@ -23,7 +25,7 @@ export default async function SettingsPage() {
   const accountFilter = ownerMutationFilter(ownerId, { sessionVersion: session.user.sessionVersion });
   const user = await db.collection('users').findOne(
     accountFilter,
-    { projection: { newsInterests: 1, notesStorage: 1, vault: 1, homeModules: 1 } },
+    { projection: { newsInterests: 1, notesStorage: 1, vault: 1, homeModules: 1, optionalFeatures: 1 } },
   );
   if (!user) redirect('/register');
   const vaultConnected = user.vault?.status === 'connected';
@@ -44,6 +46,7 @@ export default async function SettingsPage() {
         <aside className="oge-settings-sidebar" aria-label="Settings sections">
           <Link href="/profile">Profile &amp; security</Link>
           <a href="#homepage-modules">Homepage modules</a>
+          <a href="#optional-features">News &amp; Dictionary</a>
           <a href="#news-preferences">News preferences</a>
           <a href="#appearance">Appearance</a>
           <a href="#pixel-strip">Pixel Strip</a>
@@ -87,9 +90,26 @@ export default async function SettingsPage() {
             </form>
           </section>
 
+          <section className="oge-settings-card" id="optional-features" aria-labelledby="optional-features-heading">
+            <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">OPTIONAL TOOLS</span><h2 id="optional-features-heading">News &amp; Dictionary</h2></div></div>
+            <p className="oge-settings-description">Choose whether News and Dictionary appear in your workspace. Turning either off hides its homepage section; News also disappears from navigation. Your saved preferences stay intact.</p>
+            <form action={saveOptionalFeatures} className="oge-interest-form oge-settings-interest-form">
+              <div className="oge-interest-grid oge-home-module-grid">
+                {OPTIONAL_FEATURES.map((feature) => (
+                  <label key={feature.id} className="oge-interest-option oge-home-module-option">
+                    <input type="checkbox" name="optionalFeature" value={feature.id}
+                      defaultChecked={optionalFeatureEnabled(user.optionalFeatures, feature.id)} />
+                    <span><strong>{feature.label}</strong><small>{feature.description}</small></span>
+                  </label>
+                ))}
+              </div>
+              <div className="oge-settings-form-actions"><button className="oge-google-button" type="submit">Save optional tools →</button></div>
+            </form>
+          </section>
+
           <section className="oge-settings-card" id="news-preferences" aria-labelledby="news-preferences-heading">
             <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">03 · PERSONALIZATION</span><h2 id="news-preferences-heading">News preferences</h2></div></div>
-            <p className="oge-settings-description">Choose topics for your personalized news feed. Select up to 10, or leave everything unchecked for a general feed.</p>
+            <p className="oge-settings-description">Choose topics for your news feed when News is enabled above. Select up to 10, or leave everything unchecked for a general feed.</p>
             <form action={saveNewsInterests} className="oge-interest-form oge-settings-interest-form">
               <input type="hidden" name="returnTo" value="/settings" />
               <div className="oge-interest-grid">
