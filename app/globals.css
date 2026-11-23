@@ -983,3 +983,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
     text-align:center;
   }
 }
+
+
+/* Keep optional feature choices visually distinct from homepage modules. */
+.oge-wizard-optional-features{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.oge-wizard-optional-features h2{font-size:16px;line-height:1.3;margin:0 0 7px;color:var(--ink)}
+.oge-wizard-optional-features .oge-onboarding-description{margin-bottom:13px}
+.oge-wizard-optional-features .oge-wizard-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:600px){.oge-wizard-optional-features .oge-wizard-choice-grid{grid-template-columns:1fr}}
