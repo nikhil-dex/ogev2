@@ -10,6 +10,7 @@ import HomeDashboard from './components/home-dashboard';
 import QuickNotesPanel from './components/quick-notes-panel';
 import { githubVaultFilesEnabled } from '../lib/oge-vault-media-validation.js';
 import { parseHomeModules, homeModuleVisible, homeModuleIdForHref } from '../lib/home-modules.js';
+import { optionalFeatureEnabled } from '../lib/optional-features.js';
 import { vaultNotesAvailable, vaultCaptureAvailable } from '../lib/oge-vault-workspace-routing.js';
 
 const modules = [
@@ -26,7 +27,7 @@ export default async function HomePage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/register');
   const db = await getDatabase();
-  const account = await db.collection('users').findOne({ googleSub: session.user.id }, { projection: { onboardingComplete: 1, vault: 1, notesStorage: 1, homeModules: 1 } });
+  const account = await db.collection('users').findOne({ googleSub: session.user.id }, { projection: { onboardingComplete: 1, vault: 1, notesStorage: 1, homeModules: 1, optionalFeatures: 1 } });
   if (!account?.onboardingComplete) redirect('/onboarding');
   // Once GitHub Notes is enabled for a connected owner, the main Notes card
   // should open the actual GitHub-backed editor, not the older MongoDB UI.
@@ -37,6 +38,8 @@ export default async function HomePage() {
       : vaultNotesReady ? '/vault/notes' : '/notes';
   const captureReady = vaultCaptureAvailable(account);
   const homeModules = parseHomeModules(account.homeModules);
+  const showNews = optionalFeatureEnabled(account.optionalFeatures, 'news');
+  const showDictionary = optionalFeatureEnabled(account.optionalFeatures, 'dictionary');
   // Home's Quick Notes widget must share the signed user's selected storage.
   // A temporarily disconnected GitHub Vault is NOT permission to write to
   // the legacy MongoDB Quick Notes collection.
@@ -88,11 +91,11 @@ export default async function HomePage() {
 
   return (
     <main className="shell hub-shell oge-shell">
-      <SiteNavbar notesHref={notesHref} showFiles={filesReady} actions={<><Link className="oge-signin" href="/settings">Settings <span aria-hidden="true">↗</span></Link><ThemeToggle /></>} />
+      <SiteNavbar notesHref={notesHref} showFiles={filesReady} showNews={showNews} actions={<><Link className="oge-signin" href="/settings">Settings <span aria-hidden="true">↗</span></Link><ThemeToggle /></>} />
 
-      <HomeNewsFeed />
+      {showNews && <HomeNewsFeed />}
 
-      <EnglishWordExplainer />
+      {showDictionary && <EnglishWordExplainer />}
 
       {(homeModules === null || ['notes', 'links', 'quick-notes', 'extension'].some((id) => homeModuleVisible(homeModules, id))) &&
         <HomeDashboard vaultMode={account.notesStorage === 'github' || (account.notesStorage !== 'mongodb' && filesReady)} notesHref={notesHref} quickNotesApi={quickNotesApi} quickNotesAvailable={showQuickNotes && homeModuleVisible(homeModules, 'quick-notes')} homeModules={homeModules} />}
