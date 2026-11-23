@@ -758,3 +758,98 @@
 .site-navbar-content > * {
   min-width: 0;
 }
+
+
+/* Profile-only navbar: contain the shared full-bleed header inside the retro
+   workspace and use readable colors regardless of the global theme. */
+.oge-profile-page .site-navbar{
+  position:relative;
+  z-index:30;
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  margin-left:0;
+  padding:12px clamp(14px,2vw,24px);
+  border:1.5px solid #315344;
+  border-radius:5px;
+  background:#f7f0e0;
+  color:#254536;
+  box-shadow:3px 3px 0 #315344;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+.oge-profile-page .site-navbar .brand,
+.oge-profile-page .site-navbar-link,
+.oge-profile-page .site-navbar-actions .oge-signin{
+  color:#294b3b;
+}
+.oge-profile-page .site-navbar-link:hover,
+.oge-profile-page .site-navbar-link:focus-visible{
+  color:#213e31;
+  background:#e3e9d7;
+}
+.oge-profile-page .site-navbar-link.is-active{
+  color:#214836;
+  background:#dce8d7;
+  border-color:#91ac96;
+}
+.oge-profile-page .site-navbar-actions .oge-signin{
+  border:1.5px solid #315344;
+  border-radius:5px;
+  background:#fffcf5;
+  padding:10px 14px;
+  max-width:100%;
+  white-space:normal;
+  text-align:center;
+}
+.oge-profile-page .site-navbar-actions .oge-signin:hover,
+.oge-profile-page .site-navbar-actions .oge-signin:focus-visible{
+  color:#214836;
+  background:#e3e9d7;
+}
+.oge-profile-page .site-navbar-toggle{
+  border-color:#315344;
+  border-radius:5px;
+  background:#fffcf5;
+  color:#254536;
+}
+.oge-profile-page .site-navbar-content,
+.oge-profile-page .site-navbar-links,
+.oge-profile-page .site-navbar-actions{min-width:0;}
+@media(max-width:1200px){
+  .oge-profile-page .site-navbar-content{
+    border-top:1px solid #b9c7b6;
+  }
+  .oge-profile-page .site-navbar-link{
+    border-color:#b9c7b6;
+    min-width:0;
+  }
+  .oge-profile-page .site-navbar-actions{
+    justify-content:stretch;
+    width:100%;
+  }
+  .oge-profile-page .site-navbar-actions .oge-signin{
+    flex:1 1 auto;
+  }
+}
+@media(max-width:520px){
+  .oge-profile-page .site-navbar{
+    padding:10px 12px;
+    gap:10px;
+  }
+  .oge-profile-page .site-navbar .brand{
+    min-width:0;
+    max-width:calc(100% - 56px);
+  }
+  .oge-profile-page .site-navbar-content{
+    width:100%;
+    flex-basis:100%;
+  }
+  .oge-profile-page .site-navbar-links{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .oge-profile-page .site-navbar-actions .oge-signin{
+    width:100%;
+    overflow-wrap:anywhere;
+  }
+}
