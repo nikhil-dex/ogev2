@@ -43,14 +43,15 @@ export default async function SettingsPage() {
       <div className="oge-settings-layout">
         <aside className="oge-settings-sidebar" aria-label="Settings sections">
           <Link href="/profile">Profile &amp; security</Link>
-          <a href="#organization">Subjects</a>
-          <a href="#appearance">Appearance</a>
-          <a href="#gemini-ai">Gemini AI</a>
-          <a href="#pixel-strip">Pixel Strip</a>
-          <a href="#news-preferences">News preferences</a>
           <a href="#homepage-modules">Homepage modules</a>
+          <a href="#news-preferences">News preferences</a>
+          <a href="#appearance">Appearance</a>
+          <a href="#pixel-strip">Pixel Strip</a>
+          <a href="#organization">Subjects</a>
+          <a href="#gemini-ai">Gemini AI</a>
           <a href="#vault-connection">GitHub Vault</a>
-          <a href="#data">Your data</a>
+          <a href="#data">Backup &amp; restore</a>
+          {process.env.OGE_ACCOUNT_DELETION_ENABLED === 'true' && <a href="#account-deletion">Delete account</a>}
         </aside>
 
         <div className="oge-settings-content">
@@ -62,28 +63,13 @@ export default async function SettingsPage() {
             <Link className="oge-primary-link" href="/profile">Open your profile →</Link>
           </section>
 
-          <SettingsClient accountDeletionEnabled={process.env.OGE_ACCOUNT_DELETION_ENABLED === 'true'} githubVaultSelected={user.notesStorage === 'github'} />
-
-          <section className="oge-settings-card" id="news-preferences" aria-labelledby="news-preferences-heading">
-            <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">05 · PERSONALIZATION</span><h2 id="news-preferences-heading">News preferences</h2></div></div>
-            <p className="oge-settings-description">Choose topics for your personalized news feed. Select up to 10, or leave everything unchecked for a general feed.</p>
-            <form action={saveNewsInterests} className="oge-interest-form oge-settings-interest-form">
-              <input type="hidden" name="returnTo" value="/settings" />
-              <div className="oge-interest-grid">
-                {NEWS_TOPICS.map((topic) => (
-                  <label key={topic} className="oge-interest-option">
-                    <input type="checkbox" name="interest" value={topic} defaultChecked={user?.newsInterests?.includes(topic) || false} />
-                    <span>{topic}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="oge-settings-form-actions"><button className="oge-google-button" name="action" value="save" type="submit">Save news preferences <span aria-hidden="true">→</span></button></div>
-            </form>
-          </section>
-
+          <SettingsClient
+            accountDeletionEnabled={process.env.OGE_ACCOUNT_DELETION_ENABLED === 'true'}
+            githubVaultSelected={user.notesStorage === 'github'}
+            preferences={<>
           <section className="oge-settings-card" id="homepage-modules" aria-labelledby="homepage-modules-heading">
             <div className="oge-settings-card-heading">
-              <div><span className="oge-section-kicker">PERSONALIZATION</span><h2 id="homepage-modules-heading">Customize homepage</h2></div>
+              <div><span className="oge-section-kicker">02 · PERSONALIZATION</span><h2 id="homepage-modules-heading">Customize homepage</h2></div>
             </div>
             <p className="oge-settings-description">Show only the modules you want to see. Hidden modules remain available elsewhere when your account supports them. Your choices sync across devices.</p>
             <form action={saveHomeModules} className="oge-interest-form oge-settings-interest-form">
@@ -101,9 +87,28 @@ export default async function SettingsPage() {
             </form>
           </section>
 
+          <section className="oge-settings-card" id="news-preferences" aria-labelledby="news-preferences-heading">
+            <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">03 · PERSONALIZATION</span><h2 id="news-preferences-heading">News preferences</h2></div></div>
+            <p className="oge-settings-description">Choose topics for your personalized news feed. Select up to 10, or leave everything unchecked for a general feed.</p>
+            <form action={saveNewsInterests} className="oge-interest-form oge-settings-interest-form">
+              <input type="hidden" name="returnTo" value="/settings" />
+              <div className="oge-interest-grid">
+                {NEWS_TOPICS.map((topic) => (
+                  <label key={topic} className="oge-interest-option">
+                    <input type="checkbox" name="interest" value={topic} defaultChecked={user?.newsInterests?.includes(topic) || false} />
+                    <span>{topic}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="oge-settings-form-actions"><button className="oge-google-button" name="action" value="save" type="submit">Save news preferences <span aria-hidden="true">→</span></button></div>
+            </form>
+          </section>
+
+            </>}
+            storage={<>
           <section className="oge-settings-card" id="vault-connection" aria-labelledby="vault-connection-heading">
             <div className="oge-settings-card-heading">
-              <div><span className="oge-section-kicker">06 · NOTES STORAGE</span><h2 id="vault-connection-heading">GitHub Vault connection</h2></div>
+              <div><span className="oge-section-kicker">08 · STORAGE</span><h2 id="vault-connection-heading">GitHub Vault connection</h2></div>
               <span className="oge-settings-pill">{vaultConnected ? 'Connected' : vaultEnabled ? 'Ready to connect' : 'Setup required'}</span>
             </div>
             <p className="oge-settings-description">{vaultConnected
@@ -113,6 +118,9 @@ export default async function SettingsPage() {
             <Link className="oge-primary-link" href="/vault">{vaultConnected ? 'Manage my connected GitHub Vault →' : 'Set up GitHub Vault →'}</Link>
             {!vaultConnected && !vaultEnabled && <p className="oge-settings-note" role="status">The GitHub connection button will be unavailable until Oge&apos;s GitHub App is configured on this server. Open the setup page for the configuration guide.</p>}
           </section>
+
+            </>}
+          />
 
           <footer className="oge-settings-footer"><Link className="oge-brand" href="/"><span className="oge-brand-mark">O</span><span>OgeNotes</span></Link><span>YOUR WORKSPACE · YOUR WAY</span></footer>
         </div>
