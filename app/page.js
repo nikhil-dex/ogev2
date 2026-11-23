@@ -90,7 +90,7 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="shell hub-shell oge-shell">
+    <main className={`shell hub-shell oge-shell${!showNews && !showDictionary ? ' oge-home-no-extras' : ''}`}>
       <SiteNavbar notesHref={notesHref} showFiles={filesReady} showNews={showNews} actions={<><Link className="oge-signin" href="/settings">Settings <span aria-hidden="true">↗</span></Link><ThemeToggle /></>} />
 
       {showNews && <HomeNewsFeed />}
