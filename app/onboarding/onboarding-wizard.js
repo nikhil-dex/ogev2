@@ -118,9 +118,9 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
             </div>
           </div>
           <div className="oge-wizard-module-tools">
-            <span>{modules.length} chosen · Hidden modules still work when available.</span>
-            <button type="button" onClick={() => setModules([...DEFAULT_HOME_MODULES])}>Use recommended</button>
-            <button type="button" onClick={() => setModules([])}>Choose later</button>
+            <span>{modules.length} chosen · Hidden tools still work when available.</span>
+            <button type="button" onClick={() => { setModules([...DEFAULT_HOME_MODULES]); setOptionalFeatures([...DEFAULT_OPTIONAL_FEATURES]); }}>Use recommended</button>
+            <button type="button" onClick={() => { setModules([]); setOptionalFeatures([]); }}>Choose later</button>
           </div>
         </>}
         {step === 3 && <div className="oge-storage-options">
