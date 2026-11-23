@@ -70,3 +70,21 @@ test('Choose later hides optional tools as well as homepage modules', async () =
   assert.match(wizard, /setModules\(\[\]\); setOptionalFeatures\(\[\]\);/);
   assert.match(wizard, /setModules\(\[\.\.\.DEFAULT_HOME_MODULES\]\); setOptionalFeatures\(\[\.\.\.DEFAULT_OPTIONAL_FEATURES\]\);/);
 });
+
+test('homepage uses compact section rhythm when both top tools are hidden', async () => {
+  const home = await read('../app/page.js');
+  const css = await read('../public/extra.css');
+  assert.match(home, /!showNews && !showDictionary \? ' oge-home-no-extras' : ''/);
+  const index = css.lastIndexOf('/* Homepage: remove orphaned spacing');
+  assert.ok(index >= 0);
+  const compact = css.slice(index);
+  for (const selector of [
+    '.oge-home-no-extras > .home-dashboard',
+    '.oge-home-no-extras > .oge-airnotes-preview',
+    '.oge-home-no-extras > .oge-module-section',
+    '.oge-home-no-extras > .home-dashboard + .oge-module-section',
+    '.oge-home-no-extras > .oge-airnotes-preview + .oge-module-section',
+  ]) assert.ok(compact.includes(selector), 'missing compact spacing for ' + selector);
+  assert.match(compact, /@media\(max-width:620px\)/);
+  assert.doesNotMatch(compact, /!important/);
+});
