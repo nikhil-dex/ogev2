@@ -5,6 +5,7 @@ import { getDatabase } from '../../lib/mongodb.js';
 import { redirect } from 'next/navigation';
 import { NEWS_TOPICS } from '../../lib/news-topics.js';
 import { validateHomeModules } from '../../lib/home-modules.js';
+import { validateOptionalFeatures } from '../../lib/optional-features.js';
 import { ownerMutationFilter } from '../../lib/active-owner-mutation.js';
 
 export async function saveNewsInterests(formData) {
@@ -30,11 +31,15 @@ export async function saveNewsInterests(formData) {
   if (!fromSettings && !validateHomeModules(selectedModules))
     throw new Error('Choose valid homepage modules.');
 
+  const selectedFeatures = fromSettings ? null : formData.getAll('optionalFeature');
+  if (!fromSettings && !validateOptionalFeatures(selectedFeatures))
+    throw new Error('Choose valid optional features.');
+
   const db = await getDatabase();
   const accountFilter = ownerMutationFilter(ownerId, { sessionVersion: session.user.sessionVersion });
   const result = await db.collection('users').updateOne(
     accountFilter,
-    { $set: { newsInterests: interests, ...(fromSettings ? {} : { notesStorage: storageChoice, homeModules: selectedModules, onboardingComplete: true }), updatedAt: new Date() } },
+    { $set: { newsInterests: interests, ...(fromSettings ? {} : { notesStorage: storageChoice, homeModules: selectedModules, optionalFeatures: selectedFeatures, onboardingComplete: true }), updatedAt: new Date() } },
   );
   if (result.matchedCount !== 1) redirect('/register');
   if (!fromSettings && storageChoice === 'github') redirect('/vault?setup=onboarding');
