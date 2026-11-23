@@ -35,3 +35,19 @@ test('Settings sections render in the intended sequence without duplicate client
   assert.match(client, /accountDeletionEnabled &&/);
   assert.match(page, /OGE_ACCOUNT_DELETION_ENABLED === 'true' && <a href="#account-deletion">/);
 });
+
+test('retro Settings CSS maintains readable controls in dark mode and small screens', async () => {
+  const css = await read('../app/globals.css');
+  const scoped = css.slice(css.lastIndexOf('/* Settings contrast/layout fixes:'));
+  assert.ok(scoped.length > 1500, 'Settings overrides must be present');
+  assert.match(scoped, /\.oge-settings-page\.oge-retro-workspace \.oge-settings-card \.oge-interest-option/);
+  assert.match(scoped, /\.oge-home-module-option small/);
+  assert.match(scoped, /\.oge-settings-control-row strong/);
+  assert.match(scoped, /\.oge-settings-control-row select/);
+  assert.match(scoped, /\.oge-settings-segmented button\.is-selected/);
+  assert.match(scoped, /scroll-margin-top:24px/);
+  assert.match(scoped, /@media\(max-width:850px\)/);
+  assert.match(scoped, /@media\(max-width:540px\)/);
+  assert.match(scoped, /overscroll-behavior-inline:contain/);
+  assert.doesNotMatch(scoped, /!important/);
+});
