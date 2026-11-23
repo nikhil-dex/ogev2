@@ -1285,3 +1285,38 @@ These criteria are release blockers, not optional polish:
 - [x] Preserve pre-existing users' homepage layout until they explicitly save module preferences.
 - [x] Add module catalogue validation and regression tests.
 - [ ] Run CI and verify authenticated first-login and Settings workflow in browser before merging.
+
+
+## Private administrator dashboard — November 2026
+
+- [x] Add direct-only `/ogeadmin` dashboard with no homepage, Settings or navigation links.
+- [x] Authorize access from the signed-in account's persisted verified email matching server-only `ADMIN_EMAIL` and current session version.
+- [x] Return a not-found page when unauthorized or when `ADMIN_EMAIL` is missing.
+- [x] Display lightweight usage totals and a searchable, paginated user account list.
+- [x] Allow admin to revoke other users' active sessions with explicit confirmation, without deleting notes, files or accounts.
+- [x] Keep admin dashboard read-only for private note content and never display credentials.
+- [x] Document env setup and add access-control/regression tests.
+- [ ] Verify CI and a real signed-in admin/non-admin browser scenario before merging or deployment.
+
+### Admin account deletion follow-up
+
+- [x] Add an explicit permanent account deletion action on `/ogeadmin`, restricted to `ADMIN_EMAIL`.
+- [x] Require typed `DELETE ACCOUNT` and exact target email; prevent the administrator from deleting their own account.
+- [x] Reuse the existing atomic account deletion engine to remove eligible accounts and associated MongoDB records.
+- [x] Block connected GitHub Vault accounts and accounts with pending Vault recovery data. Do not delete GitHub repositories.
+- [x] Add regression coverage for the delete action.
+- [ ] Verify CI and a real authenticated, disposable-account deletion before merging.
+
+### Admin deletion diagnostic improvement
+
+- [x] Show specific, non-sensitive reasons for GitHub Vault, pending recovery data, stale account, and unsupported MongoDB transactions.
+- [x] Retain the existing fail-closed GitHub Vault restriction; no implicit GitHub repository deletion or draft loss.
+- [ ] Plan an explicit GitHub-account removal workflow separately, with clear ownership and draft-retention choices.
+
+### Connected GitHub account removal (repository retained)
+
+- [x] Add an opt-in Keep GitHub repository choice to admin account deletion.
+- [x] Atomically remove the Oge user and eligible owner-scoped records, including committed-file index metadata and verified Save receipts.
+- [x] Leave the GitHub repository untouched; refuse deletion when temporary Notes/AirNotes drafts, import locks, uncertain file-index states or recovery operations exist.
+- [x] Add MongoDB replica-set tests for success and unsaved-draft rollback.
+- [ ] Verify authenticated admin workflow before production usage; no GitHub repository deletion is supported.
