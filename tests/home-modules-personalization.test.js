@@ -74,6 +74,6 @@ test('module preferences come before storage; the storage submit is the only Git
   assert.match(wizard, /step === 3 && <div className="oge-storage-options">/);
   assert.match(wizard, /step === 3 && <input type="hidden" name="wizardComplete"/);
   assert.match(wizard, /if \(!storage\)/);
-  assert.match(action, /homeModules: selectedModules, onboardingComplete: true/);
+  assert.match(action, /homeModules: selectedModules, optionalFeatures: selectedFeatures, onboardingComplete: true/);
   assert.ok(action.indexOf('homeModules: selectedModules') < action.indexOf("redirect('/vault?setup=onboarding')"));
 });
