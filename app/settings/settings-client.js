@@ -24,7 +24,7 @@ function readLocal(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
 }
 
-export default function SettingsClient({ accountDeletionEnabled = false, githubVaultSelected = false }) {
+export default function SettingsClient({ accountDeletionEnabled = false, githubVaultSelected = false, preferences = null, storage = null }) {
   const [subjects, setSubjects] = useState([]);
   const [subjectName, setSubjectName] = useState('');
   const [subjectLoading, setSubjectLoading] = useState(true);
@@ -222,8 +222,29 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
 
   return (
     <>
+      {preferences}
+      <section className="oge-settings-card" id="appearance" aria-labelledby="appearance-heading">
+        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">04 · COMFORT</span><h2 id="appearance-heading">Appearance</h2></div></div>
+        <p className="oge-settings-description">Preferences are saved in this browser and applied across OgeNotes on this device.</p>
+        <div className="oge-settings-control-row"><div><strong>Color mode</strong><span>Choose a light or dark workspace.</span></div><div className="oge-settings-segmented"><button type="button" className={theme === 'light' ? 'is-selected' : ''} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>☼ Light</button><button type="button" className={theme === 'dark' ? 'is-selected' : ''} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>◐ Dark</button></div></div>
+        <div className="oge-settings-control-block"><strong>Primary accent</strong><span>Used for active states and key actions.</span><div className="oge-settings-swatches">{ACCENTS.map((item) => <button key={item.id} type="button" className={'oge-settings-swatch ' + (accent === item.id ? 'is-selected' : '')} onClick={() => setAccent(item.id)} aria-pressed={accent === item.id} aria-label={item.label + ' primary accent'}><i style={{ background: item.color }} />{item.label}</button>)}</div></div>
+        <div className="oge-settings-control-block"><strong>Secondary accent</strong><span>Use a complementary color for supporting details.</span><div className="oge-settings-swatches">{ACCENTS.map((item) => <button key={item.id} type="button" className={'oge-settings-swatch ' + (secondary === item.id ? 'is-selected' : '')} onClick={() => setSecondary(item.id)} aria-pressed={secondary === item.id} aria-label={item.label + ' secondary accent'}><i style={{ background: item.color }} />{item.label}</button>)}</div></div>
+      </section>
+
+
+      <section className="oge-settings-card" id="pixel-strip" aria-labelledby="pixel-heading">
+        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">05 · PERSONALIZATION</span><h2 id="pixel-heading">Pixel Strip</h2></div><span className="oge-settings-pill">Optional</span></div>
+        <p className="oge-settings-description">Customize the animated pixel display below the navigation. These controls respect your device’s reduced-motion preference.</p>
+        <label className="oge-settings-control-row"><div><strong>Show Pixel Strip</strong><span>Turn the animation on or off throughout the app.</span></div><input className="oge-settings-checkbox" type="checkbox" checked={pixel.enabled} onChange={(event) => savePixel({ enabled: event.target.checked })} /></label>
+        <label className="oge-settings-control-row"><div><strong>Pixel color</strong><span>Follow your accent color or use white.</span></div><select value={pixel.color} onChange={(event) => savePixel({ color: event.target.value })}><option value="accent">Theme accent</option><option value="white">Monochrome white</option></select></label>
+        <label className="oge-settings-control-row"><div><strong>Animation style</strong><span>Choose a favorite or rotate effects automatically.</span></div><select value={pixel.mode} onChange={(event) => savePixel({ mode: event.target.value })}>{PIXEL_MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="oge-settings-control-row"><div><strong>Animation speed</strong><span>Slower motion can feel calmer.</span></div><select value={pixel.speed} onChange={(event) => savePixel({ speed: event.target.value })}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>
+        <label className="oge-settings-control-row"><div><strong>Pixel density</strong><span>Choose finer or bolder pixels.</span></div><select value={pixel.density} onChange={(event) => savePixel({ density: event.target.value })}><option value="fine">Fine</option><option value="normal">Balanced</option><option value="bold">Bold</option></select></label>
+        <div className="oge-settings-bottom-row"><button type="button" className="oge-settings-secondary-button" onClick={() => window.dispatchEvent(new Event('ogenotes-pixel-preview'))} disabled={!pixel.enabled}>↻ Preview another animation</button><span className="oge-settings-note">Saved automatically on this device.</span></div>
+      </section>
+
       <section className="oge-settings-card" id="organization" aria-labelledby="organization-heading">
-        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">02 · ORGANIZATION</span><h2 id="organization-heading">Subjects</h2></div><span className="oge-settings-count">{subjects.length} total</span></div>
+        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">06 · ORGANIZATION</span><h2 id="organization-heading">Subjects</h2></div><span className="oge-settings-count">{subjects.length} total</span></div>
         <p className="oge-settings-description">Organize your study notes into subjects. Removing a subject also removes the notes inside it.</p>
         <form className="oge-settings-add-form" onSubmit={addSubject}>
           <label className="sr-only" htmlFor="settings-new-subject">New subject name</label>
@@ -243,18 +264,9 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
         </div>
       </section>
 
-      <section className="oge-settings-card" id="appearance" aria-labelledby="appearance-heading">
-        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">03 · COMFORT</span><h2 id="appearance-heading">Appearance</h2></div></div>
-        <p className="oge-settings-description">Preferences are saved in this browser and applied across OgeNotes on this device.</p>
-        <div className="oge-settings-control-row"><div><strong>Color mode</strong><span>Choose a light or dark workspace.</span></div><div className="oge-settings-segmented"><button type="button" className={theme === 'light' ? 'is-selected' : ''} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>☼ Light</button><button type="button" className={theme === 'dark' ? 'is-selected' : ''} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>◐ Dark</button></div></div>
-        <div className="oge-settings-control-block"><strong>Primary accent</strong><span>Used for active states and key actions.</span><div className="oge-settings-swatches">{ACCENTS.map((item) => <button key={item.id} type="button" className={'oge-settings-swatch ' + (accent === item.id ? 'is-selected' : '')} onClick={() => setAccent(item.id)} aria-pressed={accent === item.id} aria-label={item.label + ' primary accent'}><i style={{ background: item.color }} />{item.label}</button>)}</div></div>
-        <div className="oge-settings-control-block"><strong>Secondary accent</strong><span>Use a complementary color for supporting details.</span><div className="oge-settings-swatches">{ACCENTS.map((item) => <button key={item.id} type="button" className={'oge-settings-swatch ' + (secondary === item.id ? 'is-selected' : '')} onClick={() => setSecondary(item.id)} aria-pressed={secondary === item.id} aria-label={item.label + ' secondary accent'}><i style={{ background: item.color }} />{item.label}</button>)}</div></div>
-      </section>
-
-
       <section className="oge-settings-card oge-gemini-settings" id="gemini-ai" aria-labelledby="gemini-ai-heading">
         <div className="oge-settings-card-heading">
-          <div><span className="oge-section-kicker">04 · AI TOOLS</span><h2 id="gemini-ai-heading">Gemini AI</h2></div>
+          <div><span className="oge-section-kicker">07 · AI TOOLS</span><h2 id="gemini-ai-heading">Gemini AI</h2></div>
           <span className={geminiConfigured ? 'oge-settings-pill' : 'oge-settings-count'}>{geminiConfigured ? 'Key connected' : 'BYOK · Optional'}</span>
         </div>
         <p className="oge-settings-description">Bring your own Google Gemini API key to clean up note headings, grammar, explanations, and Markdown formatting. Gemini suggests edits in your editor; it never overwrites a saved note automatically.</p>
@@ -273,19 +285,9 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
         {geminiMessage && <p className="oge-settings-feedback" role={geminiMessageType} aria-live="polite">{geminiMessage}</p>}
       </section>
 
-      <section className="oge-settings-card" id="pixel-strip" aria-labelledby="pixel-heading">
-        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">04 · PERSONALIZATION</span><h2 id="pixel-heading">Pixel Strip</h2></div><span className="oge-settings-pill">Optional</span></div>
-        <p className="oge-settings-description">Customize the animated pixel display below the navigation. These controls respect your device’s reduced-motion preference.</p>
-        <label className="oge-settings-control-row"><div><strong>Show Pixel Strip</strong><span>Turn the animation on or off throughout the app.</span></div><input className="oge-settings-checkbox" type="checkbox" checked={pixel.enabled} onChange={(event) => savePixel({ enabled: event.target.checked })} /></label>
-        <label className="oge-settings-control-row"><div><strong>Pixel color</strong><span>Follow your accent color or use white.</span></div><select value={pixel.color} onChange={(event) => savePixel({ color: event.target.value })}><option value="accent">Theme accent</option><option value="white">Monochrome white</option></select></label>
-        <label className="oge-settings-control-row"><div><strong>Animation style</strong><span>Choose a favorite or rotate effects automatically.</span></div><select value={pixel.mode} onChange={(event) => savePixel({ mode: event.target.value })}>{PIXEL_MODES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label className="oge-settings-control-row"><div><strong>Animation speed</strong><span>Slower motion can feel calmer.</span></div><select value={pixel.speed} onChange={(event) => savePixel({ speed: event.target.value })}><option value="slow">Slow</option><option value="normal">Normal</option><option value="fast">Fast</option></select></label>
-        <label className="oge-settings-control-row"><div><strong>Pixel density</strong><span>Choose finer or bolder pixels.</span></div><select value={pixel.density} onChange={(event) => savePixel({ density: event.target.value })}><option value="fine">Fine</option><option value="normal">Balanced</option><option value="bold">Bold</option></select></label>
-        <div className="oge-settings-bottom-row"><button type="button" className="oge-settings-secondary-button" onClick={() => window.dispatchEvent(new Event('ogenotes-pixel-preview'))} disabled={!pixel.enabled}>↻ Preview another animation</button><span className="oge-settings-note">Saved automatically on this device.</span></div>
-      </section>
-
+      {storage}
       <section className="oge-settings-card" id="data" aria-labelledby="backup-heading">
-        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">05 · RECOVERY</span><h2 id="backup-heading">Backup &amp; restore</h2></div></div>
+        <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">09 · RECOVERY</span><h2 id="backup-heading">Backup &amp; restore</h2></div></div>
         {githubVaultSelected ? (
           <>
             <p className="oge-settings-description">Your Notes use GitHub Vault, not MongoDB. Back up your committed Notes, Quick Notes, AirNotes, Saved Links and My Files from your private GitHub repository.</p>
@@ -308,7 +310,7 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
       </section>
       {accountDeletionEnabled && (
         <section className="oge-settings-card" id="account-deletion" aria-labelledby="account-deletion-heading">
-          <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">06 · PRIVACY</span><h2 id="account-deletion-heading">Delete account</h2></div></div>
+          <div className="oge-settings-card-heading"><div><span className="oge-section-kicker">10 · PRIVACY</span><h2 id="account-deletion-heading">Delete account</h2></div></div>
           <p className="oge-settings-description">Permanently delete your OgeNotes profile, saved notes, AirNotes, links, preferences, encrypted Gemini key and browser extension access. Export a backup first. Existing database snapshots may expire under a separate retention policy.</p>
           <p className="oge-settings-note">For security, sign out and sign back in with Google within five minutes before confirming deletion.</p>
           <button type="button" className="oge-settings-danger-button" disabled={accountDeleting} onClick={deleteMyAccount}>{accountDeleting ? 'Deleting account…' : 'Permanently delete account'}</button>
