@@ -1320,3 +1320,13 @@ These criteria are release blockers, not optional polish:
 - [x] Leave the GitHub repository untouched; refuse deletion when temporary Notes/AirNotes drafts, import locks, uncertain file-index states or recovery operations exist.
 - [x] Add MongoDB replica-set tests for success and unsaved-draft rollback.
 - [ ] Verify authenticated admin workflow before production usage; no GitHub repository deletion is supported.
+
+## Optional News and Dictionary tools — November 2026
+
+- [x] Let new users independently enable or disable News and Dictionary in the onboarding workspace selection step, before final Notes storage.
+- [x] Let existing users change both preferences in Settings without repeating onboarding.
+- [x] Hide disabled News feed and English Dictionary on the homepage, and hide News from the shared navigation.
+- [x] Preserve both features for pre-existing accounts with no optional-feature preference.
+- [x] Keep direct routes and saved News interests intact when features are hidden.
+- [x] Test account-scoped preference persistence, legacy defaults, and affected UI.
+- [ ] Verify authenticated first-use and Settings toggles on desktop/mobile before production deployment.
