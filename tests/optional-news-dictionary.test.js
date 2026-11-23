@@ -64,3 +64,9 @@ test('home hides opted-out widgets, and navbar uses authenticated preference', a
   assert.match(endpoint, /ownerMutationFilter\(session.user.id/);
   assert.match(endpoint, /Cache-Control': 'private, no-store'/);
 });
+
+test('Choose later hides optional tools as well as homepage modules', async () => {
+  const wizard = await read('../app/onboarding/onboarding-wizard.js');
+  assert.match(wizard, /setModules\(\[\]\); setOptionalFeatures\(\[\]\);/);
+  assert.match(wizard, /setModules\(\[\.\.\.DEFAULT_HOME_MODULES\]\); setOptionalFeatures\(\[\.\.\.DEFAULT_OPTIONAL_FEATURES\]\);/);
+});
