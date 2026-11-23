@@ -47,7 +47,7 @@ test('M118 onboarding wizard offers required storage and skippable news', async 
   assert.match(wizard, /Choose later/);
   assert.match(wizard, /name="notesStorage" value=\{storage\}/);
   assert.match(action, /\['mongodb', 'github'\]\.includes\(storageChoice\)/);
-  assert.match(action, /homeModules: selectedModules, onboardingComplete: true/);
+  assert.match(action, /homeModules: selectedModules, optionalFeatures: selectedFeatures, onboardingComplete: true/);
   assert.match(action, /redirect\('\/vault\?setup=onboarding'\)/);
   assert.match(action, /ownerMutationFilter\(ownerId, \{ sessionVersion: session\.user\.sessionVersion \}\)/);
 });
