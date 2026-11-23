@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { NEWS_TOPICS } from '../../lib/news-topics.js';
 import { HOME_MODULES, DEFAULT_HOME_MODULES } from '../../lib/home-modules.js';
+import { OPTIONAL_FEATURES, DEFAULT_OPTIONAL_FEATURES } from '../../lib/optional-features.js';
 import { saveNewsInterests } from './actions.js';
 
 const HEADINGS = [
@@ -17,6 +18,7 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
   const [interests, setInterests] = useState(initialInterests.length ? initialInterests : ['Technology', 'Artificial Intelligence', 'Science']);
   const [storage, setStorage] = useState(['github', 'mongodb'].includes(initialStorage) ? initialStorage : '');
   const [modules, setModules] = useState([...DEFAULT_HOME_MODULES]);
+  const [optionalFeatures, setOptionalFeatures] = useState([...DEFAULT_OPTIONAL_FEATURES]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -70,6 +72,7 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
             the corresponding wizard step is not currently displayed. */}
         {interests.map((topic) => <input key={topic} type="hidden" name="interest" value={topic} />)}
         {modules.map((id) => <input key={id} type="hidden" name="homeModule" value={id} />)}
+        {optionalFeatures.map((id) => <input key={id} type="hidden" name="optionalFeature" value={id} />)}
         <input type="hidden" name="notesStorage" value={storage} />
         {step === 3 && <input type="hidden" name="wizardComplete" value="true" />}
         {step === 0 && <div className="oge-wizard-welcome">
@@ -99,6 +102,20 @@ export default function OnboardingWizard({ initialInterests = [], initialStorage
               <span aria-hidden="true">{modules.includes(item.id) ? '✓' : '+'}</span>
               <span><strong>{item.label}</strong><small>{item.description}</small></span>
             </button>)}
+          </div>
+          <div className="oge-wizard-optional-features">
+            <h2>Optional tools</h2>
+            <p className="oge-onboarding-description">Switch off News or Dictionary if you prefer a simpler workspace. You can change this in Settings.</p>
+            <div className="oge-wizard-choice-grid oge-wizard-modules">
+              {OPTIONAL_FEATURES.map((item) => <button key={item.id} type="button"
+                className={`oge-wizard-choice oge-wizard-module ${optionalFeatures.includes(item.id) ? 'is-selected' : ''}`}
+                aria-pressed={optionalFeatures.includes(item.id)}
+                onClick={() => setOptionalFeatures((current) => current.includes(item.id)
+                  ? current.filter((id) => id !== item.id) : [...current, item.id])}>
+                <span aria-hidden="true">{optionalFeatures.includes(item.id) ? '✓' : '+'}</span>
+                <span><strong>{item.label}</strong><small>{item.description}</small></span>
+              </button>)}
+            </div>
           </div>
           <div className="oge-wizard-module-tools">
             <span>{modules.length} chosen · Hidden modules still work when available.</span>
