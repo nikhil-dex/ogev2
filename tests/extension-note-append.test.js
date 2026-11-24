@@ -71,8 +71,8 @@ test('choosing an existing Note appends, preserves typed text on failure and doe
     },
   };
   vm.runInNewContext(src.slice(from, to), ctx, { timeout: 1500 });
-  assert.match(ctx.noteSave.textContent, /Append to ML P2/);
   await save();
+  assert.match(ctx.noteSave.textContent, /Append to ML P2/);
   assert.equal(note.value, 'Additional learning points');
   assert.match(ctx.message, /still in the editor/);
   await save();
