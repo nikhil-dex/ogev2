@@ -1478,3 +1478,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT6 automatic current lesson destination checkpoint
 
 - Quick Note automatically resolves an assigned track and current lesson when opened and on YouTube navigation. Contextual Save/Append is the default; explicit manual destination override remains available. Unsaved text from a previous lesson blocks automatic retargeting until the user chooses a destination. Successful contextual Save retains the returned Note revision for further appends. No automatic retry of uncertain writes. Regression source checks added; browser/CI validation, playlist Note filter, source links and timestamps remain pending.
+
+### LT7 source reference checkpoint
+
+- Contextual lesson saves now embed a Markdown source title and canonical YouTube watch URL in the Note body for both storage modes. Each capture includes a lesson heading; existing source video IDs are recognized across canonical, short and playlist URL forms so repeated captures do not insert duplicate primary links. Different lessons sharing a topic add distinct references. Existing content is preserved by the revision-aware append path. Tests added; no bulk migration of old Notes and manual override saves do not automatically add references. Timestamp support and playlist Note filtering remain pending; CI/browser acceptance pending.
