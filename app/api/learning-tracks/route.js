@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { completionTimeline } from '../../../lib/learning-track-flexible-plan.js';
 import { changeTrackTopics } from '../../../lib/learning-track-topics.js';
 import { cachedPublicPlaylist } from '../../../lib/youtube-playlist-cache.js';
 import { PlaylistDiscoveryError } from '../../../lib/youtube-playlist-discovery.js';
@@ -128,6 +129,7 @@ async function updateIdentityProgress(data) {
         action, expectedCompleted, videoId: data.videoId, videoIds: data.videoIds,
       });
       if (change.error) return json({ error: change.error }, 400);
+      change.value.completionTimeline = completionTimeline(track, change.value.completedVideoIds);
       const updatedAt = new Date(Math.max(Date.now(), new Date(track.updatedAt).getTime() + 1));
       const updated = await collection.updateOne(
         { _id: id, ownerId: ctx.ownerId, updatedAt: track.updatedAt },

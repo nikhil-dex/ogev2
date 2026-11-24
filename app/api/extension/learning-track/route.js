@@ -1,3 +1,4 @@
+import { completionTimeline } from '../../../../lib/learning-track-flexible-plan.js';
 import { nextExtensionLesson, extensionLessonChange } from '../../../../lib/learning-track-video-progress.js';
 import { cachedPublicPlaylist } from '../../../../lib/youtube-playlist-cache.js';
 import { PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
@@ -156,6 +157,7 @@ export async function PATCH(request) {
       if (!current) return json({ error: 'Track changed. Refresh and retry.' }, 409);
       const change = extensionLessonChange({ ...current, totalVideos: Math.max(snapshot.totalVideos, current.completedVideos + 1) }, snapshot.videos, videoId, action);
       if (change.error) return json({ error: change.error }, 409);
+      change.value.completionTimeline = completionTimeline(current.progressMode === 'videoIds' ? current : { ...current, progressMode: 'videoIds', completedVideoIds: [] }, change.value.completedVideoIds);
       const updatedAt = new Date(Math.max(Date.now(), new Date(current.updatedAt).getTime() + 1));
       const result = await collection.updateOne({ _id: id, ownerId: user.googleSub, updatedAt: current.updatedAt },
         { $set: { ...change.value, ...(snapshot.stale ? {} : { totalVideos: snapshot.totalVideos }), updatedAt } }, { session });

@@ -1486,3 +1486,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT8 timestamp reference checkpoint
 
 - Optional default-off Attach current video timestamp control in contextual Quick Note. Capture reads current main HTML5 player time on explicit Save; ads, missing/invalid players and live/infinite duration fall back to canonical source. Browser preserves attempted timestamp for unchanged retries. Server validates numeric range, floors seconds, formats portable Markdown timestamp links and avoids repeating identical generated timestamp links. Different positions may coexist for the same video. Timestamp is not evidence of completion. Tests added, CI/live acceptance pending.
+
+### LT9 flexible daily schedule checkpoint
+
+- Added explicit completion timestamps for new video-ID progress on website and extension, preserving dates on repeat completion and removing date on undo; legacy migrated completions remain undated. Flexible plan groups unique unfinished video IDs from local today (or future start date), subtracts actual dated completions from today's goal and carries remaining lessons forward without resetting progress. Website distinguishes original calendar plan and study block from flexible daily plan. Daily counts reflect current saved completions, not viewing history. Device-local date is used rather than a fixed account timezone. Tests added; CI/live verification and deferred playlist Note filtering remain pending.

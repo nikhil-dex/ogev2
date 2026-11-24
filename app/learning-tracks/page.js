@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import SiteNavbar from '../components/site-navbar';
 import TrackTopics from './track-topics.js';
+import { flexibleStudyPlan } from '../../lib/learning-track-flexible-plan.js';
 import { buildDailyLessons, currentLearningDay } from '../../lib/learning-tracks.js';
 import { buildIdentityLessonDays, currentIdentityLearningDay } from '../../lib/learning-track-video-progress.js';
 import styles from './learning-tracks.module.css';
@@ -326,6 +327,7 @@ export default function LearningTracksPage() {
             ? (focus ? days.findIndex((day) => day.day === focus.day) : days.length)
             : Math.floor(track.completedVideos / track.videosPerDay);
           const upcoming = days.slice(currentDay, currentDay + 7);
+          const flexible = snapshot && identityMode ? flexibleStudyPlan(snapshot.videos, track.completedVideoIds, track.completionTimeline, track.videosPerDay, track.startDate) : null;
           const unavailableVideos = snapshot && noteLinkingEnabled
             ? (lessonLinks[track.id] || []).filter((link) =>
               !snapshot.videos.some((video) => video.videoId === link.videoId)).length : 0;
@@ -364,6 +366,14 @@ export default function LearningTracksPage() {
               <p>Snapshot: {snapshot.totalVideos} public playlist entries. Titles and order can change. {identityMode
                 ? 'Completed videos are matched by video ID, even if positions change.'
                 : 'Legacy progress follows playlist order, not video identity.'}</p>
+              {flexible && <section className={styles.focus} aria-label="Flexible daily plan">
+                <span className={styles.focusEyebrow}>FLEXIBLE STUDY PLAN</span>
+                <p>{flexible.completedToday} / {track.videosPerDay} explicitly marked complete today (device local date).</p>
+                {flexible.undatedCompleted > 0 && <p>{flexible.undatedCompleted} older completions have no recorded date.</p>}
+                {flexible.goalMet && <p>Today's goal is met. You can continue or resume tomorrow.</p>}
+                <p>{flexible.remaining} unique lessons remaining. Unfinished lessons carry forward automatically.</p>
+                <ol className={styles.dayList}>{flexible.blocks.slice(0, 7).map(block => <li key={block.date}><strong>{block.date}</strong><ul>{block.videos.map(video => <li key={video.videoId}><a href={video.url} target="_blank" rel="noopener noreferrer">{video.title}</a></li>)}</ul></li>)}</ol>
+              </section>}
               <TrackTopics track={track} videos={snapshot.videos} busy={busy} onSave={saveTopics} />
               {!identityMode && <div className={styles.identityUpgrade}>
                 <p>Switch to video-specific progress to keep completed lessons marked when a playlist is reordered. Existing progress is not converted automatically.</p>
@@ -381,7 +391,7 @@ export default function LearningTracksPage() {
                   {focus && <section className={styles.focus} aria-label={'Next lessons for ' + track.title}>
                     <div className={styles.focusHeading}>
                       <div><span className={styles.focusEyebrow}>CONTINUE LEARNING</span>
-                        <h4>Day {focus.day}{focus.date ? ' · ' + focus.date : ''}</h4>
+                        <h4>Study block {focus.day}</h4>
                         <p>{focus.completedInDay} of {focus.plannedInDay} completed in this study block</p>
                       </div>
                       <span className={styles.focusCount}>{focus.remaining.length} left</span>
@@ -401,7 +411,7 @@ export default function LearningTracksPage() {
                       ? 'Completion follows video IDs, not playlist positions.'
                       : 'Legacy progress follows playlist order; switch to video-specific progress after reviewing the current playlist.'}</p>
                   </section>}
-                  <p>Schedule: {track.videosPerDay} per day{track.startDate ? ' · starting ' + track.startDate : ' · dates not set'}. Edit the plan above to change this track only.</p>
+                  <p>Original calendar plan: {track.videosPerDay} per day{track.startDate ? ' · starting ' + track.startDate : ' · dates not set'}. Edit the plan above to change this track only.</p>
                   <p>{days.length} lesson days total · showing {upcoming.length} upcoming day{upcoming.length === 1 ? '' : 's'}</p>
                   {upcoming.length === 0 && <p>All discovered videos marked complete.</p>}
                   <ol className={styles.dayList}>
