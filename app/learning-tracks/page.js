@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import SiteNavbar from '../components/site-navbar';
-import { buildDailyLessons } from '../../lib/learning-tracks.js';
+import { buildDailyLessons, currentLearningDay } from '../../lib/learning-tracks.js';
 import styles from './learning-tracks.module.css';
 
 async function read(response) {
@@ -238,6 +238,7 @@ export default function LearningTracksPage() {
           const snapshot = discovered[track.id];
           const validProgress = snapshot && track.completedVideos <= snapshot.totalVideos;
           const days = validProgress ? buildDailyLessons(snapshot.videos, track.videosPerDay, track.completedVideos, track.startDate || '') : [];
+          const focus = validProgress ? currentLearningDay(days, track.completedVideos, track.videosPerDay) : null;
           const currentDay = Math.floor(track.completedVideos / track.videosPerDay);
           const upcoming = days.slice(currentDay, currentDay + 7);
           const unavailableVideos = snapshot && noteLinkingEnabled
@@ -265,7 +266,7 @@ export default function LearningTracksPage() {
               <a href={track.url} target="_blank" rel="noopener noreferrer">Open playlist ↗</a>
               <button type="button" disabled={busy} onClick={() => discover(track)}>{snapshot ? 'Refresh lessons' : 'Discover lessons'}</button>
               <button type="button" disabled={busy || track.completedVideos <= 0} onClick={() => progress(track, -1)}>Undo one</button>
-              <button type="button" disabled={busy || (track.totalVideos !== null && track.completedVideos >= track.totalVideos)} onClick={() => progress(track, 1)}>Completed one +</button>
+              <button type="button" disabled={busy || (track.totalVideos !== null && track.completedVideos >= track.totalVideos) || (snapshot && track.completedVideos >= snapshot.totalVideos)} onClick={() => progress(track, 1)}>Completed one +</button>
               {noteLinkingEnabled && snapshot && <button type="button" disabled={busy} onClick={() => refreshLinks(track)}>Refresh Note links</button>}
               <button type="button" disabled={busy} onClick={() => remove(track)}>Remove</button>
             </div>
@@ -276,6 +277,27 @@ export default function LearningTracksPage() {
                 <p className={styles.error}>Your manually recorded total ({track.totalVideos}) differs from the discovered count ({snapshot.totalVideos}). This does not overwrite your saved total.</p>}
               {!validProgress ? <p className={styles.error}>Recorded progress exceeds discovered videos. Schedule hidden until the data is reconciled.</p> :
                 <>
+                  {focus && <section className={styles.focus} aria-label={'Next lessons for ' + track.title}>
+                    <div className={styles.focusHeading}>
+                      <div><span className={styles.focusEyebrow}>CONTINUE LEARNING</span>
+                        <h4>Day {focus.day}{focus.date ? ' · ' + focus.date : ''}</h4>
+                        <p>{focus.completedInDay} of {focus.plannedInDay} completed in this study block</p>
+                      </div>
+                      <span className={styles.focusCount}>{focus.remaining.length} left</span>
+                    </div>
+                    <ol className={styles.focusList}>
+                      {focus.remaining.map((video, index) => <li key={video.position}>
+                        <span className={styles.focusNumber}>{index + 1}</span>
+                        <a href={video.url} target="_blank" rel="noopener noreferrer">{video.title}</a>
+                        {index === 0 && <span className={styles.nextBadge}>Next up</span>}
+                      </li>)}
+                    </ol>
+                    <div className={styles.actions}>
+                      <a className={styles.watchNext} href={focus.next.url} target="_blank" rel="noopener noreferrer">Watch next lesson ↗</a>
+                      <button type="button" disabled={busy} onClick={() => progress(track, 1)}>Mark next complete ✓</button>
+                    </div>
+                    <p className={styles.focusHint}>Mark complete after watching. Progress follows playlist order, not video identity; refreshing a reordered playlist can change which lesson appears next.</p>
+                  </section>}
                   <p>Schedule: {track.videosPerDay} per day{track.startDate ? ' · starting ' + track.startDate : ' · dates not set'}. Edit the plan above to change this track only.</p>
                   <p>{days.length} lesson days total · showing {upcoming.length} upcoming day{upcoming.length === 1 ? '' : 's'}</p>
                   {upcoming.length === 0 && <p>All discovered videos marked complete.</p>}
