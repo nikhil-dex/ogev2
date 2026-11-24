@@ -1343,3 +1343,14 @@ These criteria are release blockers, not optional polish:
 - [x] Regression tests and existing source-level storage-path audit updated.
 - [ ] Authenticated manual test in Chrome: fresh/default note, choose recent Note, Show more, append, subject switch, lost connection, mobile-width widget.
 - [ ] Merge and deployment only after review.
+
+
+## Learning Tracks — Per-playlist daily study plan (24 Nov 2026)
+
+- [x] Give each YouTube playlist its own editable daily video goal (1–20), rather than requiring track deletion to change the goal.
+- [x] Save the optional schedule start date in the owner's existing `learningTracks` metadata. Existing tracks remain undated until configured.
+- [x] Recalculate discovered upcoming lessons with each track's saved goal and start date; editing one track does not affect the others.
+- [x] Persist the plan through the existing authenticated owner-scoped API with expected revision checks; do not modify completed progress, GitHub Notes, or stored video data.
+- [x] Provide compact responsive study-plan controls and focused regression tests.
+- [ ] Test against a signed-in owner with actual playlist discovery; verify two tracks, reload, date change, concurrent edit and daily-progress updates.
+- [ ] Continue usability work: stable per-video completion when playlist order changes, better lesson navigation and practical extension integration.
