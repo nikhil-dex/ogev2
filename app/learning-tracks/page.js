@@ -13,7 +13,10 @@ async function read(response) {
 }
 export default function LearningTracksPage() {
   const [tracks, setTracks] = useState([]);
-  const [form, setForm] = useState({ title: '', url: '', videosPerDay: '2', totalVideos: '' });
+  const [subjects, setSubjects] = useState([]);
+  const [subjectsLoaded, setSubjectsLoaded] = useState(false);
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [form, setForm] = useState({ title: '', url: '', videosPerDay: '2', totalVideos: '', subjectSlug: '' });
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,6 +35,7 @@ export default function LearningTracksPage() {
       const data = await read(await fetch('/api/learning-tracks', { cache: 'no-store' }));
       setTracks(data.tracks);
       setNoteLinkingEnabled(data.noteLinkingEnabled === true);
+      try { const list = await read(await fetch('/api/subjects', { cache: 'no-store' })); setSubjects(Array.isArray(list) ? list : []); setSubjectsLoaded(true); } catch { setSubjectsLoaded(false); }
     }
     catch (err) { setError(err.message); }
     finally { setLoading(false); }
@@ -54,7 +58,7 @@ export default function LearningTracksPage() {
         }),
       }));
       setTracks((current) => [track, ...current]);
-      setForm({ title: '', url: '', videosPerDay: '2', totalVideos: '' });
+      setForm({ title: '', url: '', videosPerDay: '2', totalVideos: '', subjectSlug: '' });
       setMessage('Playlist added. Progress remains manual until you mark videos complete.');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -102,6 +106,19 @@ export default function LearningTracksPage() {
       setTracks((current) => current.map((item) => item.id === track.id ? updated : item));
       setMessage('Progress now follows video IDs for ' + track.title + '.');
     } catch (err) { setError(err.message); await load(); }
+    finally { setBusy(false); }
+  }
+  async function assignSubject(track, subjectSlug) {
+    if (busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { track: updated } = await read(await fetch('/api/learning-tracks', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: track.id, action: 'set-subject', subjectSlug, expectedUpdatedAt: track.updatedAt }),
+      }));
+      setTracks(current => current.map(item => item.id === track.id ? updated : item));
+      setMessage('Track subject saved.');
+    } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
   async function savePlan(track) {
@@ -262,6 +279,7 @@ export default function LearningTracksPage() {
         <label>YouTube playlist URL<input required type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://www.youtube.com/playlist?list=…" /></label>
         <label>Videos per day<input required type="number" min="1" max="20" value={form.videosPerDay} onChange={(e) => setForm({ ...form, videosPerDay: e.target.value })} /></label>
         <label>Total videos (optional)<input type="number" min="1" max="10000" value={form.totalVideos} onChange={(e) => setForm({ ...form, totalVideos: e.target.value })} placeholder="Unknown" /></label>
+        <label>Notes subject (optional)<select disabled={!subjectsLoaded || busy} value={form.subjectSlug} onChange={e => setForm({ ...form, subjectSlug: e.target.value })}><option value="">Unassigned</option>{subjects.map(subject => <option key={subject.slug} value={subject.slug}>{subject.name}</option>)}</select></label>
         <button type="submit" disabled={busy}>Add learning track</button>
       </form>
       <section className={styles.panel} aria-label="Your learning tracks">
@@ -270,7 +288,8 @@ export default function LearningTracksPage() {
         {message && <p role="status">{message}</p>}
         {loading && <p>Loading tracks…</p>}
         {!loading && tracks.length === 0 && <p>No tracks yet. Add your first playlist.</p>}
-        {tracks.map((track) => {
+        <label>Filter by subject <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}><option value="all">All subjects</option><option value="">Unassigned</option>{subjects.map(subject => <option key={subject.slug} value={subject.slug}>{subject.name}</option>)}</select></label>
+        {tracks.filter(track => subjectFilter === 'all' || subjectFilter === (subjects.some(subject => subject.slug === track.subjectSlug) ? track.subjectSlug : '')).map((track) => {
           const snapshot = discovered[track.id];
           const identityMode = track.progressMode === 'videoIds';
           const validProgress = snapshot && (identityMode || track.completedVideos <= snapshot.totalVideos);
@@ -289,6 +308,8 @@ export default function LearningTracksPage() {
               !snapshot.videos.some((video) => video.videoId === link.videoId)).length : 0;
           return <article key={track.id} className={styles.track}>
             <h3>{track.title}</h3>
+            <label>Notes subject <select disabled={busy || !subjectsLoaded} value={subjects.some(subject => subject.slug === track.subjectSlug) ? track.subjectSlug : ''} onChange={e => void assignSubject(track, e.target.value)}><option value="">Unassigned</option>{subjects.map(subject => <option key={subject.slug} value={subject.slug}>{subject.name}</option>)}</select></label>
+            {subjectsLoaded && track.subjectSlug && !subjects.some(subject => subject.slug === track.subjectSlug) && <p>Previous subject unavailable. Choose a new subject.</p>}
             <p>{track.videosPerDay} video{track.videosPerDay === 1 ? '' : 's'} per day · {track.completedVideos}{track.totalVideos == null ? ' completed (total unknown)' : ' / ' + track.totalVideos + ' completed'}</p>
             {track.totalVideos !== null && <progress max={track.totalVideos} value={track.completedVideos} aria-label={'Progress for ' + track.title} />}
             <div className={styles.plan} aria-label={'Study plan for ' + track.title}>

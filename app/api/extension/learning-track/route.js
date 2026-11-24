@@ -47,6 +47,7 @@ export async function POST(request) {
       }, { session, projection: { _id: 1 } });
       if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
       const collection = db.collection('learningTracks');
+      if (normalized.value.subjectSlug && !await db.collection('subjects').findOne({ ownerId: user.googleSub, slug: normalized.value.subjectSlug }, { session })) return json({ error: 'Subject not found.' }, 404);
       if (await collection.findOne({ ownerId: user.googleSub, playlistId: normalized.value.playlistId }, { session, projection: { _id: 1 } }))
         return json({ error: 'You already have a track for this playlist.' }, 409);
       if (await collection.countDocuments({ ownerId: user.googleSub }, { session }) >= 100)
@@ -111,7 +112,7 @@ export async function GET(request) {
       { projection: { _id: 1 } });
     if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
     return json({ tracks: tracks.map(track => ({
-      id: String(track._id), playlistId: track.playlistId, title: track.title, videosPerDay: track.videosPerDay,
+      id: String(track._id), playlistId: track.playlistId, subjectSlug: track.subjectSlug || '', title: track.title, videosPerDay: track.videosPerDay,
       completedVideos: track.completedVideos, totalVideos: track.totalVideos ?? null,
     })) });
   } catch (error) {

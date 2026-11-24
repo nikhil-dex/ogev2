@@ -219,7 +219,7 @@ async function handleAction(message, sender) {
       throw new Error('Choose valid daily and total video counts.');
     const data = await apiRequest('/api/extension/learning-track', {
       method: 'POST',
-      body: JSON.stringify({ url: sender.tab.url, title, videosPerDay }),
+      body: JSON.stringify({ url: sender.tab.url, title, videosPerDay, subjectSlug: message.subjectSlug || '' }),
     });
     return { title: data.track.title, totalVideos: data.track.totalVideos };
   }

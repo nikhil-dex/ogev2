@@ -3,7 +3,7 @@ import { changeVideoCompletion } from '../../../lib/learning-track-video-progres
 import { learningTrackNoteLinksEnabled } from '../../../lib/oge-learning-track-note-links.js';
 import { auth } from '../../../auth.js';
 import { getDatabase } from '../../../lib/mongodb.js';
-import { normalizeLearningTrack, normalizeTrackSchedule, publicLearningTrack } from '../../../lib/learning-tracks.js';
+import { normalizeLearningTrack, normalizeTrackSchedule, normalizeTrackSubject, publicLearningTrack } from '../../../lib/learning-tracks.js';
 import { readLimitedBody } from '../../../lib/read-limited-body.js';
 import { withActiveOwnerMutation } from '../../../lib/active-owner-mutation.js';
 import { checkOwnerMutationLimit, rateLimitResponse } from '../../../lib/rate-limit.js';
@@ -49,6 +49,7 @@ export async function POST(request) {
     if (!throttle.allowed) return rateLimitResponse(throttle);
     return await withActiveOwnerMutation(ctx.db, ctx.ownerId, async (session) => {
       const collection = ctx.db.collection('learningTracks');
+      if (result.value.subjectSlug && !await ctx.db.collection('subjects').findOne({ ownerId: ctx.ownerId, slug: result.value.subjectSlug }, { session })) return json({ error: 'Subject not found.' }, 404);
       if (await collection.findOne({ ownerId: ctx.ownerId, playlistId: result.value.playlistId }, { session, projection: { _id: 1 } }))
         return json({ error: 'You already have a track for this playlist.' }, 409);
       if (await collection.countDocuments({ ownerId: ctx.ownerId }, { session }) >= 100)
@@ -69,6 +70,7 @@ export async function PATCH(request) {
   const parsed = await requestBody(request);
   if (parsed.error) return parsed.error;
   const { id, expectedCompleted, completedVideos, action } = parsed.value || {};
+  if (action === 'set-subject') return updateTrackSubject(parsed.value);
   if (action) return updateIdentityProgress(parsed.value);
   if (!idValid(id) || !Number.isInteger(expectedCompleted) || expectedCompleted < 0 ||
       !Number.isInteger(completedVideos) || completedVideos < 0 || completedVideos > 10000 ||
@@ -188,5 +190,33 @@ export async function DELETE(request) {
   } catch (error) {
     console.error('Learning Tracks DELETE failed:', error?.name);
     return json({ error: 'Could not remove learning track.' }, 503);
+  }
+}
+
+async function updateTrackSubject(data) {
+  const { id, expectedUpdatedAt } = data;
+  const subject = normalizeTrackSubject(data.subjectSlug);
+  if (!idValid(id) || subject.error || typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt)))
+    return json({ error: subject.error || 'Refresh track before assigning a subject.' }, 400);
+  try {
+    const ctx = await context();
+    if (!ctx) return json({ error: 'Sign in to assign a subject.' }, 401);
+    const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'learning-tracks');
+    if (!throttle.allowed) return rateLimitResponse(throttle);
+    return await withActiveOwnerMutation(ctx.db, ctx.ownerId, async session => {
+      const tracks = ctx.db.collection('learningTracks');
+      const track = await tracks.findOne({ _id: id, ownerId: ctx.ownerId }, { session });
+      if (!track) return json({ error: 'Track not found.' }, 404);
+      if (new Date(track.updatedAt).toISOString() !== expectedUpdatedAt) return json({ error: 'Track changed. Refresh and retry.' }, 409);
+      if (subject.value && !await ctx.db.collection('subjects').findOne({ ownerId: ctx.ownerId, slug: subject.value }, { session }))
+        return json({ error: 'Subject not found.' }, 404);
+      const updatedAt = new Date(Math.max(Date.now(), new Date(track.updatedAt).getTime() + 1));
+      const result = await tracks.updateOne({ _id: id, ownerId: ctx.ownerId, updatedAt: track.updatedAt }, { $set: { subjectSlug: subject.value, updatedAt } }, { session });
+      if (result.matchedCount !== 1) return json({ error: 'Track changed. Refresh and retry.' }, 409);
+      return json({ track: publicLearningTrack({ ...track, subjectSlug: subject.value, updatedAt }) });
+    }, { sessionVersion: ctx.sessionVersion });
+  } catch (error) {
+    console.error('Learning Track subject assignment failed:', error?.name);
+    return json({ error: 'Could not assign subject.' }, 503);
   }
 }

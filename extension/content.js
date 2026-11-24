@@ -53,7 +53,7 @@
     '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
-    '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
+    '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Notes subject<select data-track-subject><option value="">Unassigned</option></select></label><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
     ] : []),
     '<p class="status" role="status" aria-live="polite"></p>',
     '<nav class="belt" aria-label="OgeNotes tools"><button class="selected" data-tool="note" type="button">✎ Quick note</button><button data-tool="links" type="button">☷ My links</button>' + (LEARNING_TRACKS_EXTENSION_PREVIEW ? '<button data-tool="tracks" type="button" hidden>▷ Tracks</button>' : '') + '</nav>',
@@ -624,12 +624,22 @@
       panel.querySelector('.belt').classList.add('tracks-enabled');
       container.replaceChildren();
       const tracks = Array.isArray(result.tracks) ? result.tracks : [];
+      const subjectPicker = panel.querySelector('[data-track-subject]');
+      let subjects = [];
+      try { const response = await send('GET_SUBJECTS'); subjects = Array.isArray(response.subjects) ? response.subjects : []; } catch { /* unassigned remains usable */ }
+      if (version !== trackLoadVersion) return;
+      const previous = subjectPicker.value;
+      subjectPicker.replaceChildren(new Option('Unassigned', ''));
+      for (const subject of subjects) subjectPicker.add(new Option(subject.name, subject.slug));
+      if (subjects.some(subject => subject.slug === previous)) subjectPicker.value = previous;
       if (!tracks.length) container.textContent = 'No learning tracks yet.';
       for (const track of tracks) {
         const row = document.createElement('div');
         row.className = 'link';
         const title = document.createElement('strong');
         title.textContent = track.title;
+        const subjectLabel = document.createElement('span');
+        subjectLabel.textContent = 'Subject: ' + (subjects.find(subject => subject.slug === track.subjectSlug)?.name || 'Unassigned');
         const progress = document.createElement('span');
         progress.textContent = track.completedVideos + (track.totalVideos == null ? '' : ' / ' + track.totalVideos) + ' completed · ' + track.videosPerDay + ' videos/day';
         const actions = document.createElement('div');
@@ -690,7 +700,7 @@
           undo.addEventListener('click', () => void update(true));
           actions.append(complete, undo);
         }
-        row.append(title, progress, actions);
+        row.append(title, subjectLabel, progress, actions);
         container.append(row);
       }
     } catch {
@@ -718,7 +728,7 @@
       setStatus('Detecting playlist videos…');
       try {
         const result = await send('CREATE_LEARNING_TRACK', {
-          title, videosPerDay: Number(dailyRaw),
+          title, videosPerDay: Number(dailyRaw), subjectSlug: panel.querySelector('[data-track-subject]').value,
         });
         void loadTracks();
         setStatus('Created “' + result.title + '” with ' + result.totalVideos + ' videos.');

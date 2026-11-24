@@ -1452,3 +1452,8 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT2 coordination checkpoint
 
 - Added MongoDB per-playlist refresh leases (120-second expiry), bounded polling for concurrent refreshes, TTL cleanup and owner-independent cache reuse. Recognized YouTube quota/rate-limit reasons permit bounded fallback; access denial invalidates cached metadata. Tests added for quota classification and competing lease. Implementation awaits CI, real concurrent MongoDB verification and provider-policy review; do not claim production readiness.
+
+### LT3 subject mapping checkpoint (partial)
+
+- Optional subject slug on track creation via website and extension; owner-scoped subject existence validation and revision-checked reassignment/unassignment on website. Existing tracks remain unassigned; multiple tracks can share a subject. Website track filtering by subject and extension subject label added. Missing subjects display as unassigned; no Notes are moved or created.
+- Pending: playlist grouping/filter on actual Notes pages, extension reassignment if useful, integration testing and verification of both storage modes. LT3 remains unchecked.
