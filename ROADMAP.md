@@ -1366,3 +1366,15 @@ These criteria are release blockers, not optional polish:
 - [x] Add deterministic helper tests, page source checks, and responsive styling.
 - [ ] Signed-in browser acceptance with a real YouTube playlist and a configured YouTube Data API key.
 - [ ] Next improvement: progress tied to stable video identity so reorderings cannot mark the wrong videos complete.
+
+
+## Learning Tracks — Video-ID completion survives playlist reordering (24 Nov 2026)
+
+- [x] Add owner-scoped `completedVideoIds` metadata (maximum 500 distinct YouTube video IDs), keeping the existing completed count and previous schedules intact.
+- [x] Keep existing count-based tracks unchanged until the owner explicitly confirms that the current playlist's first N videos represent the prior completed count; reject repeated IDs in that prefix instead of silently losing progress.
+- [x] After conversion, allow marking and unmarking individual videos, keep the next unfinished lesson based on the actual video ID, and retain completion when a playlist is reordered.
+- [x] Alert when previously completed IDs disappear from a refreshed playlist snapshot; retain those records rather than automatically discarding them.
+- [x] Preserve per-track goal, start date, Note links, and owner authentication; stale updates return a conflict rather than replacing newer progress.
+- [x] Deterministic tests cover explicit conversion, duplicate prevention, reorder, deleted-from-playlist cases and final completion.
+- [ ] Live authenticated YouTube playlist test, including real reorder and refresh; manual verification remains necessary.
+- [ ] Future improvement: avoid depending on an external YouTube API key for everyday playlist onboarding, if feasible without unsafe scraping or provider policy violations.
