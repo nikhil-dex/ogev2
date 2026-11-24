@@ -1378,3 +1378,9 @@ These criteria are release blockers, not optional polish:
 - [x] Deterministic tests cover explicit conversion, duplicate prevention, reorder, deleted-from-playlist cases and final completion.
 - [ ] Live authenticated YouTube playlist test, including real reorder and refresh; manual verification remains necessary.
 - [ ] Future improvement: avoid depending on an external YouTube API key for everyday playlist onboarding, if feasible without unsafe scraping or provider policy violations.
+
+## Learning Tracks — Extension track overview (24 Nov 2026)
+
+- [x] Add an owner-scoped, token-authenticated extension list endpoint and display saved tracks, recorded completion totals and daily goals in the floating widget.
+- [x] Reveal Tracks only when the connected server accepts listing; refresh on widget open, explicit refresh and creation. Preserve the two-tab layout otherwise.
+- [ ] Verify signed-in extension with real playlists; next-lesson playback, individual completion and linked Note actions remain pending. No calendar-day completion inference from aggregate counts.

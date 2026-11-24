@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const HEADERS = {
   'Cache-Control': 'private, no-store', 'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Vary': 'Origin',
 };
 const json = (data, status = 200) => Response.json(data, { status, headers: HEADERS });
@@ -54,5 +54,35 @@ export async function POST(request) {
     if (error?.code === 11000) return json({ error: 'You already have a track for this playlist.' }, 409);
     console.error('Extension Learning Tracks POST failed:', error?.name);
     return json({ error: 'Could not create learning track.' }, 503);
+  }
+}
+
+export async function GET(request) {
+  if (process.env.OGE_LEARNING_TRACKS_PREVIEW !== 'true') return json({ error: 'Learning Tracks preview is disabled.' }, 404);
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!/^oge_[A-Za-z0-9_-]{40,60}$/.test(token)) return json({ error: 'A valid extension token is required.' }, 401);
+  try {
+    const db = await getDatabase();
+    const tokenHash = hashExtensionToken(token);
+    const limit = await checkRateLimit(db, { scope: 'extension-learning-track-list', identifier: tokenHash, limit: 120, windowMs: 60 * 60 * 1000 });
+    if (!limit.allowed) return rateLimitResponse(limit);
+    const user = await db.collection('users').findOne(
+      { extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } },
+      { projection: { googleSub: 1 } });
+    if (!user?.googleSub) return json({ error: 'Extension connection expired or revoked.' }, 401);
+    const tracks = await db.collection('learningTracks').find({ ownerId: user.googleSub })
+      .sort({ createdAt: -1 }).limit(100).toArray();
+    const live = await db.collection('users').findOne(
+      { googleSub: user.googleSub, extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } },
+      { projection: { _id: 1 } });
+    if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
+    return json({ tracks: tracks.map(track => ({
+      title: track.title, videosPerDay: track.videosPerDay,
+      completedVideos: track.completedVideos, totalVideos: track.totalVideos ?? null,
+    })) });
+  } catch (error) {
+    console.error('Extension Learning Tracks GET failed:', error?.name);
+    return json({ error: 'Could not load learning tracks.' }, 503);
   }
 }
