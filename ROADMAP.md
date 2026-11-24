@@ -1448,3 +1448,7 @@ Report implemented vs tested separately after each milestone, include the commit
 
 - Added explicit per-track Refresh playlist in extension and website refresh mutation; fresh counts reconcile with existing tracks through owner-scoped updates without deleting completed IDs. Stale fallback does not overwrite stored totals. Extension shows stale notices on refresh and non-navigation outcomes.
 - Ambiguous provider access denial no longer returns stale metadata; distinguish actual quota errors in subsequent work. Cross-instance cache coalescing, precise provider quota classification, compliance review and CI/live acceptance remain pending; LT2 remains partial.
+
+### LT2 coordination checkpoint
+
+- Added MongoDB per-playlist refresh leases (120-second expiry), bounded polling for concurrent refreshes, TTL cleanup and owner-independent cache reuse. Recognized YouTube quota/rate-limit reasons permit bounded fallback; access denial invalidates cached metadata. Tests added for quota classification and competing lease. Implementation awaits CI, real concurrent MongoDB verification and provider-policy review; do not claim production readiness.

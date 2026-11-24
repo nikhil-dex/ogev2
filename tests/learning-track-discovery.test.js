@@ -91,7 +91,7 @@ test('M98 server-only credentials, authenticated owner scope, default-off previe
 test('LT2 shared cache reuses fresh metadata and expires stale fallback', async () => {
   const { cachedPublicPlaylist, PLAYLIST_RETENTION_MS } = await import('../lib/youtube-playlist-cache.js');
   let stored, calls = 0, time = 100000000;
-  const db = { databaseName: 'cache-test', collection: () => ({
+  const db = { databaseName: 'cache-test', collection: name => name === 'youtubePlaylistLeases' ? { updateOne: async () => {}, findOne: async () => ({}), deleteOne: async () => {} } : ({
     findOne: async () => stored && stored.expiresAt > new Date(time) ? stored : null,
     updateOne: async (_, update) => { stored = update.$set; },
     deleteOne: async () => { stored = null; },
@@ -104,11 +104,11 @@ test('LT2 shared cache reuses fresh metadata and expires stale fallback', async 
   assert.equal((await cachedPublicPlaylist(db, id, 'owner-b', opts)).cached, true);
   assert.equal(calls, 1);
   const fallback = await cachedPublicPlaylist(db, id, 'owner-b', { ...opts, refresh: true,
-    discover: async () => { throw new PlaylistDiscoveryError('quota', 503); } });
+    discover: async () => { throw new PlaylistDiscoveryError('quota', 503, 'quota'); } });
   assert.equal(fallback.stale, true);
   time += PLAYLIST_RETENTION_MS + 1;
   await assert.rejects(cachedPublicPlaylist(db, id, 'owner-a', { ...opts,
-    discover: async () => { throw new PlaylistDiscoveryError('quota', 503); } }), PlaylistDiscoveryError);
+    discover: async () => { throw new PlaylistDiscoveryError('quota', 503, 'quota'); } }), PlaylistDiscoveryError);
 });
 
 test('LT2 refresh is explicit and preserves completion history', async () => {
@@ -120,4 +120,21 @@ test('LT2 refresh is explicit and preserves completion history', async () => {
     assert.ok(source.includes('$set: { totalVideos: count, updatedAt }'));
   }
   assert.ok(worker.includes('REFRESH_TRACK_PLAYLIST'));
+});
+
+test('LT2 distinguishes provider quota from access denial', async () => {
+  for (const [reason, status, expected] of [['quotaExceeded', 403, 'quota'], ['playlistItemsNotAccessible', 403, 'denied'], ['forbidden', 403, 'denied']]) {
+    await assert.rejects(discoverPublicPlaylist(id, apiKey, async () => ({ ok: false, status,
+      json: async () => ({ error: { errors: [{ reason }] } }) })),
+      error => error instanceof PlaylistDiscoveryError && error.reason === expected);
+  }
+});
+test('LT2 another instance holding a refresh lease prevents duplicate provider requests', async () => {
+  const { cachedPublicPlaylist } = await import('../lib/youtube-playlist-cache.js');
+  const db = { databaseName: 'lease-test', collection: name => name === 'youtubePlaylistLeases' ? {
+    updateOne: async () => { throw Object.assign(new Error('duplicate'), { code: 11000 }); },
+  } : { findOne: async () => null } };
+  await assert.rejects(cachedPublicPlaylist(db, id, 'owner-a', {
+    wait: async () => {}, discover: async () => assert.fail('duplicate provider request'),
+  }), error => error.status === 409);
 });
