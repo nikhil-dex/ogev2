@@ -238,7 +238,7 @@ test('M129 file library UI matches OgeNotes features and routes ONLY to GitHub V
   assert.match(route, /Content-Range/);
   assert.match(route, /ReadableStream/);
   assert.doesNotMatch(route, /collection\('mediaFiles'\)|collection\('mediaFolders'\)|@vercel\/blob/);
-  assert.match(navigation, /showFiles \? \[\.\.\.links, \{ href: '\/files'/);
+  assert.doesNotMatch(navigation, /href: '\/files', label: 'My Files'/);
   assert.match(home, /filesReady \? \[\{/);
 });
 
