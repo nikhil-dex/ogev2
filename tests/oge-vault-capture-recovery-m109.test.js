@@ -59,6 +59,7 @@ function simulateFloatingSave({
   };
   const ctx = {
     noteSave, noteNewCapture, note, subjectSelect, vaultReady,
+    noteSelect: { value: '' }, listedNotes: new Map(), loadNotes: async () => {},
     savingCapture: false,
     pendingVaultCapture: null,
     pendingSavedUpdate: null,

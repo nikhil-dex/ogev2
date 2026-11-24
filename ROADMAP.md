@@ -1330,3 +1330,16 @@ These criteria are release blockers, not optional polish:
 - [x] Keep direct routes and saved News interests intact when features are hidden.
 - [x] Test account-scoped preference persistence, legacy defaults, and affected UI.
 - [ ] Verify authenticated first-use and Settings toggles on desktop/mobile before production deployment.
+
+## Extension — Subject Note Picker & Append (November 2026)
+
+- [x] Keep **Quick Notes** as the standalone default destination when no subject is selected.
+- [x] Add **Default (new Note)** for selected subjects: first line becomes heading, remaining text becomes Note body.
+- [x] Display the five most recently updated Note headings in the selected subject and incrementally show five more.
+- [x] Change the save action to **Append to [heading]** when an existing Note is selected.
+- [x] Append to the existing MongoDB/GitHub Vault Note, preserving heading, previous content, and metadata.
+- [x] Keep extension tokens in the service worker; server owns subject filtering and note authorizations.
+- [x] Prevent silent duplicate appends when selected Note revision is stale; keep the editor text on errors.
+- [x] Regression tests and existing source-level storage-path audit updated.
+- [ ] Authenticated manual test in Chrome: fresh/default note, choose recent Note, Show more, append, subject switch, lost connection, mobile-width widget.
+- [ ] Merge and deployment only after review.

@@ -27,6 +27,7 @@ async function floatingEditor(send) {
   };
   const ctx = {
     note, subjectSelect, noteSave, noteNewCapture,
+    noteSelect: { value: '' }, listedNotes: new Map(), loadNotes: async () => {},
     noteOpenSaved: { hidden: true },
     lastSavedVaultNoteId: null,
     vaultReady: true,

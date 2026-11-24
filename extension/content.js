@@ -43,7 +43,7 @@
     ':host([data-oge-theme="dark"]) .status{color:#a9d3b8}',
     ':host([data-oge-theme="dark"]) .corner-button{color:#a2afa7;border-color:#3b4d40}'+
     ':host([data-oge-theme="dark"]) .corner-button:hover{background:#293c30;color:#e4ebe6}',
-    '.track-input{width:100%;padding:8px;margin:5px 0 8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}.empty{font-size:11px;color:#637568}.subject-label{display:block;margin:8px 0 4px;font-size:10px;font-weight:700;color:#546d5b}.subject-select{display:block;width:100%;padding:8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}:focus-visible{outline:2px solid #40795e;outline-offset:2px}',
+    '.note-more{display:block;margin:7px 0 0 auto;padding:6px 9px;border:1px solid #b6d8bf;border-radius:7px;background:#e9f5ec;color:#245b38;font-size:11px;cursor:pointer}.note-more[hidden],[data-existing-note-picker][hidden]{display:none}.note-more:hover{background:#dcefe0}:host([data-oge-theme="dark"]) .note-more{background:#293c30;color:#a9d3b8;border-color:#44654d}.track-input{width:100%;padding:8px;margin:5px 0 8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}.empty{font-size:11px;color:#637568}.subject-label{display:block;margin:8px 0 4px;font-size:10px;font-weight:700;color:#546d5b}.subject-select{display:block;width:100%;padding:8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}:focus-visible{outline:2px solid #40795e;outline-offset:2px}',
   ].join('');
   const panel = document.createElement('section');
   panel.className = 'panel hidden';
@@ -51,7 +51,7 @@
   // HTML is static extension-owned markup; user content uses textContent.
   panel.innerHTML = [
     '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
-    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
+    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
     '<div class="body" data-panel="tracks" hidden><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Total videos (optional)<input class="track-input" data-track-total type="number" min="1" max="10000" placeholder="Unknown"></label><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
@@ -96,6 +96,9 @@
 
   const note = panel.querySelector('textarea');
   const subjectSelect = panel.querySelector('#oge-note-subject');
+  const notePicker = panel.querySelector('[data-existing-note-picker]');
+  const noteSelect = panel.querySelector('#oge-target-note');
+  const noteMore = panel.querySelector('[data-show-more-notes]');
   const status = panel.querySelector('.status');
   let active = 'note';
   const setStatus = (message, error = false) => {
@@ -377,6 +380,7 @@
         subjectSelect.value = '';
       }
       noteSave.disabled = savingCapture;
+      void loadNotes();
       updateNoteButton();
     } catch (error) {
       // Do not guess the storage destination after an API/network failure.
@@ -385,17 +389,74 @@
       setStatus(error.message || 'Could not load subjects. Reopen this panel to retry.', true);
     }
   }
+  let notePickerRequest = 0;
+  let listedNotes = new Map();
+  let pickerBusy = false;
+  async function loadNotes(reset = true) {
+    const subject = subjectSelect.value;
+    const request = ++notePickerRequest;
+    notePicker.hidden = !subject;
+    if (!subject) {
+      noteSelect.replaceChildren(new Option('Default (new Note)', ''));
+      listedNotes = new Map();
+      noteMore.hidden = true;
+      return;
+    }
+    if (reset) {
+      noteSelect.replaceChildren(new Option('Default (new Note)', ''));
+      listedNotes = new Map();
+    }
+    pickerBusy = true;
+    noteSelect.disabled = true;
+    noteMore.hidden = true;
+    try {
+      const offset = listedNotes.size;
+      const result = await send('GET_NOTES_FOR_SUBJECT', { subjectSlug: subject, offset });
+      if (request !== notePickerRequest || subjectSelect.value !== subject) return;
+      for (const item of result.notes || []) {
+        if (typeof item.id !== 'string' || typeof item.heading !== 'string' ||
+            typeof item.version !== 'string') continue;
+        listedNotes.set(item.id, item);
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.heading;
+        noteSelect.append(option);
+      }
+      noteMore.hidden = result.hasMore !== true;
+    } catch (error) {
+      if (request === notePickerRequest) setStatus(error.message || 'Could not load recent Notes.', true);
+    } finally {
+      if (request === notePickerRequest) {
+        pickerBusy = false;
+        noteSelect.disabled = false;
+        updateNoteButton();
+      }
+    }
+  }
+  noteSelect.addEventListener('change', () => {
+    pendingSavedUpdate = null;
+    pendingVaultCapture = null;
+    updateNoteButton();
+  });
+  noteMore.addEventListener('click', () => { if (!pickerBusy) void loadNotes(false); });
   function updateNoteButton() {
-    const continuing = vaultReady === true && pendingSavedUpdate &&
+    const selected = listedNotes.get(noteSelect.value);
+    const continuing = !selected && vaultReady === true && pendingSavedUpdate &&
       pendingSavedUpdate.subjectSlug === subjectSelect.value;
     noteNewCapture.hidden = !continuing;
     noteSave.textContent = vaultReady === null ? 'Loading destination…'
+      : selected ? 'Append to ' + selected.heading + ' →'
       : vaultReady ? (subjectSelect.value
         ? continuing ? 'Update saved Note →' : 'Save to selected subject →'
         : 'Save to Quick Notes')
         : subjectSelect.value ? 'Save to selected subject →' : 'Save to Quick Notes';
   }
-  subjectSelect.addEventListener('change', updateNoteButton);
+  subjectSelect.addEventListener('change', () => {
+    pendingSavedUpdate = null;
+    pendingVaultCapture = null;
+    void loadNotes();
+    updateNoteButton();
+  });
 
   noteSave.addEventListener('click', async () => {
     if (savingCapture) return;
@@ -407,11 +468,39 @@
     const submittedContent = note.value;
     const submittedSubject = subjectSelect.value;
     const submittedToVault = vaultReady;
+    const selectedNote = listedNotes.get(noteSelect.value) || null;
+    const submittedNoteId = noteSelect.value;
+    if (submittedSubject && submittedNoteId && !selectedNote)
+      return setStatus('Refresh the Note selector before appending.', true);
     savingCapture = true;
     noteSave.disabled = true;
     setStatus(submittedToVault ? 'Saving to GitHub Vault…' : 'Saving note…');
     try {
       let result;
+      if (selectedNote) {
+        result = await send('APPEND_TO_NOTE', {
+          subjectSlug: submittedSubject, noteId: selectedNote.id,
+          version: selectedNote.version, content: submittedContent,
+        });
+        if (result.confirmed !== true || result.id !== selectedNote.id)
+          throw new Error('Append was not confirmed. Refresh before retrying.');
+        pendingSavedUpdate = null;
+        pendingVaultCapture = null;
+        if (submittedToVault) {
+          lastSavedVaultNoteId = result.id;
+          noteOpenSaved.hidden = false;
+        }
+        if (note.value === submittedContent && subjectSelect.value === submittedSubject &&
+            noteSelect.value === submittedNoteId) note.value = '';
+        else {
+          // Never automatically retry stale content after a successful append.
+          noteSelect.value = '';
+        }
+        setStatus('Appended to “' + result.title + '”.' +
+          (note.value ? ' Newer edits remain here; select the Note again after reviewing them.' : ''));
+        void loadNotes();
+        return;
+      }
       if (submittedToVault) {
         if (!submittedSubject) {
           // The extension alone creates standalone Quick Notes.
@@ -472,7 +561,7 @@
         });
       }
       const unchanged = note.value === submittedContent &&
-        subjectSelect.value === submittedSubject;
+        subjectSelect.value === submittedSubject && !noteSelect.value;
       if (submittedToVault && submittedSubject) {
         pendingSavedUpdate = unchanged ? null : {
           id: result.id, sha: result.sha, subjectSlug: submittedSubject,
@@ -484,6 +573,7 @@
         : result.destination === 'notes'
           ? 'Saved “' + result.title + '” to ' + result.subject + ' in Notes.'
           : 'Saved “' + result.title + '” to Quick Notes.';
+      if (submittedSubject) void loadNotes();
       setStatus(confirmation + (unchanged ? ''
         : submittedToVault && submittedSubject && subjectSelect.value === submittedSubject
           ? ' Newer edits are still here; press Save again to update the same Note.'
