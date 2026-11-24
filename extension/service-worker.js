@@ -1,7 +1,7 @@
 // All OgeNotes requests are made from the extension service worker.
 // The floating content script never receives the bearer token or app origin.
 const TOKEN_PATTERN = /^oge_[A-Za-z0-9_-]{40,60}$/;
-const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
+const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
 const LINK_KINDS = new Set(['github', 'linkedin', 'portfolio']);
 
 function normalizeBase(value) {
@@ -65,6 +65,24 @@ async function handleAction(message, sender) {
     }
     await chrome.storage.local.set({ ogeTheme: message.theme });
     return { theme: message.theme };
+  }
+  if (message.type === 'GET_NOTES_FOR_SUBJECT') {
+    if (typeof message.subjectSlug !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.subjectSlug) ||
+        !Number.isSafeInteger(message.offset) || message.offset < 0 || message.offset > 10000)
+      throw new Error('Select a subject to browse Notes.');
+    return apiRequest('/api/extension/notes?subject=' +
+      encodeURIComponent(message.subjectSlug) + '&offset=' + message.offset);
+  }
+  if (message.type === 'APPEND_TO_NOTE') {
+    if (typeof message.content !== 'string' || !message.content.trim() ||
+        message.content.length > 20000 || typeof message.subjectSlug !== 'string' ||
+        typeof message.noteId !== 'string' || typeof message.version !== 'string')
+      throw new Error('Choose an existing Note and write something to append.');
+    return apiRequest('/api/extension/notes', {
+      method: 'POST',
+      body: JSON.stringify({ content: message.content, subjectSlug: message.subjectSlug,
+        noteId: message.noteId, version: message.version }),
+    });
   }
   if (message.type === 'CREATE_QUICK_NOTE') {
     const content = message.content;
