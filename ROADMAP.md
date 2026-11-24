@@ -1414,7 +1414,7 @@ These criteria are release blockers, not optional polish:
 
 ### Remaining milestones — ordered implementation priorities
 
-- [ ] **LT1 — Complete & Next:** explicit mark-current-lesson-complete and advance in the same tab; validate current video and playlist against the selected track, synchronize by video ID with the website, support manual undo and prevent duplicate completion. If saving progress fails, do not advance. Keep Watch Next as a separate non-completing action.
+- [x] **LT1 — Complete & Next (implemented, acceptance pending):** explicit mark-current-lesson-complete and advance in the same tab; validate current video and playlist against the selected track, synchronize by video ID with the website, support manual undo and prevent duplicate completion. If saving progress fails, do not advance. Keep Watch Next as a separate non-completing action.
 - [ ] **LT2 — Shared playlist cache and refresh:** reuse public playlist metadata across users where permitted by YouTube policies; bound retention, refresh/delete stale data, deduplicate concurrent fetches, handle exhausted quota with eligible cached data and clear messages. Keep API key server-side, basic quota/error logging, manual playlist refresh; update existing stored totals from valid discoveries without losing completion records. Review provider data-use and retention rules before enabling shared caching.
 - [ ] **LT3 — Subject-to-playlist mapping:** select an existing subject when creating/editing a track, allow an unassigned track until the user chooses a subject, display playlist grouping/filter within existing Notes rather than introducing a separate Notes storage system.
 - [ ] **LT4 — Topic grouping:** simple manual topic names and lesson-to-topic assignment, with rename/merge/split; use individual lesson titles as fallback. Optional Gemini-assisted grouping only where provider terms permit it and user has configured/consented to AI usage. No mandatory AI dependency.
@@ -1434,3 +1434,7 @@ These criteria are release blockers, not optional polish:
 ### Completion reporting
 
 Report implemented vs tested separately after each milestone, include the commit/PR, remaining blockers, and switch/pull instructions when relevant. The ten remaining milestones above are the active work queue; do not treat previous implementation percentages as production readiness.
+
+### LT1 implementation checkpoint
+
+- Explicit completion and undo from current tracked video; server verifies playlist membership and owner, reuses video-ID progress, and confirms save before same-tab advance. Duplicate completion is idempotent. Undo applies to the currently open video; navigate back to undo a previous lesson. Regression tests added, CI/live verification pending. Existing five-discoveries/hour limit still applies until LT2.

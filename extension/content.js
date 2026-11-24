@@ -652,6 +652,29 @@
           } finally { watch.disabled = false; }
         });
         actions.append(watch);
+        const source = new URL(location.href);
+        if (source.pathname === '/watch' && source.searchParams.get('list') === track.playlistId) {
+          const complete = document.createElement('button');
+          const undo = document.createElement('button');
+          complete.type = undo.type = 'button';
+          complete.textContent = 'Complete & Next';
+          undo.textContent = 'Undo current';
+          const update = async (isUndo) => {
+            complete.disabled = undo.disabled = watch.disabled = true;
+            setStatus('Saving lesson progress…');
+            try {
+              const result = await send(isUndo ? 'UNDO_CURRENT_LESSON' : 'COMPLETE_NEXT_LESSON', { id: track.id });
+              if (version !== trackLoadVersion || active !== 'tracks') return;
+              progress.textContent = result.completedVideos + ' / ' + result.totalVideos + ' completed · ' + track.videosPerDay + ' videos/day';
+              setStatus(isUndo ? 'Current lesson marked unfinished.' : result.navigationFailed ? 'Progress saved; could not open next lesson.' : result.next ? 'Progress saved. Opening next lesson…' : result.hasUnfinished ? 'Progress saved. Earlier lessons remain.' : 'All current lessons complete.');
+            } catch (error) {
+              if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
+            } finally { complete.disabled = undo.disabled = watch.disabled = false; }
+          };
+          complete.addEventListener('click', () => void update(false));
+          undo.addEventListener('click', () => void update(true));
+          actions.append(complete, undo);
+        }
         row.append(title, progress, actions);
         container.append(row);
       }

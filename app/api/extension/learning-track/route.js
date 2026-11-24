@@ -1,4 +1,4 @@
-import { nextExtensionLesson } from '../../../../lib/learning-track-video-progress.js';
+import { nextExtensionLesson, extensionLessonChange } from '../../../../lib/learning-track-video-progress.js';
 import { discoverPublicPlaylist, PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
 import { randomUUID } from 'node:crypto';
 import { hashExtensionToken } from '../../../../lib/extension-token.js';
@@ -12,7 +12,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const HEADERS = {
   'Cache-Control': 'private, no-store', 'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Vary': 'Origin',
 };
 const json = (data, status = 200) => Response.json(data, { status, headers: HEADERS });
@@ -114,12 +114,62 @@ export async function GET(request) {
       { projection: { _id: 1 } });
     if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
     return json({ tracks: tracks.map(track => ({
-      id: String(track._id), title: track.title, videosPerDay: track.videosPerDay,
+      id: String(track._id), playlistId: track.playlistId, title: track.title, videosPerDay: track.videosPerDay,
       completedVideos: track.completedVideos, totalVideos: track.totalVideos ?? null,
     })) });
   } catch (error) {
     if (error instanceof PlaylistDiscoveryError) return json({ error: error.message }, error.status);
     console.error('Extension Learning Tracks GET failed:', error?.name);
     return json({ error: 'Could not load learning tracks.' }, 503);
+  }
+}
+
+export async function PATCH(request) {
+  if (process.env.OGE_LEARNING_TRACKS_PREVIEW !== 'true') return json({ error: 'Learning Tracks preview is disabled.' }, 404);
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!/^oge_[A-Za-z0-9_-]{40,60}$/.test(token)) return json({ error: 'A valid extension token is required.' }, 401);
+  let data;
+  try { data = JSON.parse(await readLimitedBody(request, 4096)); }
+  catch (error) { return json({ error: 'Invalid progress request.' }, error?.status || 400); }
+  const { id, videoId, playlistId, action } = data || {};
+  if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id) ||
+      typeof videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(videoId) ||
+      typeof playlistId !== 'string' || !/^[A-Za-z0-9_-]{10,120}$/.test(playlistId) ||
+      !['complete-video', 'undo-video'].includes(action))
+    return json({ error: 'Open a video in the selected playlist first.' }, 400);
+  const tokenHash = hashExtensionToken(token);
+  try {
+    const db = await getDatabase();
+    const user = await db.collection('users').findOne({ extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } }, { projection: { googleSub: 1 } });
+    if (!user?.googleSub) return json({ error: 'Extension connection expired or revoked.' }, 401);
+    const track = await db.collection('learningTracks').findOne({ _id: id, ownerId: user.googleSub, playlistId });
+    if (!track) return json({ error: 'Current playlist does not match this track.' }, 404);
+    if (track.progressMode !== 'videoIds' && track.completedVideos !== 0)
+      return json({ error: 'Review and enable video-specific progress in Oge first.' }, 409);
+    if (!process.env.OGE_YOUTUBE_DATA_API_KEY) return json({ error: 'YouTube discovery is not configured.' }, 503);
+    const limit = await checkRateLimit(db, { scope: 'learning-track-discover', identifier: user.googleSub, limit: 5, windowMs: 60 * 60 * 1000 });
+    if (!limit.allowed) return rateLimitResponse(limit);
+    const snapshot = await discoverPublicPlaylist(playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
+    return await withActiveOwnerMutation(db, user.googleSub, async session => {
+      const live = await db.collection('users').findOne({ googleSub: user.googleSub, extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } }, { session, projection: { _id: 1 } });
+      if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
+      const collection = db.collection('learningTracks');
+      const current = await collection.findOne({ _id: id, ownerId: user.googleSub, playlistId }, { session });
+      if (!current) return json({ error: 'Track changed. Refresh and retry.' }, 409);
+      const change = extensionLessonChange(current, snapshot.videos, videoId, action);
+      if (change.error) return json({ error: change.error }, 409);
+      const updatedAt = new Date(Math.max(Date.now(), new Date(current.updatedAt).getTime() + 1));
+      const result = await collection.updateOne({ _id: id, ownerId: user.googleSub, updatedAt: current.updatedAt },
+        { $set: { ...change.value, updatedAt } }, { session });
+      if (result.matchedCount !== 1) return json({ error: 'Progress changed. Refresh and retry.' }, 409);
+      return json({ saved: true, completedVideos: change.value.completedVideos, totalVideos: snapshot.totalVideos,
+        next: change.next ? { videoId: change.next.videoId, title: change.next.title, playlistId } : null,
+        hasUnfinished: change.hasUnfinished });
+    }, { extensionTokenHash: tokenHash });
+  } catch (error) {
+    if (error instanceof PlaylistDiscoveryError) return json({ error: error.message }, error.status);
+    console.error('Extension lesson progress failed:', error?.name);
+    return json({ error: 'Could not confirm progress. Refresh before retrying.' }, 503);
   }
 }

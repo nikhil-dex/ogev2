@@ -1,7 +1,7 @@
 // All OgeNotes requests are made from the extension service worker.
 // The floating content script never receives the bearer token or app origin.
 const TOKEN_PATTERN = /^oge_[A-Za-z0-9_-]{40,60}$/;
-const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
+const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
 const LINK_KINDS = new Set(['github', 'linkedin', 'portfolio']);
 
 function normalizeBase(value) {
@@ -159,6 +159,31 @@ async function handleAction(message, sender) {
   if (message.type === 'LIST_LEARNING_TRACKS') {
     const data = await apiRequest('/api/extension/learning-track');
     return { tracks: Array.isArray(data.tracks) ? data.tracks : [] };
+  }
+  if (message.type === 'COMPLETE_NEXT_LESSON' || message.type === 'UNDO_CURRENT_LESSON') {
+    if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.id))
+      throw new Error('Select a valid track.');
+    const source = new URL(sender.tab.url);
+    const videoId = source.searchParams.get('v');
+    const playlistId = source.searchParams.get('list');
+    if (source.protocol !== 'https:' || !['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(source.hostname) ||
+        source.pathname !== '/watch' || !/^[A-Za-z0-9_-]{11}$/.test(videoId || '') ||
+        !/^[A-Za-z0-9_-]{10,120}$/.test(playlistId || '')) throw new Error('Open a video in this playlist first.');
+    const undo = message.type === 'UNDO_CURRENT_LESSON';
+    const data = await apiRequest('/api/extension/learning-track', { method: 'PATCH',
+      body: JSON.stringify({ id: message.id, videoId, playlistId, action: undo ? 'undo-video' : 'complete-video' }) });
+    if (data.saved !== true) throw new Error('Progress was not confirmed.');
+    const next = data.next;
+    if (!undo && next) {
+      try {
+        const tab = await chrome.tabs.get(sender.tab.id);
+        if (tab.url !== sender.tab.url || next.playlistId !== playlistId ||
+            typeof next.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(next.videoId))
+          return { ...data, navigationFailed: true };
+        await chrome.tabs.update(sender.tab.id, { url: 'https://www.youtube.com/watch?v=' + next.videoId + '&list=' + playlistId });
+      } catch { return { ...data, navigationFailed: true }; }
+    }
+    return data;
   }
   if (message.type === 'WATCH_NEXT_LESSON') {
     if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.id))

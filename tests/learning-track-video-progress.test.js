@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { buildDailyLessons, publicLearningTrack } from '../lib/learning-tracks.js';
 import {
   validateCompletedVideoIds, changeVideoCompletion,
-  buildIdentityLessonDays, currentIdentityLearningDay, nextExtensionLesson,
+  buildIdentityLessonDays, currentIdentityLearningDay, nextExtensionLesson, extensionLessonChange,
 } from '../lib/learning-track-video-progress.js';
 
 const ids = ['abc12345678', 'abc12345679', 'abc12345670', 'abc12345671'];
@@ -102,4 +102,17 @@ test('extension creation detects totals and starts with identity progress', asyn
   const ui = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
   assert.ok(route.includes("totalVideos: snapshot.totalVideos, progressMode: 'videoIds', completedVideoIds: []"));
   assert.ok(!ui.includes('data-track-total'));
+});
+
+test('extension completion is explicit, idempotent, membership checked and undoable', () => {
+  const track = { progressMode: 'videoIds', completedVideoIds: [], completedVideos: 0, totalVideos: 4 };
+  const change = extensionLessonChange(track, videos, ids[0], 'complete-video');
+  assert.deepEqual(change.value.completedVideoIds, [ids[0]]);
+  assert.equal(change.next.videoId, ids[1]);
+  const saved = { ...track, ...change.value };
+  assert.equal(extensionLessonChange(saved, videos, ids[0], 'complete-video').value.completedVideos, 1);
+  assert.equal(extensionLessonChange(saved, videos, ids[0], 'undo-video').value.completedVideos, 0);
+  assert.ok(extensionLessonChange(track, videos, 'xxxxxxxxxxx', 'complete-video').error);
+  assert.ok(extensionLessonChange(base, videos, ids[0], 'complete-video').error);
+  assert.equal(extensionLessonChange({ completedVideos: 0 }, videos, ids[0], 'complete-video').value.progressMode, 'videoIds');
 });
