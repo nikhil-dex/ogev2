@@ -50,7 +50,7 @@
   // HTML is static extension-owned markup; user content uses textContent.
   panel.innerHTML = [
     '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
-    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
+    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><label class="subject-label" data-lesson-timestamp hidden><input type="checkbox" data-attach-timestamp> Attach current video timestamp</label><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
     '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Notes subject<select data-track-subject><option value="">Unassigned</option></select></label><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
@@ -451,6 +451,14 @@
   let lessonPageKey = '';
   let draftLessonKey = '';
   const lessonContext = panel.querySelector('[data-lesson-context]');
+  const timestampControl = panel.querySelector('[data-lesson-timestamp]');
+  const timestampToggle = panel.querySelector('[data-attach-timestamp]');
+  let pendingLessonTimestamp = null;
+  function capturePlaybackSeconds() {
+    const player = document.querySelector('#movie_player video.html5-main-video');
+    if (!player || !Number.isFinite(player.currentTime) || player.currentTime < 0 || player.currentTime > 864000 || !Number.isFinite(player.duration) || document.querySelector('#movie_player.ad-showing')) return null;
+    return Math.floor(player.currentTime);
+  }
   const manualDestination = panel.querySelector('[data-manual-destination]');
   const autoDestination = panel.querySelector('[data-auto-destination]');
   function currentLessonKey() {
@@ -528,6 +536,9 @@
   function updateNoteButton() {
     const contextual = Boolean(lessonDestination || lessonLookupBusy || lessonLookupFailed);
     lessonContext.hidden = !contextual;
+    timestampControl.hidden = !lessonDestination;
+    timestampControl.style.display = lessonDestination ? '' : 'none';
+    timestampToggle.disabled = savingCapture || lessonLookupBusy;
     manualDestination.hidden = !contextual;
     autoDestination.hidden = !manualLessonDestination && !lessonLookupFailed;
     subjectSelect.disabled = contextual;
@@ -568,14 +579,19 @@
     if (lessonDestination) {
       const target = lessonDestination;
       const submitted = note.value;
+      const retryKey = JSON.stringify([target.trackId, target.videoId, target.version, submitted, timestampToggle.checked]);
+      if (pendingLessonTimestamp?.key !== retryKey) pendingLessonTimestamp = { key: retryKey, seconds: timestampToggle.checked ? capturePlaybackSeconds() : null };
+      const playbackSeconds = pendingLessonTimestamp.seconds;
+      const timestampUnavailable = timestampToggle.checked && playbackSeconds === null;
       savingCapture = true; noteSave.disabled = true;
       try {
-        const result = await send('CREATE_LESSON_NOTE', { id: target.trackId, content: submitted, expectedTopicKey: target.topicKey, expectedSubjectSlug: target.subjectSlug, expectedVideoId: target.videoId, expectedNoteId: target.id, expectedVersion: target.version });
+        const result = await send('CREATE_LESSON_NOTE', { id: target.trackId, content: submitted, expectedTopicKey: target.topicKey, expectedSubjectSlug: target.subjectSlug, expectedVideoId: target.videoId, expectedNoteId: target.id, expectedVersion: target.version, playbackSeconds });
         if (result.confirmed !== true) throw new Error('Lesson Note Save was not confirmed.');
         if (note.value === submitted) note.value = '';
         if (lessonDestination === target) lessonDestination = { ...target, existing: true, id: result.id, title: result.title, version: result.version || result.sha };
         if (!note.value.trim()) draftLessonKey = '';
-        setStatus('Saved lesson Note “' + result.title + '”.');
+        pendingLessonTimestamp = null;
+        setStatus('Saved lesson Note “' + result.title + '”.' + (timestampUnavailable ? ' Playback time unavailable; video source saved.' : ''));
         void loadNotes();
       } catch (error) { setStatus(error.message + ' Your text remains in the editor. Reopen Lesson Note before retrying.', true); }
       finally { savingCapture = false; updateNoteButton(); if (currentLessonKey() !== lessonPageKey) void syncLessonDestination(); }

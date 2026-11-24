@@ -1482,3 +1482,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT7 source reference checkpoint
 
 - Contextual lesson saves now embed a Markdown source title and canonical YouTube watch URL in the Note body for both storage modes. Each capture includes a lesson heading; existing source video IDs are recognized across canonical, short and playlist URL forms so repeated captures do not insert duplicate primary links. Different lessons sharing a topic add distinct references. Existing content is preserved by the revision-aware append path. Tests added; no bulk migration of old Notes and manual override saves do not automatically add references. Timestamp support and playlist Note filtering remain pending; CI/browser acceptance pending.
+
+### LT8 timestamp reference checkpoint
+
+- Optional default-off Attach current video timestamp control in contextual Quick Note. Capture reads current main HTML5 player time on explicit Save; ads, missing/invalid players and live/infinite duration fall back to canonical source. Browser preserves attempted timestamp for unchanged retries. Server validates numeric range, floors seconds, formats portable Markdown timestamp links and avoids repeating identical generated timestamp links. Different positions may coexist for the same video. Timestamp is not evidence of completion. Tests added, CI/live acceptance pending.

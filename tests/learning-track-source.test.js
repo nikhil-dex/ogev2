@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sourceVideoIds, lessonSourceCapture } from '../lib/learning-track-source.js';
+import { sourceVideoIds, lessonSourceCapture, normalizePlaybackSeconds, timestampLabel } from '../lib/learning-track-source.js';
 const a = {videoId:'abc12345678',title:'Linear [regression]'};
 const b = {videoId:'abc12345679',title:'Multiple regression'};
 test('LT7 creates canonical Markdown source and associates each capture', () => {
@@ -19,4 +19,18 @@ test('LT7 recognizes existing short and playlist URLs', () => {
   assert.deepEqual([...sourceVideoIds(old)], [a.videoId,b.videoId]);
   assert.ok(!lessonSourceCapture('new',a,old).includes('https://'));
   assert.throws(()=>lessonSourceCapture('new',{videoId:'bad',title:'x'}));
+});
+
+test('LT8 optional timestamps preserve primary sources and distinguish positions', () => {
+  const first = lessonSourceCapture('first', a, '', 754.8);
+  assert.ok(first.includes('Source:'));
+  assert.ok(first.includes('[12:34](https://www.youtube.com/watch?v=abc12345678&t=754s)'));
+  const same = lessonSourceCapture('again', a, first, 754);
+  assert.ok(!same.includes('Timestamp:'));
+  const other = lessonSourceCapture('later', a, first, 3601);
+  assert.ok(other.includes('[1:00:01]'));
+  assert.ok(!other.includes('Source:'));
+  for (const invalid of [null, undefined, NaN, Infinity, -1, '20', 864001]) assert.equal(normalizePlaybackSeconds(invalid), null);
+  assert.equal(timestampLabel(0), '0:00');
+  assert.ok(!lessonSourceCapture('ordinary', a).includes('Timestamp:'));
 });

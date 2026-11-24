@@ -11,7 +11,7 @@ import { VaultGitHubError } from '../../../../lib/oge-vault-github.js';
 import { cachedPublicPlaylist } from '../../../../lib/youtube-playlist-cache.js';
 import { lessonTopic } from '../../../../lib/learning-track-topics.js';
 import { learningCaptureIds } from '../../../../lib/learning-track-capture.js';
-import { lessonSourceCapture } from '../../../../lib/learning-track-source.js';
+import { lessonSourceCapture, normalizePlaybackSeconds } from '../../../../lib/learning-track-source.js';
 import { POST as createVaultNote } from '../vault-note/route.js';
 import { POST as appendNote } from '../notes/route.js';
 
@@ -56,9 +56,10 @@ export async function POST(request) {
     const topic = lessonTopic(track, video);
     const heading = topic.title.trim().slice(0, 160);
     const destination = (existing, version, storage) => ({ existing: Boolean(existing), id: existing?.id || null, title: existing?.heading || heading, version: version || null, subjectSlug: track.subjectSlug, subject: subject.name, destination: storage, videoId, topicKey: topic.key });
-    const firstCapture = lookup ? '' : lessonSourceCapture(content, video);
+    const playbackSeconds = normalizePlaybackSeconds(data.playbackSeconds);
+    const firstCapture = lookup ? '' : lessonSourceCapture(content, video, '', playbackSeconds);
     if (!lookup && firstCapture.length > 20000) return json({ error: 'Lesson Note and its source exceed 20,000 characters.' }, 400);
-    const appendRequest = (noteId, version, previous) => appendNote(new Request(request.url, { method: 'POST', headers: { authorization, 'Content-Type': 'application/json' }, body: JSON.stringify({ noteId, version, subjectSlug: track.subjectSlug, content: lessonSourceCapture(content, video, previous) }) }));
+    const appendRequest = (noteId, version, previous) => appendNote(new Request(request.url, { method: 'POST', headers: { authorization, 'Content-Type': 'application/json' }, body: JSON.stringify({ noteId, version, subjectSlug: track.subjectSlug, content: lessonSourceCapture(content, video, previous, playbackSeconds) }) }));
     if (!lookup && (data.expectedTopicKey !== topic.key || data.expectedSubjectSlug !== track.subjectSlug || data.expectedVideoId !== videoId)) return json({ error: 'Lesson topic changed. Reopen the lesson Note destination.' }, 409);
     const ids = learningCaptureIds(owner.googleSub, id, track.subjectSlug, topic.key);
     const current = await tracks.findOne({ _id: id, ownerId: owner.googleSub, updatedAt: track.updatedAt });
