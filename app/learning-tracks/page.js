@@ -18,7 +18,7 @@ export default function LearningTracksPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [discovered, setDiscovered] = useState({});
-  const [startDate, setStartDate] = useState('');
+  const [planDrafts, setPlanDrafts] = useState({});
   const [noteLinkingEnabled, setNoteLinkingEnabled] = useState(false);
   const [lessonLinks, setLessonLinks] = useState({});
   const [linkChecks, setLinkChecks] = useState({});
@@ -69,6 +69,31 @@ export default function LearningTracksPage() {
     } catch (err) { setError(err.message); await load(); }
     finally { setBusy(false); }
   }
+  async function savePlan(track) {
+    if (busy) return;
+    const draft = planDrafts[track.id] || {};
+    const videosPerDay = Number(draft.videosPerDay ?? track.videosPerDay);
+    const startDate = draft.startDate ?? track.startDate ?? '';
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { track: updated } = await read(await fetch('/api/learning-tracks', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: track.id, expectedUpdatedAt: track.updatedAt,
+          videosPerDay, startDate }),
+      }));
+      setTracks((current) => current.map((item) => item.id === track.id ? updated : item));
+      setPlanDrafts((current) => {
+        const next = { ...current }; delete next[track.id]; return next;
+      });
+      setMessage('Daily goal and start date saved for ' + track.title + '.');
+    } catch (err) { setError(err.message); await load(); }
+    finally { setBusy(false); }
+  }
+  function editPlan(trackId, key, value) {
+    setPlanDrafts((current) => ({
+      ...current, [trackId]: { ...(current[trackId] || {}), [key]: value },
+    }));
+  }
   async function discover(track) {
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
@@ -92,6 +117,9 @@ export default function LearningTracksPage() {
       await read(await fetch('/api/learning-tracks?id=' + encodeURIComponent(track.id), { method: 'DELETE' }));
       setTracks((current) => current.filter((item) => item.id !== track.id));
       setDiscovered((current) => {
+        const next = { ...current }; delete next[track.id]; return next;
+      });
+      setPlanDrafts((current) => {
         const next = { ...current }; delete next[track.id]; return next;
       });
       setLessonLinks((current) => {
@@ -209,7 +237,7 @@ export default function LearningTracksPage() {
         {tracks.map((track) => {
           const snapshot = discovered[track.id];
           const validProgress = snapshot && track.completedVideos <= snapshot.totalVideos;
-          const days = validProgress ? buildDailyLessons(snapshot.videos, track.videosPerDay, track.completedVideos, startDate) : [];
+          const days = validProgress ? buildDailyLessons(snapshot.videos, track.videosPerDay, track.completedVideos, track.startDate || '') : [];
           const currentDay = Math.floor(track.completedVideos / track.videosPerDay);
           const upcoming = days.slice(currentDay, currentDay + 7);
           const unavailableVideos = snapshot && noteLinkingEnabled
@@ -219,6 +247,20 @@ export default function LearningTracksPage() {
             <h3>{track.title}</h3>
             <p>{track.videosPerDay} video{track.videosPerDay === 1 ? '' : 's'} per day · {track.completedVideos}{track.totalVideos == null ? ' completed (total unknown)' : ' / ' + track.totalVideos + ' completed'}</p>
             {track.totalVideos !== null && <progress max={track.totalVideos} value={track.completedVideos} aria-label={'Progress for ' + track.title} />}
+            <div className={styles.plan} aria-label={'Study plan for ' + track.title}>
+              <label>Daily goal
+                <input type="number" min="1" max="20" value={planDrafts[track.id]?.videosPerDay ?? String(track.videosPerDay)}
+                  onChange={(event) => editPlan(track.id, 'videosPerDay', event.target.value)} />
+              </label>
+              <label>Start date (optional)
+                <input type="date" value={planDrafts[track.id]?.startDate ?? track.startDate ?? ''}
+                  onChange={(event) => editPlan(track.id, 'startDate', event.target.value)} />
+              </label>
+              <button type="button" disabled={busy || !planDrafts[track.id] ||
+                (Number(planDrafts[track.id]?.videosPerDay ?? track.videosPerDay) === track.videosPerDay &&
+                (planDrafts[track.id]?.startDate ?? track.startDate ?? '') === (track.startDate ?? ''))}
+                onClick={() => savePlan(track)}>Save plan</button>
+            </div>
             <div className={styles.actions}>
               <a href={track.url} target="_blank" rel="noopener noreferrer">Open playlist ↗</a>
               <button type="button" disabled={busy} onClick={() => discover(track)}>{snapshot ? 'Refresh lessons' : 'Discover lessons'}</button>
@@ -234,7 +276,7 @@ export default function LearningTracksPage() {
                 <p className={styles.error}>Your manually recorded total ({track.totalVideos}) differs from the discovered count ({snapshot.totalVideos}). This does not overwrite your saved total.</p>}
               {!validProgress ? <p className={styles.error}>Recorded progress exceeds discovered videos. Schedule hidden until the data is reconciled.</p> :
                 <>
-                  <label className={styles.scheduleDate}>Optional schedule start date<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+                  <p>Schedule: {track.videosPerDay} per day{track.startDate ? ' · starting ' + track.startDate : ' · dates not set'}. Edit the plan above to change this track only.</p>
                   <p>{days.length} lesson days total · showing {upcoming.length} upcoming day{upcoming.length === 1 ? '' : 's'}</p>
                   {upcoming.length === 0 && <p>All discovered videos marked complete.</p>}
                   <ol className={styles.dayList}>
