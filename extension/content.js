@@ -53,7 +53,7 @@
     '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
-    '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Total videos (optional)<input class="track-input" data-track-total type="number" min="1" max="10000" placeholder="Unknown"></label><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
+    '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
     ] : []),
     '<p class="status" role="status" aria-live="polite"></p>',
     '<nav class="belt" aria-label="OgeNotes tools"><button class="selected" data-tool="note" type="button">✎ Quick note</button><button data-tool="links" type="button">☷ My links</button>' + (LEARNING_TRACKS_EXTENSION_PREVIEW ? '<button data-tool="tracks" type="button" hidden>▷ Tracks</button>' : '') + '</nav>',
@@ -642,8 +642,11 @@
           setStatus('Finding next lesson…');
           try {
             const result = await send('WATCH_NEXT_LESSON', { id: track.id });
-            if (version === trackLoadVersion && active === 'tracks')
-              setStatus(result.finished ? 'All current playlist lessons are complete.' : 'Opened: ' + result.title);
+            if (version === trackLoadVersion && active === 'tracks') {
+              if (Number.isInteger(result.totalVideos))
+                progress.textContent = track.completedVideos + ' / ' + result.totalVideos + ' completed · ' + track.videosPerDay + ' videos/day';
+              setStatus(result.finished ? 'All current playlist lessons are complete.' : result.noLater ? 'No later unfinished lesson. Open Learning Tracks to review earlier lessons.' : 'Opened: ' + result.title);
+            }
           } catch (error) {
             if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
           } finally { watch.disabled = false; }
@@ -670,18 +673,17 @@
     trackSave.addEventListener('click', async () => {
       const title = panel.querySelector('[data-track-title]').value.trim();
       const dailyRaw = panel.querySelector('[data-track-daily]').value;
-      const totalRaw = panel.querySelector('[data-track-total]').value;
-      if (!title || !dailyRaw || (totalRaw && !Number.isInteger(Number(totalRaw)))) {
+      if (!title || !dailyRaw) {
         return setStatus('Enter a title and valid video counts.', true);
       }
       trackSave.disabled = true;
-      setStatus('Adding playlist track…');
+      setStatus('Detecting playlist videos…');
       try {
         const result = await send('CREATE_LEARNING_TRACK', {
-          title, videosPerDay: Number(dailyRaw), totalVideos: totalRaw ? Number(totalRaw) : null,
+          title, videosPerDay: Number(dailyRaw),
         });
         void loadTracks();
-        setStatus('Learning track created: “' + result.title + '”. See Learning Tracks in Oge.');
+        setStatus('Created “' + result.title + '” with ' + result.totalVideos + ' videos.');
       } catch (error) { setStatus(error.message || 'Could not create learning track.', true); }
       finally { trackSave.disabled = false; }
     });

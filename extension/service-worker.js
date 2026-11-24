@@ -163,14 +163,22 @@ async function handleAction(message, sender) {
   if (message.type === 'WATCH_NEXT_LESSON') {
     if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.id))
       throw new Error('Select a valid learning track.');
-    const data = await apiRequest('/api/extension/learning-track?next=' + encodeURIComponent(message.id));
-    if (data.next === null) return { finished: true };
+    const source = new URL(sender.tab.url);
+    const query = new URLSearchParams({ next: message.id });
+    if (source.protocol === 'https:' && ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com'].includes(source.hostname) && source.pathname === '/watch') {
+      query.set('video', source.searchParams.get('v') || '');
+      query.set('playlist', source.searchParams.get('list') || '');
+    }
+    const data = await apiRequest('/api/extension/learning-track?' + query.toString());
+    if (data.next === null) return { finished: !data.hasUnfinished, noLater: Boolean(data.hasUnfinished), totalVideos: data.totalVideos };
     const next = data.next;
     if (!next || typeof next.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(next.videoId) ||
         typeof next.playlistId !== 'string' || !/^[A-Za-z0-9_-]{10,120}$/.test(next.playlistId))
       throw new Error('Invalid next lesson.');
-    await chrome.tabs.create({ url: 'https://www.youtube.com/watch?v=' + next.videoId + '&list=' + next.playlistId, active: true });
-    return { title: next.title, finished: false };
+    const tab = await chrome.tabs.get(sender.tab.id);
+    if (tab.url !== sender.tab.url) throw new Error('The current tab changed. Try Watch next again.');
+    await chrome.tabs.update(sender.tab.id, { url: 'https://www.youtube.com/watch?v=' + next.videoId + '&list=' + next.playlistId });
+    return { title: next.title, finished: false, totalVideos: data.totalVideos };
   }
   if (message.type === 'CREATE_LEARNING_TRACK') {
     // A malicious web page cannot choose a different URL; use the browser's tab.
@@ -178,15 +186,13 @@ async function handleAction(message, sender) {
     if (typeof title !== 'string' || !title.trim() || title.length > 120)
       throw new Error('Enter a learning track name (up to 120 characters).');
     const videosPerDay = message.videosPerDay;
-    const totalVideos = message.totalVideos;
-    if (!Number.isInteger(videosPerDay) || videosPerDay < 1 || videosPerDay > 20 ||
-        (totalVideos !== null && (!Number.isInteger(totalVideos) || totalVideos < 1 || totalVideos > 10000)))
+    if (!Number.isInteger(videosPerDay) || videosPerDay < 1 || videosPerDay > 20)
       throw new Error('Choose valid daily and total video counts.');
     const data = await apiRequest('/api/extension/learning-track', {
       method: 'POST',
-      body: JSON.stringify({ url: sender.tab.url, title, videosPerDay, totalVideos }),
+      body: JSON.stringify({ url: sender.tab.url, title, videosPerDay }),
     });
-    return { title: data.track.title };
+    return { title: data.track.title, totalVideos: data.track.totalVideos };
   }
   if (message.type === 'OPEN_LEARNING_TRACKS') {
     // Never trust a target origin or path from a possibly hostile web page.

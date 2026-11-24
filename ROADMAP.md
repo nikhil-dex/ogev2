@@ -1392,3 +1392,9 @@ These criteria are release blockers, not optional polish:
 - [x] Explicit Watch next action uses fresh public playlist discovery, current owner-scoped progress and stable video IDs; zero-progress legacy tracks can start, nonzero legacy tracks must confirm migration on the website.
 - [x] Open canonical YouTube watch URL in a new tab; share the existing five-discoveries-per-owner/hour limit and keep the API key server-side. No automatic completion.
 - [ ] Live extension playback test and manual lesson completion/Note integration remain pending.
+
+## Learning Tracks — Automatic playlist count and same-tab navigation (24 Nov 2026)
+
+- [x] Extension creation discovers the public playlist and stores its detected total; removes manual total input and starts new tracks with empty video-ID progress.
+- [x] Watch next navigates the invoking tab, skips the currently playing lesson in the same playlist and does not mark it complete. No later unfinished lesson is distinct from all lessons complete.
+- [ ] Existing stored totals are not migrated yet; live YouTube and extension verification pending. Discovery remains capped at 500 videos and shares the existing quota guard.

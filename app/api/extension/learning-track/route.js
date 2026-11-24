@@ -36,6 +36,11 @@ export async function POST(request) {
       { extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } },
       { projection: { googleSub: 1 } });
     if (!user?.googleSub) return json({ error: 'Extension connection expired or revoked.' }, 401);
+    if (!process.env.OGE_YOUTUBE_DATA_API_KEY)
+      return json({ error: 'YouTube playlist discovery requires a server-side API key.' }, 503);
+    const discoveryLimit = await checkRateLimit(db, { scope: 'learning-track-discover', identifier: user.googleSub, limit: 5, windowMs: 60 * 60 * 1000 });
+    if (!discoveryLimit.allowed) return rateLimitResponse(discoveryLimit);
+    const snapshot = await discoverPublicPlaylist(normalized.value.playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
     return await withActiveOwnerMutation(db, user.googleSub, async (session) => {
       const live = await db.collection('users').findOne({
         googleSub: user.googleSub, extensionTokenHash: tokenHash,
@@ -48,11 +53,12 @@ export async function POST(request) {
       if (await collection.countDocuments({ ownerId: user.googleSub }, { session }) >= 100)
         return json({ error: '100-track preview limit reached.' }, 409);
       const now = new Date();
-      const track = { _id: randomUUID(), ownerId: user.googleSub, ...normalized.value, completedVideos: 0, createdAt: now, updatedAt: now };
+      const track = { _id: randomUUID(), ownerId: user.googleSub, ...normalized.value, totalVideos: snapshot.totalVideos, progressMode: 'videoIds', completedVideoIds: [], completedVideos: 0, createdAt: now, updatedAt: now };
       await collection.insertOne(track, { session });
       return json({ track: publicLearningTrack(track) }, 201);
     }, { extensionTokenHash: tokenHash });
   } catch (error) {
+    if (error instanceof PlaylistDiscoveryError) return json({ error: error.message }, error.status);
     if (error?.code === 11000) return json({ error: 'You already have a track for this playlist.' }, 409);
     console.error('Extension Learning Tracks POST failed:', error?.name);
     return json({ error: 'Could not create learning track.' }, 503);
@@ -93,8 +99,13 @@ export async function GET(request) {
       if (!current || current.playlistId !== track.playlistId) return json({ error: 'Track changed. Refresh and retry.' }, 409);
       if (current.progressMode !== 'videoIds' && current.completedVideos !== 0)
         return json({ error: 'Review and enable video-specific progress in Oge first.' }, 409);
-      const next = nextExtensionLesson(current, snapshot.videos);
-      return json({ next: next ? { videoId: next.videoId, title: next.title, playlistId: current.playlistId } : null });
+      const params = new URL(request.url).searchParams;
+      const currentVideoId = params.get('video');
+      const currentPlaylistId = params.get('playlist');
+      const next = nextExtensionLesson(current, snapshot.videos,
+        currentPlaylistId === current.playlistId ? currentVideoId : null);
+      return json({ next: next ? { videoId: next.videoId, title: next.title, playlistId: current.playlistId } : null,
+        hasUnfinished: Boolean(nextExtensionLesson(current, snapshot.videos)), totalVideos: snapshot.totalVideos });
     }
     const tracks = await db.collection('learningTracks').find({ ownerId: user.googleSub })
       .sort({ createdAt: -1 }).limit(100).toArray();

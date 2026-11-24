@@ -86,6 +86,20 @@ test('extension watch next fetches owner-scoped lesson on explicit click', async
   const ui = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
   assert.ok(route.includes("scope: 'learning-track-discover', identifier: user.googleSub"));
   assert.ok(route.includes('_id: id, ownerId: user.googleSub'));
-  assert.ok(worker.includes("chrome.tabs.create({ url: 'https://www.youtube.com/watch?v='"));
+  assert.ok(worker.includes("chrome.tabs.update(sender.tab.id, { url: 'https://www.youtube.com/watch?v='"));
   assert.ok(ui.includes("send('WATCH_NEXT_LESSON', { id: track.id })"));
+});
+
+test('Watch next skips the current lesson without marking it complete', () => {
+  const track = { progressMode: 'videoIds', completedVideoIds: [ids[1]] };
+  assert.equal(nextExtensionLesson(track, videos, ids[0]).videoId, ids[2]);
+  assert.equal(nextExtensionLesson(track, videos, ids[3]), null);
+  assert.deepEqual(track.completedVideoIds, [ids[1]]);
+  assert.equal(nextExtensionLesson({ completedVideos: 0 }, videos, ids[0]).videoId, ids[1]);
+});
+test('extension creation detects totals and starts with identity progress', async () => {
+  const route = await readFile(new URL('../app/api/extension/learning-track/route.js', import.meta.url), 'utf8');
+  const ui = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
+  assert.ok(route.includes("totalVideos: snapshot.totalVideos, progressMode: 'videoIds', completedVideoIds: []"));
+  assert.ok(!ui.includes('data-track-total'));
 });
