@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { changeVideoCompletion } from '../../../lib/learning-track-video-progress.js';
 import { learningTrackNoteLinksEnabled } from '../../../lib/oge-learning-track-note-links.js';
 import { auth } from '../../../auth.js';
 import { getDatabase } from '../../../lib/mongodb.js';
@@ -67,7 +68,8 @@ export async function PATCH(request) {
   if (!enabled()) return json({ error: 'Learning Tracks preview is disabled.' }, 404);
   const parsed = await requestBody(request);
   if (parsed.error) return parsed.error;
-  const { id, expectedCompleted, completedVideos } = parsed.value || {};
+  const { id, expectedCompleted, completedVideos, action } = parsed.value || {};
+  if (action) return updateIdentityProgress(parsed.value);
   if (!idValid(id) || !Number.isInteger(expectedCompleted) || expectedCompleted < 0 ||
       !Number.isInteger(completedVideos) || completedVideos < 0 || completedVideos > 10000 ||
       Math.abs(completedVideos - expectedCompleted) !== 1)
@@ -81,6 +83,8 @@ export async function PATCH(request) {
       const collection = ctx.db.collection('learningTracks');
       const track = await collection.findOne({ _id: id, ownerId: ctx.ownerId }, { session });
       if (!track) return json({ error: 'Learning track not found.' }, 404);
+      if (track.progressMode === 'videoIds')
+        return json({ error: 'Use video-specific completion for this track.' }, 409);
       if (track.completedVideos !== expectedCompleted) return json({ error: 'Progress changed on another device. Refresh and try again.' }, 409);
       if (track.totalVideos !== null && completedVideos > track.totalVideos)
         return json({ error: 'Completed videos cannot exceed the total.' }, 400);
@@ -96,6 +100,42 @@ export async function PATCH(request) {
     return json({ error: 'Could not update learning progress.' }, 503);
   }
 }
+// Separate discriminated progress action. Legacy count tracks are preserved
+// until the owner explicitly confirms a conversion from a discovered snapshot.
+async function updateIdentityProgress(data) {
+  const { id, action, expectedUpdatedAt, expectedCompleted } = data || {};
+  if (!idValid(id) || !['adopt-video-ids', 'complete-video', 'undo-video'].includes(action) ||
+      typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt)))
+    return json({ error: 'Select a valid track and refresh progress.' }, 400);
+  try {
+    const ctx = await context();
+    if (!ctx) return json({ error: 'Sign in to update lessons.' }, 401);
+    const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'learning-tracks');
+    if (!throttle.allowed) return rateLimitResponse(throttle);
+    return await withActiveOwnerMutation(ctx.db, ctx.ownerId, async (session) => {
+      const collection = ctx.db.collection('learningTracks');
+      const track = await collection.findOne({ _id: id, ownerId: ctx.ownerId }, { session });
+      if (!track) return json({ error: 'Learning track not found.' }, 404);
+      if (new Date(track.updatedAt).toISOString() !== expectedUpdatedAt)
+        return json({ error: 'Progress changed elsewhere. Refresh before editing.' }, 409);
+      const change = changeVideoCompletion(track, {
+        action, expectedCompleted, videoId: data.videoId, videoIds: data.videoIds,
+      });
+      if (change.error) return json({ error: change.error }, 400);
+      const updatedAt = new Date(Math.max(Date.now(), new Date(track.updatedAt).getTime() + 1));
+      const updated = await collection.updateOne(
+        { _id: id, ownerId: ctx.ownerId, updatedAt: track.updatedAt },
+        { $set: { ...change.value, updatedAt } }, { session });
+      if (updated.matchedCount !== 1)
+        return json({ error: 'Progress changed elsewhere. Refresh before editing.' }, 409);
+      return json({ track: publicLearningTrack({ ...track, ...change.value, updatedAt }) });
+    }, { sessionVersion: ctx.sessionVersion });
+  } catch (error) {
+    console.error('Learning Tracks video progress failed:', error?.name);
+    return json({ error: 'Could not update video completion. Refresh before retrying.' }, 503);
+  }
+}
+
 // Update one track's plan without rewriting its completed-video count.
 export async function PUT(request) {
   if (!enabled()) return json({ error: 'Learning Tracks preview is disabled.' }, 404);
