@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { buildDailyLessons, publicLearningTrack } from '../lib/learning-tracks.js';
+import {
+  validateCompletedVideoIds, changeVideoCompletion,
+  buildIdentityLessonDays, currentIdentityLearningDay,
+} from '../lib/learning-track-video-progress.js';
+
+const ids = ['abc12345678', 'abc12345679', 'abc12345670', 'abc12345671'];
+const videos = ids.map((videoId, position) => ({ videoId, position, title: 'Lesson ' + position }));
+const base = { progressMode: 'count', completedVideos: 2, totalVideos: 4 };
+
+test('legacy count is preserved unless migration is explicit and confirmed', () => {
+  assert.equal(publicLearningTrack(base).progressMode, 'count');
+  assert.deepEqual(publicLearningTrack(base).completedVideoIds, []);
+  assert.ok(changeVideoCompletion(base, { action: 'adopt-video-ids', videoIds: [ids[0]], expectedCompleted: 2 }).error);
+  assert.ok(changeVideoCompletion(base, { action: 'adopt-video-ids', videoIds: [ids[0], ids[0]], expectedCompleted: 2 }).error);
+  assert.ok(changeVideoCompletion(base, { action: 'adopt-video-ids', videoIds: [ids[0], ids[1]], expectedCompleted: 1 }).error);
+  const converted = changeVideoCompletion(base, { action: 'adopt-video-ids', videoIds: [ids[0], ids[1]], expectedCompleted: 2 });
+  assert.equal(converted.value.progressMode, 'videoIds');
+  assert.deepEqual(converted.value.completedVideoIds, [ids[0], ids[1]]);
+  assert.equal(converted.value.completedVideos, 2);
+  assert.equal(base.progressMode, 'count');
+});
+
+test('video IDs are validated and completed only once', () => {
+  assert.equal(validateCompletedVideoIds([ids[0], ids[1]]), true);
+  assert.equal(validateCompletedVideoIds([ids[0], ids[0]]), false);
+  assert.equal(validateCompletedVideoIds(['invalid']), false);
+  assert.equal(validateCompletedVideoIds(Array(501).fill(ids[0])), false);
+  const converted = { ...base, progressMode: 'videoIds', completedVideoIds: [ids[0], ids[1]] };
+  assert.ok(changeVideoCompletion(converted, { action: 'complete-video', videoId: ids[1] }).error);
+  const added = changeVideoCompletion(converted, { action: 'complete-video', videoId: ids[2] });
+  assert.deepEqual(added.value.completedVideoIds, [ids[0], ids[1], ids[2]]);
+  assert.equal(added.value.completedVideos, 3);
+  const undone = changeVideoCompletion({ ...converted, ...added.value }, { action: 'undo-video', videoId: ids[1] });
+  assert.deepEqual(undone.value.completedVideoIds, [ids[0], ids[2]]);
+  assert.ok(changeVideoCompletion(converted, { action: 'undo-video', videoId: ids[3] }).error);
+  assert.ok(changeVideoCompletion(base, { action: 'complete-video', videoId: ids[2] }).error);
+});
+
+test('reordered playlists preserve video identity and select first unfinished lesson', () => {
+  const reordered = [videos[2], videos[0], videos[3], videos[1]];
+  const days = buildIdentityLessonDays(reordered, 2, [ids[0], ids[1]], '2026-11-25', buildDailyLessons);
+  assert.deepEqual(days.map((d) => d.videos.map((v) => v.completed)), [[false, true], [false, true]]);
+  const focus = currentIdentityLearningDay(days);
+  assert.equal(focus.day, 1);
+  assert.equal(focus.next.videoId, ids[2]);
+  assert.equal(focus.date, '2026-11-25');
+  assert.equal(focus.completedInDay, 1);
+  assert.equal(currentIdentityLearningDay(buildIdentityLessonDays(videos, 2, ids, '', buildDailyLessons)), null);
+  const removedVideo = buildIdentityLessonDays(videos.slice(1), 2, [ids[0]], '', buildDailyLessons);
+  assert.equal(removedVideo[0].videos[0].completed, false);
+});
+
+test('owner-scoped API rejects stale versions and disables legacy count writes after upgrade', async () => {
+  const route = await readFile(new URL('../app/api/learning-tracks/route.js', import.meta.url), 'utf8');
+  const ui = await readFile(new URL('../app/learning-tracks/page.js', import.meta.url), 'utf8');
+  assert.match(route, /action\) return updateIdentityProgress\(parsed.value\)/);
+  assert.match(route, /track.progressMode === 'videoIds'/);
+  assert.match(route, /changeVideoCompletion\(track/);
+  assert.match(route, /expectedUpdatedAt/);
+  assert.match(route, /ownerId: ctx.ownerId, updatedAt: track.updatedAt/);
+  assert.match(route, /withActiveOwnerMutation/);
+  assert.match(ui, /Use video-specific progress/);
+  assert.match(ui, /window.confirm\(prompt\)/);
+  assert.match(ui, /snapshot.videos.slice\(0, track.completedVideos\)/);
+  assert.match(ui, /currentIdentityLearningDay\(days\)/);
+  assert.match(ui, /buildIdentityLessonDays\(/);
+  assert.match(ui, /identityMode \? focus.next.videoId : null/);
+  assert.match(ui, /Mark not complete/);
+  assert.match(ui, /Some completed videos are no longer in this playlist snapshot/);
+});
