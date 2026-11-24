@@ -110,3 +110,14 @@ test('LT2 shared cache reuses fresh metadata and expires stale fallback', async 
   await assert.rejects(cachedPublicPlaylist(db, id, 'owner-a', { ...opts,
     discover: async () => { throw new PlaylistDiscoveryError('quota', 503); } }), PlaylistDiscoveryError);
 });
+
+test('LT2 refresh is explicit and preserves completion history', async () => {
+  const web = await readFile(new URL('../app/api/learning-tracks/discover/route.js', import.meta.url), 'utf8');
+  const extension = await readFile(new URL('../app/api/extension/learning-track/route.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../extension/service-worker.js', import.meta.url), 'utf8');
+  for (const source of [web, extension]) {
+    assert.ok(source.includes('snapshot.stale ? current.totalVideos : snapshot.totalVideos'));
+    assert.ok(source.includes('$set: { totalVideos: count, updatedAt }'));
+  }
+  assert.ok(worker.includes('REFRESH_TRACK_PLAYLIST'));
+});

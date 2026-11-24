@@ -1,7 +1,7 @@
 // All OgeNotes requests are made from the extension service worker.
 // The floating content script never receives the bearer token or app origin.
 const TOKEN_PATTERN = /^oge_[A-Za-z0-9_-]{40,60}$/;
-const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
+const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'REFRESH_TRACK_PLAYLIST', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
 const LINK_KINDS = new Set(['github', 'linkedin', 'portfolio']);
 
 function normalizeBase(value) {
@@ -160,6 +160,10 @@ async function handleAction(message, sender) {
     const data = await apiRequest('/api/extension/learning-track');
     return { tracks: Array.isArray(data.tracks) ? data.tracks : [] };
   }
+  if (message.type === 'REFRESH_TRACK_PLAYLIST') {
+    if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.id)) throw new Error('Select a valid track.');
+    return apiRequest('/api/extension/learning-track', { method: 'PATCH', body: JSON.stringify({ id: message.id, action: 'refresh-playlist' }) });
+  }
   if (message.type === 'COMPLETE_NEXT_LESSON' || message.type === 'UNDO_CURRENT_LESSON') {
     if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.id))
       throw new Error('Select a valid track.');
@@ -195,7 +199,7 @@ async function handleAction(message, sender) {
       query.set('playlist', source.searchParams.get('list') || '');
     }
     const data = await apiRequest('/api/extension/learning-track?' + query.toString());
-    if (data.next === null) return { finished: !data.hasUnfinished, noLater: Boolean(data.hasUnfinished), totalVideos: data.totalVideos };
+    if (data.next === null) return { finished: !data.hasUnfinished, noLater: Boolean(data.hasUnfinished), totalVideos: data.totalVideos, stale: data.stale, fetchedAt: data.fetchedAt };
     const next = data.next;
     if (!next || typeof next.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(next.videoId) ||
         typeof next.playlistId !== 'string' || !/^[A-Za-z0-9_-]{10,120}$/.test(next.playlistId))
@@ -203,7 +207,7 @@ async function handleAction(message, sender) {
     const tab = await chrome.tabs.get(sender.tab.id);
     if (tab.url !== sender.tab.url) throw new Error('The current tab changed. Try Watch next again.');
     await chrome.tabs.update(sender.tab.id, { url: 'https://www.youtube.com/watch?v=' + next.videoId + '&list=' + next.playlistId });
-    return { title: next.title, finished: false, totalVideos: data.totalVideos };
+    return { title: next.title, finished: false, totalVideos: data.totalVideos, stale: data.stale, fetchedAt: data.fetchedAt };
   }
   if (message.type === 'CREATE_LEARNING_TRACK') {
     // A malicious web page cannot choose a different URL; use the browser's tab.

@@ -645,13 +645,28 @@
             if (version === trackLoadVersion && active === 'tracks') {
               if (Number.isInteger(result.totalVideos))
                 progress.textContent = track.completedVideos + ' / ' + result.totalVideos + ' completed · ' + track.videosPerDay + ' videos/day';
-              setStatus(result.finished ? 'All current playlist lessons are complete.' : result.noLater ? 'No later unfinished lesson. Open Learning Tracks to review earlier lessons.' : 'Opened: ' + result.title);
+              setStatus((result.finished ? 'All current playlist lessons are complete.' : result.noLater ? 'No later unfinished lesson. Open Learning Tracks to review earlier lessons.' : 'Opened: ' + result.title) + (result.stale ? ' (Cached playlist; refresh unavailable.)' : ''));
             }
           } catch (error) {
             if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
           } finally { watch.disabled = false; }
         });
-        actions.append(watch);
+        const refresh = document.createElement('button');
+        refresh.type = 'button';
+        refresh.textContent = 'Refresh playlist';
+        refresh.addEventListener('click', async () => {
+          refresh.disabled = true;
+          setStatus('Refreshing playlist…');
+          try {
+            const result = await send('REFRESH_TRACK_PLAYLIST', { id: track.id });
+            if (version !== trackLoadVersion || active !== 'tracks') return;
+            progress.textContent = result.completedVideos + (result.totalVideos == null ? '' : ' / ' + result.totalVideos) + ' completed · ' + track.videosPerDay + ' videos/day';
+            setStatus(result.stale ? 'Refresh unavailable. Using previously retrieved playlist metadata.' : 'Playlist refreshed.');
+          } catch (error) {
+            if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
+          } finally { refresh.disabled = false; }
+        });
+        actions.append(watch, refresh);
         const source = new URL(location.href);
         if (source.pathname === '/watch' && source.searchParams.get('list') === track.playlistId) {
           const complete = document.createElement('button');
@@ -660,16 +675,16 @@
           complete.textContent = 'Complete & Next';
           undo.textContent = 'Undo current';
           const update = async (isUndo) => {
-            complete.disabled = undo.disabled = watch.disabled = true;
+            complete.disabled = undo.disabled = watch.disabled = refresh.disabled = true;
             setStatus('Saving lesson progress…');
             try {
               const result = await send(isUndo ? 'UNDO_CURRENT_LESSON' : 'COMPLETE_NEXT_LESSON', { id: track.id });
               if (version !== trackLoadVersion || active !== 'tracks') return;
               progress.textContent = result.completedVideos + ' / ' + result.totalVideos + ' completed · ' + track.videosPerDay + ' videos/day';
-              setStatus(isUndo ? 'Current lesson marked unfinished.' : result.navigationFailed ? 'Progress saved; could not open next lesson.' : result.next ? 'Progress saved. Opening next lesson…' : result.hasUnfinished ? 'Progress saved. Earlier lessons remain.' : 'All current lessons complete.');
+              setStatus((isUndo ? 'Current lesson marked unfinished.' : result.navigationFailed ? 'Progress saved; could not open next lesson.' : result.next ? 'Progress saved. Opening next lesson…' : result.hasUnfinished ? 'Progress saved. Earlier lessons remain.' : 'All current lessons complete.') + (result.stale ? ' (Cached playlist; refresh unavailable.)' : ''));
             } catch (error) {
               if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
-            } finally { complete.disabled = undo.disabled = watch.disabled = false; }
+            } finally { complete.disabled = undo.disabled = watch.disabled = refresh.disabled = false; }
           };
           complete.addEventListener('click', () => void update(false));
           undo.addEventListener('click', () => void update(true));

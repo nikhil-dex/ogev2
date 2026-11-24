@@ -133,7 +133,8 @@ export default function LearningTracksPage() {
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const data = await read(await fetch('/api/learning-tracks/discover?id=' + encodeURIComponent(track.id) + (discovered[track.id] ? '&refresh=1' : ''), { cache: 'no-store' }));
+      const data = await read(await fetch('/api/learning-tracks/discover?id=' + encodeURIComponent(track.id), { method: discovered[track.id] ? 'POST' : 'GET', cache: 'no-store' }));
+      if (Object.hasOwn(data, 'savedTotalVideos')) setTracks(current => current.map(item => item.id === track.id ? { ...item, totalVideos: data.savedTotalVideos, updatedAt: data.updatedAt } : item));
       setDiscovered((current) => ({ ...current, [track.id]: data }));
       setLinkChecks((current) => Object.fromEntries(Object.entries(current)
         .filter(([key]) => !key.startsWith(track.id + ':'))));
@@ -329,7 +330,7 @@ export default function LearningTracksPage() {
                 <p className={styles.error}>Some completed videos are no longer in this playlist snapshot. Their completion records remain saved; review before changing the playlist.</p>}
               {unavailableVideos > 0 && <p className={styles.error}>{unavailableVideos} saved Note link(s) are absent from this playlist snapshot. Check manually; no links or Notes were changed.</p>}
               {track.totalVideos !== null && track.totalVideos !== snapshot.totalVideos &&
-                <p className={styles.error}>Your manually recorded total ({track.totalVideos}) differs from the discovered count ({snapshot.totalVideos}). This does not overwrite your saved total.</p>}
+                <p className={styles.error}>Your manually recorded total ({track.totalVideos}) differs from the discovered count ({snapshot.totalVideos}). Refresh lessons to reconcile your saved total without removing progress.</p>}
               {!validProgress ? <p className={styles.error}>Recorded progress exceeds discovered videos. Schedule hidden until the data is reconciled.</p> :
                 <>
                   {focus && <section className={styles.focus} aria-label={'Next lessons for ' + track.title}>
