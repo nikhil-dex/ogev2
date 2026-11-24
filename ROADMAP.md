@@ -1438,3 +1438,8 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT1 implementation checkpoint
 
 - Explicit completion and undo from current tracked video; server verifies playlist membership and owner, reuses video-ID progress, and confirms save before same-tab advance. Duplicate completion is idempotent. Undo applies to the currently open video; navigate back to undo a previous lesson. Regression tests added, CI/live verification pending. Existing five-discoveries/hour limit still applies until LT2.
+
+### LT2 implementation checkpoint (partial; acceptance pending)
+
+- Shared per-playlist MongoDB metadata cache: one-hour freshness, 24-hour TTL, in-process concurrent request coalescing, five actual discovery attempts per owner/hour, bounded fallback for transient provider failures and quota. Website Refresh lessons requests fresh metadata; extension creation/navigation/completion share the cache. No audiovisual data stored. Completion updates detected total without discarding previous IDs.
+- Pending: explicit extension playlist refresh and stale-data indicator, cross-instance request coalescing, reconciliation of existing totals independent of completion, CI/live tests and review of overall YouTube data retention/visibility compliance. LT2 remains unchecked until these are addressed. Policy reference: https://developers.google.com/youtube/terms/developer-policies (III.E.4).

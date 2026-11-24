@@ -1,7 +1,7 @@
 import { auth } from '../../../../auth.js';
 import { getDatabase } from '../../../../lib/mongodb.js';
-import { checkRateLimit, rateLimitResponse } from '../../../../lib/rate-limit.js';
-import { discoverPublicPlaylist, PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
+import { cachedPublicPlaylist } from '../../../../lib/youtube-playlist-cache.js';
+import { PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,14 +24,10 @@ export async function GET(request) {
       { projection: { playlistId: 1, title: 1 } },
     );
     if (!track) return json({ error: 'Learning track not found.' }, 404);
-    // Explicit user-requested reads only: maximum five per owner per hour.
-    const limit = await checkRateLimit(db, {
-      scope: 'learning-track-discover', identifier: session.user.id,
-      limit: 5, windowMs: 60 * 60 * 1000,
+    const result = await cachedPublicPlaylist(db, track.playlistId, session.user.id, {
+      refresh: new URL(request.url).searchParams.get('refresh') === '1',
     });
-    if (!limit.allowed) return rateLimitResponse(limit);
-    const result = await discoverPublicPlaylist(track.playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
-    return json({ ...result, playlistId: track.playlistId, fetchedAt: new Date().toISOString() });
+    return json({ ...result, playlistId: track.playlistId });
   } catch (error) {
     if (error instanceof PlaylistDiscoveryError)
       return json({ error: error.message }, error.status);

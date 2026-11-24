@@ -80,10 +80,33 @@ test('M98 server-only credentials, authenticated owner scope, default-off previe
   assert.match(route, /OGE_LEARNING_TRACKS_PREVIEW/);
   assert.match(route, /session\.user\.id/);
   assert.match(route, /ownerId: session\.user\.id/);
-  assert.match(route, /scope: 'learning-track-discover'/);
+  assert.match(route, /cachedPublicPlaylist/);
   assert.match(route, /OGE_YOUTUBE_DATA_API_KEY/);
   assert.doesNotMatch(route + pageSource, /collection\(['"]notes['"]\)/);
   assert.doesNotMatch(pageSource, /OGE_YOUTUBE_DATA_API_KEY/);
   assert.match(env, /OGE_YOUTUBE_DATA_API_KEY=/);
   assert.match(pageSource, /Discover lessons/);
+});
+
+test('LT2 shared cache reuses fresh metadata and expires stale fallback', async () => {
+  const { cachedPublicPlaylist, PLAYLIST_RETENTION_MS } = await import('../lib/youtube-playlist-cache.js');
+  let stored, calls = 0, time = 100000000;
+  const db = { databaseName: 'cache-test', collection: () => ({
+    findOne: async () => stored && stored.expiresAt > new Date(time) ? stored : null,
+    updateOne: async (_, update) => { stored = update.$set; },
+    deleteOne: async () => { stored = null; },
+  }) };
+  const opts = { now: () => time, throttle: async () => ({ allowed: true }), discover: async () => {
+    calls++; return { videos: [{ videoId: 'abc12345678' }], totalVideos: 1 };
+  }};
+  const first = await cachedPublicPlaylist(db, id, 'owner-a', opts);
+  assert.equal(first.cached, false);
+  assert.equal((await cachedPublicPlaylist(db, id, 'owner-b', opts)).cached, true);
+  assert.equal(calls, 1);
+  const fallback = await cachedPublicPlaylist(db, id, 'owner-b', { ...opts, refresh: true,
+    discover: async () => { throw new PlaylistDiscoveryError('quota', 503); } });
+  assert.equal(fallback.stale, true);
+  time += PLAYLIST_RETENTION_MS + 1;
+  await assert.rejects(cachedPublicPlaylist(db, id, 'owner-a', { ...opts,
+    discover: async () => { throw new PlaylistDiscoveryError('quota', 503); } }), PlaylistDiscoveryError);
 });

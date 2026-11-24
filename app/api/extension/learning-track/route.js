@@ -1,5 +1,6 @@
 import { nextExtensionLesson, extensionLessonChange } from '../../../../lib/learning-track-video-progress.js';
-import { discoverPublicPlaylist, PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
+import { cachedPublicPlaylist } from '../../../../lib/youtube-playlist-cache.js';
+import { PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
 import { randomUUID } from 'node:crypto';
 import { hashExtensionToken } from '../../../../lib/extension-token.js';
 import { normalizeLearningTrack, publicLearningTrack } from '../../../../lib/learning-tracks.js';
@@ -38,9 +39,7 @@ export async function POST(request) {
     if (!user?.googleSub) return json({ error: 'Extension connection expired or revoked.' }, 401);
     if (!process.env.OGE_YOUTUBE_DATA_API_KEY)
       return json({ error: 'YouTube playlist discovery requires a server-side API key.' }, 503);
-    const discoveryLimit = await checkRateLimit(db, { scope: 'learning-track-discover', identifier: user.googleSub, limit: 5, windowMs: 60 * 60 * 1000 });
-    if (!discoveryLimit.allowed) return rateLimitResponse(discoveryLimit);
-    const snapshot = await discoverPublicPlaylist(normalized.value.playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
+    const snapshot = await cachedPublicPlaylist(db, normalized.value.playlistId, user.googleSub);
     return await withActiveOwnerMutation(db, user.googleSub, async (session) => {
       const live = await db.collection('users').findOne({
         googleSub: user.googleSub, extensionTokenHash: tokenHash,
@@ -88,9 +87,7 @@ export async function GET(request) {
         return json({ error: 'Review and enable video-specific progress in Oge first.' }, 409);
       if (!process.env.OGE_YOUTUBE_DATA_API_KEY)
         return json({ error: 'YouTube playlist discovery requires a server-side API key.' }, 503);
-      const discoveryLimit = await checkRateLimit(db, { scope: 'learning-track-discover', identifier: user.googleSub, limit: 5, windowMs: 60 * 60 * 1000 });
-      if (!discoveryLimit.allowed) return rateLimitResponse(discoveryLimit);
-      const snapshot = await discoverPublicPlaylist(track.playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
+      const snapshot = await cachedPublicPlaylist(db, track.playlistId, user.googleSub);
       const live = await db.collection('users').findOne(
         { googleSub: user.googleSub, extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } },
         { projection: { _id: 1 } });
@@ -105,7 +102,7 @@ export async function GET(request) {
       const next = nextExtensionLesson(current, snapshot.videos,
         currentPlaylistId === current.playlistId ? currentVideoId : null);
       return json({ next: next ? { videoId: next.videoId, title: next.title, playlistId: current.playlistId } : null,
-        hasUnfinished: Boolean(nextExtensionLesson(current, snapshot.videos)), totalVideos: snapshot.totalVideos });
+        hasUnfinished: Boolean(nextExtensionLesson(current, snapshot.videos)), totalVideos: snapshot.totalVideos, stale: snapshot.stale, fetchedAt: snapshot.fetchedAt });
     }
     const tracks = await db.collection('learningTracks').find({ ownerId: user.googleSub })
       .sort({ createdAt: -1 }).limit(100).toArray();
@@ -148,24 +145,22 @@ export async function PATCH(request) {
     if (track.progressMode !== 'videoIds' && track.completedVideos !== 0)
       return json({ error: 'Review and enable video-specific progress in Oge first.' }, 409);
     if (!process.env.OGE_YOUTUBE_DATA_API_KEY) return json({ error: 'YouTube discovery is not configured.' }, 503);
-    const limit = await checkRateLimit(db, { scope: 'learning-track-discover', identifier: user.googleSub, limit: 5, windowMs: 60 * 60 * 1000 });
-    if (!limit.allowed) return rateLimitResponse(limit);
-    const snapshot = await discoverPublicPlaylist(playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
+    const snapshot = await cachedPublicPlaylist(db, playlistId, user.googleSub);
     return await withActiveOwnerMutation(db, user.googleSub, async session => {
       const live = await db.collection('users').findOne({ googleSub: user.googleSub, extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } }, { session, projection: { _id: 1 } });
       if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
       const collection = db.collection('learningTracks');
       const current = await collection.findOne({ _id: id, ownerId: user.googleSub, playlistId }, { session });
       if (!current) return json({ error: 'Track changed. Refresh and retry.' }, 409);
-      const change = extensionLessonChange(current, snapshot.videos, videoId, action);
+      const change = extensionLessonChange({ ...current, totalVideos: Math.max(snapshot.totalVideos, current.completedVideos + 1) }, snapshot.videos, videoId, action);
       if (change.error) return json({ error: change.error }, 409);
       const updatedAt = new Date(Math.max(Date.now(), new Date(current.updatedAt).getTime() + 1));
       const result = await collection.updateOne({ _id: id, ownerId: user.googleSub, updatedAt: current.updatedAt },
-        { $set: { ...change.value, updatedAt } }, { session });
+        { $set: { ...change.value, totalVideos: snapshot.totalVideos, updatedAt } }, { session });
       if (result.matchedCount !== 1) return json({ error: 'Progress changed. Refresh and retry.' }, 409);
       return json({ saved: true, completedVideos: change.value.completedVideos, totalVideos: snapshot.totalVideos,
         next: change.next ? { videoId: change.next.videoId, title: change.next.title, playlistId } : null,
-        hasUnfinished: change.hasUnfinished });
+        hasUnfinished: change.hasUnfinished, stale: snapshot.stale, fetchedAt: snapshot.fetchedAt });
     }, { extensionTokenHash: tokenHash });
   } catch (error) {
     if (error instanceof PlaylistDiscoveryError) return json({ error: error.message }, error.status);

@@ -133,7 +133,7 @@ export default function LearningTracksPage() {
     if (busy) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const data = await read(await fetch('/api/learning-tracks/discover?id=' + encodeURIComponent(track.id), { cache: 'no-store' }));
+      const data = await read(await fetch('/api/learning-tracks/discover?id=' + encodeURIComponent(track.id) + (discovered[track.id] ? '&refresh=1' : ''), { cache: 'no-store' }));
       setDiscovered((current) => ({ ...current, [track.id]: data }));
       setLinkChecks((current) => Object.fromEntries(Object.entries(current)
         .filter(([key]) => !key.startsWith(track.id + ':'))));
@@ -141,7 +141,7 @@ export default function LearningTracksPage() {
         const linked = await read(await fetch('/api/learning-tracks/note-links?trackId=' + encodeURIComponent(track.id), { cache: 'no-store' }));
         setLessonLinks((current) => ({ ...current, [track.id]: linked.links }));
       }
-      setMessage('Public playlist metadata loaded for this session only. No lesson content was saved.');
+      setMessage(data.stale ? 'Using previously retrieved playlist metadata from ' + new Date(data.fetchedAt).toLocaleString() + '. Refresh is temporarily unavailable.' : 'Playlist lessons loaded.');
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }

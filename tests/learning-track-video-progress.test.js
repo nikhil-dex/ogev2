@@ -84,7 +84,7 @@ test('extension watch next fetches owner-scoped lesson on explicit click', async
   const route = await readFile(new URL('../app/api/extension/learning-track/route.js', import.meta.url), 'utf8');
   const worker = await readFile(new URL('../extension/service-worker.js', import.meta.url), 'utf8');
   const ui = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
-  assert.ok(route.includes("scope: 'learning-track-discover', identifier: user.googleSub"));
+  assert.ok(route.includes('cachedPublicPlaylist(db, track.playlistId, user.googleSub)'));
   assert.ok(route.includes('_id: id, ownerId: user.googleSub'));
   assert.ok(worker.includes("chrome.tabs.update(sender.tab.id, { url: 'https://www.youtube.com/watch?v='"));
   assert.ok(ui.includes("send('WATCH_NEXT_LESSON', { id: track.id })"));
