@@ -29,6 +29,15 @@ The Chrome Manifest V3 extension now combines the original OgeNotes floating Qui
 
 **Quick Notes** is the default destination. The extension can create Quick Notes; the Oge app can read, copy and delete them, but cannot create or edit them. Selecting an existing subject saves a regular Note instead. The first line becomes the title and the rest becomes the body. A GitHub Vault account writes to its private repository, not the legacy MongoDB Notes collection.
 
+## Append to an existing Note (subject selected)
+
+1. In the floating **Quick note** tool, select a subject such as **ML**. The new **Note** dropdown defaults to **Default (new Note)**.
+2. With **Default** selected, type a title on the first line (for example, **ML P2**) and your notes below it. The existing **Save to selected subject** action creates that Note.
+3. To continue an existing Note, select **ML** and choose **ML P2** in the Note dropdown. It initially lists the **five most recently updated Notes** in that subject; **Show more** adds five more each time.
+4. Write your new text. The button becomes **Append to ML P2 →**. A confirmed append adds the text after the original Note content, retaining its heading and other metadata, and clears the submitted editor text.
+
+The dropdown is subject-specific: switching subjects starts back at **Default (new Note)**. It does not show other subjects' Notes. Both GitHub Vault and MongoDB Notes are supported according to your existing account storage setting. A concurrent change or uncertain append keeps the typed text and asks you to refresh before retrying, rather than silently duplicating content. The existing standalone Quick Notes destination is unchanged.
+
 ## Reset the extension
 
 In the toolbar popup, select **Connect → Reset extension** and confirm. This clears only the saved app URL, token and category from Chrome's extension storage, and empties the popup's current profile-link list. It does not remove any server-side notes, subjects or profile links, and it does not revoke the token on the server. For security, revoke an unwanted token from the **Browser Extension** page in OgeNotes before generating a replacement.
