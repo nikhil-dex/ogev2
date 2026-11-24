@@ -1386,3 +1386,9 @@ These criteria are release blockers, not optional polish:
 - [ ] Verify signed-in extension with real playlists; next-lesson playback, individual completion and linked Note actions remain pending. No calendar-day completion inference from aggregate counts.
 
 - [x] Extend floating-widget keyboard shortcut isolation to Track inputs and other focused form controls, keeping native input defaults. Regression coverage added; live YouTube confirmation pending.
+
+## Learning Tracks — Extension Watch Next (24 Nov 2026)
+
+- [x] Explicit Watch next action uses fresh public playlist discovery, current owner-scoped progress and stable video IDs; zero-progress legacy tracks can start, nonzero legacy tracks must confirm migration on the website.
+- [x] Open canonical YouTube watch URL in a new tab; share the existing five-discoveries-per-owner/hour limit and keep the API key server-side. No automatic completion.
+- [ ] Live extension playback test and manual lesson completion/Note integration remain pending.

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { buildDailyLessons, publicLearningTrack } from '../lib/learning-tracks.js';
 import {
   validateCompletedVideoIds, changeVideoCompletion,
-  buildIdentityLessonDays, currentIdentityLearningDay,
+  buildIdentityLessonDays, currentIdentityLearningDay, nextExtensionLesson,
 } from '../lib/learning-track-video-progress.js';
 
 const ids = ['abc12345678', 'abc12345679', 'abc12345670', 'abc12345671'];
@@ -71,4 +71,21 @@ test('owner-scoped API rejects stale versions and disables legacy count writes a
   assert.match(ui, /identityMode \? focus.next.videoId : null/);
   assert.match(ui, /Mark not complete/);
   assert.match(ui, /Some completed videos are no longer in this playlist snapshot/);
+});
+
+test('extension next lesson follows identity after reorder and never guesses legacy completion', () => {
+  const reordered = [videos[2], videos[0], videos[3], videos[1]];
+  assert.equal(nextExtensionLesson({ progressMode: 'videoIds', completedVideoIds: [ids[0], ids[2]] }, reordered).videoId, ids[3]);
+  assert.equal(nextExtensionLesson({ progressMode: 'videoIds', completedVideoIds: ids }, reordered), null);
+  assert.equal(nextExtensionLesson({ completedVideos: 0 }, reordered).videoId, ids[2]);
+  assert.throws(() => nextExtensionLesson(base, reordered), /video-specific progress/);
+});
+test('extension watch next fetches owner-scoped lesson on explicit click', async () => {
+  const route = await readFile(new URL('../app/api/extension/learning-track/route.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../extension/service-worker.js', import.meta.url), 'utf8');
+  const ui = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
+  assert.ok(route.includes("scope: 'learning-track-discover', identifier: user.googleSub"));
+  assert.ok(route.includes('_id: id, ownerId: user.googleSub'));
+  assert.ok(worker.includes("chrome.tabs.create({ url: 'https://www.youtube.com/watch?v='"));
+  assert.ok(ui.includes("send('WATCH_NEXT_LESSON', { id: track.id })"));
 });

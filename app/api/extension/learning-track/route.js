@@ -1,3 +1,5 @@
+import { nextExtensionLesson } from '../../../../lib/learning-track-video-progress.js';
+import { discoverPublicPlaylist, PlaylistDiscoveryError } from '../../../../lib/youtube-playlist-discovery.js';
 import { randomUUID } from 'node:crypto';
 import { hashExtensionToken } from '../../../../lib/extension-token.js';
 import { normalizeLearningTrack, publicLearningTrack } from '../../../../lib/learning-tracks.js';
@@ -71,6 +73,29 @@ export async function GET(request) {
       { extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } },
       { projection: { googleSub: 1 } });
     if (!user?.googleSub) return json({ error: 'Extension connection expired or revoked.' }, 401);
+    const id = new URL(request.url).searchParams.get('next');
+    if (id !== null) {
+      if (!/^[a-f0-9-]{36}$/i.test(id)) return json({ error: 'Select a valid track.' }, 400);
+      const track = await db.collection('learningTracks').findOne({ _id: id, ownerId: user.googleSub });
+      if (!track) return json({ error: 'Learning track not found.' }, 404);
+      if (track.progressMode !== 'videoIds' && track.completedVideos !== 0)
+        return json({ error: 'Review and enable video-specific progress in Oge first.' }, 409);
+      if (!process.env.OGE_YOUTUBE_DATA_API_KEY)
+        return json({ error: 'YouTube playlist discovery requires a server-side API key.' }, 503);
+      const discoveryLimit = await checkRateLimit(db, { scope: 'learning-track-discover', identifier: user.googleSub, limit: 5, windowMs: 60 * 60 * 1000 });
+      if (!discoveryLimit.allowed) return rateLimitResponse(discoveryLimit);
+      const snapshot = await discoverPublicPlaylist(track.playlistId, process.env.OGE_YOUTUBE_DATA_API_KEY);
+      const live = await db.collection('users').findOne(
+        { googleSub: user.googleSub, extensionTokenHash: tokenHash, extensionTokenExpiresAt: { $gt: new Date() } },
+        { projection: { _id: 1 } });
+      if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
+      const current = await db.collection('learningTracks').findOne({ _id: id, ownerId: user.googleSub });
+      if (!current || current.playlistId !== track.playlistId) return json({ error: 'Track changed. Refresh and retry.' }, 409);
+      if (current.progressMode !== 'videoIds' && current.completedVideos !== 0)
+        return json({ error: 'Review and enable video-specific progress in Oge first.' }, 409);
+      const next = nextExtensionLesson(current, snapshot.videos);
+      return json({ next: next ? { videoId: next.videoId, title: next.title, playlistId: current.playlistId } : null });
+    }
     const tracks = await db.collection('learningTracks').find({ ownerId: user.googleSub })
       .sort({ createdAt: -1 }).limit(100).toArray();
     const live = await db.collection('users').findOne(
@@ -78,10 +103,11 @@ export async function GET(request) {
       { projection: { _id: 1 } });
     if (!live) return json({ error: 'Extension connection expired or revoked.' }, 401);
     return json({ tracks: tracks.map(track => ({
-      title: track.title, videosPerDay: track.videosPerDay,
+      id: String(track._id), title: track.title, videosPerDay: track.videosPerDay,
       completedVideos: track.completedVideos, totalVideos: track.totalVideos ?? null,
     })) });
   } catch (error) {
+    if (error instanceof PlaylistDiscoveryError) return json({ error: error.message }, error.status);
     console.error('Extension Learning Tracks GET failed:', error?.name);
     return json({ error: 'Could not load learning tracks.' }, 503);
   }

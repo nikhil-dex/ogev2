@@ -632,7 +632,24 @@
         title.textContent = track.title;
         const progress = document.createElement('span');
         progress.textContent = track.completedVideos + (track.totalVideos == null ? '' : ' / ' + track.totalVideos) + ' completed · ' + track.videosPerDay + ' videos/day';
-        row.append(title, progress);
+        const actions = document.createElement('div');
+        actions.className = 'link-actions';
+        const watch = document.createElement('button');
+        watch.type = 'button';
+        watch.textContent = 'Watch next';
+        watch.addEventListener('click', async () => {
+          watch.disabled = true;
+          setStatus('Finding next lesson…');
+          try {
+            const result = await send('WATCH_NEXT_LESSON', { id: track.id });
+            if (version === trackLoadVersion && active === 'tracks')
+              setStatus(result.finished ? 'All current playlist lessons are complete.' : 'Opened: ' + result.title);
+          } catch (error) {
+            if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
+          } finally { watch.disabled = false; }
+        });
+        actions.append(watch);
+        row.append(title, progress, actions);
         container.append(row);
       }
     } catch {
