@@ -128,6 +128,10 @@ async function updateIdentityProgress(data) {
       if (!track) return json({ error: 'Learning track not found.' }, 404);
       if (new Date(track.updatedAt).toISOString() !== expectedUpdatedAt)
         return json({ error: 'Progress changed elsewhere. Refresh before editing.' }, 409);
+      if (action === 'complete-video') {
+        const snapshot = await cachedPublicPlaylist(ctx.db, track.playlistId, ctx.ownerId);
+        if (!snapshot.videos.some(video => video.videoId === data.videoId)) return json({ error: 'Lesson not in current playlist.' }, 409);
+      }
       const change = changeVideoCompletion(track, {
         action, expectedCompleted, videoId: data.videoId, videoIds: data.videoIds,
       });

@@ -155,7 +155,7 @@ export async function PATCH(request) {
       const collection = db.collection('learningTracks');
       const current = await collection.findOne({ _id: id, ownerId: user.googleSub, playlistId }, { session });
       if (!current) return json({ error: 'Track changed. Refresh and retry.' }, 409);
-      const change = extensionLessonChange({ ...current, totalVideos: Math.max(snapshot.totalVideos, current.completedVideos + 1) }, snapshot.videos, videoId, action);
+      const change = extensionLessonChange(current, snapshot.videos, videoId, action);
       if (change.error) return json({ error: change.error }, 409);
       change.value.completionTimeline = completionTimeline(current.progressMode === 'videoIds' ? current : { ...current, progressMode: 'videoIds', completedVideoIds: [] }, change.value.completedVideoIds);
       const updatedAt = new Date(Math.max(Date.now(), new Date(current.updatedAt).getTime() + 1));

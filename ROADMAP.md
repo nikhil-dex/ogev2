@@ -1498,3 +1498,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT10 CI lint checkpoint
 
 - Run 45458339649 passed Chromium desktop/mobile smoke, MongoDB replica-set integration and secret scan; validation stopped at ESLint before unit tests/build. Fixed synchronous subject-filter state update inside effect and unescaped apostrophe in the flexible plan UI. No lint rules disabled. Awaiting new CI results.
+
+### LT10 regression and routing checkpoint
+
+- CI 45458786082 passed lint and three independent jobs; unit failures exposed outdated isolated extension fixture state, hidden Tracks markup expectation, new legacy content route audit and pre-existing M67 evidence failure. Updated fixture dependencies without removing assertions, registered guarded legacy capture path, and allowed bearer-authenticated learning-note route through proxy (route independently validates token). Removed incorrect current-count ceiling on historical completion IDs; website completion checks discovered membership, extension uses existing membership check. Historical 500-ID cap remains. CI verification pending; M67 baseline not changed.

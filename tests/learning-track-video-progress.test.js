@@ -116,3 +116,10 @@ test('extension completion is explicit, idempotent, membership checked and undoa
   assert.ok(extensionLessonChange(base, videos, ids[0], 'complete-video').error);
   assert.equal(extensionLessonChange({ completedVideos: 0 }, videos, ids[0], 'complete-video').value.progressMode, 'videoIds');
 });
+
+test('removed completed video does not block a new current lesson', () => {
+ const track = { progressMode: 'videoIds', completedVideoIds: [ids[0], ids[1]], completedVideos: 2, totalVideos: 2 };
+ const result = extensionLessonChange(track, videos.slice(2), ids[2], 'complete-video');
+ assert.deepEqual(result.value.completedVideoIds, [ids[0], ids[1], ids[2]]);
+ assert.ok(result.hasUnfinished);
+});
