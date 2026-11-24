@@ -437,12 +437,18 @@
     }
   }
   noteSelect.addEventListener('change', () => {
+    lessonDestination = null;
     pendingSavedUpdate = null;
     pendingVaultCapture = null;
     updateNoteButton();
   });
   noteMore.addEventListener('click', () => { if (!pickerBusy) void loadNotes(false); });
+  let lessonDestination = null;
   function updateNoteButton() {
+    if (lessonDestination) {
+      noteSave.textContent = (lessonDestination.existing ? 'Append to ' : 'Save to ') + lessonDestination.title;
+      return;
+    }
     const selected = listedNotes.get(noteSelect.value);
     const continuing = !selected && vaultReady === true && pendingSavedUpdate &&
       pendingSavedUpdate.subjectSlug === subjectSelect.value;
@@ -455,6 +461,7 @@
         : subjectSelect.value ? 'Save to selected subject →' : 'Save to Quick Notes';
   }
   subjectSelect.addEventListener('change', () => {
+    lessonDestination = null;
     pendingSavedUpdate = null;
     pendingVaultCapture = null;
     void loadNotes();
@@ -464,6 +471,21 @@
   noteSave.addEventListener('click', async () => {
     if (savingCapture) return;
     if (!note.value.trim()) return setStatus('Write something before saving.', true);
+    if (lessonDestination) {
+      const target = lessonDestination;
+      const submitted = note.value;
+      savingCapture = true; noteSave.disabled = true;
+      try {
+        const result = await send('CREATE_LESSON_NOTE', { id: target.trackId, content: submitted, expectedTopicKey: target.topicKey, expectedSubjectSlug: target.subjectSlug, expectedVideoId: target.videoId, expectedNoteId: target.id, expectedVersion: target.version });
+        if (result.confirmed !== true) throw new Error('Lesson Note Save was not confirmed.');
+        if (note.value === submitted) note.value = '';
+        if (lessonDestination === target) lessonDestination = null;
+        setStatus('Saved lesson Note “' + result.title + '”.');
+        void loadNotes();
+      } catch (error) { setStatus(error.message + ' Your text remains in the editor. Reopen Lesson Note before retrying.', true); }
+      finally { savingCapture = false; noteSave.disabled = vaultReady === null; updateNoteButton(); }
+      return;
+    }
     if (vaultReady === null) return setStatus('Load your Oge Notes connection before saving.', true);
     // Snapshot exactly what this request intends to commit. The user can
     // keep typing while the network is slow; that newer text is NOT part
@@ -702,24 +724,19 @@
           if (track.subjectSlug) {
             const capture = document.createElement('button');
             capture.type = 'button';
-            capture.textContent = 'Save lesson Note';
+            capture.textContent = 'Lesson Note';
             capture.addEventListener('click', async () => {
               if (savingCapture) return;
-              const submitted = note.value;
-              if (!submitted.trim()) { setPanel('note'); return setStatus('Write your lesson Notes, then return to Tracks to save.'); }
-              savingCapture = true; capture.disabled = true; noteSave.disabled = true;
-              setStatus('Saving lesson Note…');
+              capture.disabled = true;
               try {
-                const result = await send('CREATE_LESSON_NOTE', { id: track.id, content: submitted });
-                if (result.existing) {
-                  setStatus('A topic Note already exists: “' + result.title + '”. Select it in Quick note to append. Your text is retained.');
-                  return;
-                }
-                if (result.confirmed !== true) throw new Error('Lesson Note Save was not confirmed.');
-                if (note.value === submitted) note.value = '';
-                setStatus('Saved lesson Note “' + result.title + '”.');
-              } catch (error) { setStatus(error.message + ' Your text remains in the editor.', true); }
-              finally { savingCapture = false; capture.disabled = false; noteSave.disabled = vaultReady === null; updateNoteButton(); }
+                const destination = await send('LOOKUP_LESSON_NOTE', { id: track.id });
+                if (version !== trackLoadVersion || active !== 'tracks') return;
+                lessonDestination = { ...destination, trackId: track.id };
+                setPanel('note');
+                updateNoteButton();
+                setStatus((destination.existing ? 'Append to ' : 'Save to ') + destination.title + ' · ' + destination.subject);
+              } catch (error) { setStatus(error.message, true); }
+              finally { capture.disabled = false; }
             });
             actions.append(capture);
           }

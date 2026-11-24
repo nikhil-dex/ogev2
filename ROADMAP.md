@@ -1470,3 +1470,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT5 on-demand creation checkpoint (partial)
 
 - Added explicit Save lesson Note action for current tracked video with assigned subject. Resolves topic or individual title from discovered metadata, derives stable owner/track/subject/topic Note identity, writes only nonempty content via existing Vault create handler or legacy owner transaction. Existing topic Note is detected rather than overwritten or duplicated; text is retained for manual append using the existing picker. No permanent MongoDB Note body for Vault users. Topic/subject changes do not move existing Notes. Remaining: direct contextual append and selection, mapping/filter integration, retry/revision edge cases, CI/live acceptance. Source links and timestamps remain LT7/LT8.
+
+### LT5/LT6 contextual save checkpoint
+
+- Added read-only current lesson destination lookup and explicit Lesson Note shortcut from Tracks to Quick note. Save label reflects new or existing topic Note. Subsequent captures reuse existing owner-scoped append API with expected Note revision; mismatched video, subject or topic requires reopening destination. Editor text retained on error; no automatic append retry after unknown outcome. Context is explicitly selected via shortcut, not yet automatically selected on every video navigation. Source links/timestamps and playlist Note filters remain pending. Tests/CI/live acceptance pending.

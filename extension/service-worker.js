@@ -1,7 +1,7 @@
 // All OgeNotes requests are made from the extension service worker.
 // The floating content script never receives the bearer token or app origin.
 const TOKEN_PATTERN = /^oge_[A-Za-z0-9_-]{40,60}$/;
-const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'CREATE_LESSON_NOTE', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'REFRESH_TRACK_PLAYLIST', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
+const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'CREATE_LESSON_NOTE', 'LOOKUP_LESSON_NOTE', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'REFRESH_TRACK_PLAYLIST', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
 const LINK_KINDS = new Set(['github', 'linkedin', 'portfolio']);
 
 function normalizeBase(value) {
@@ -156,9 +156,10 @@ async function handleAction(message, sender) {
     await chrome.tabs.create({ url: origin + '/vault/notes?note=' + encodeURIComponent(id.toLowerCase()) });
     return { opened: true };
   }
-  if (message.type === 'CREATE_LESSON_NOTE') {
+  if (message.type === 'CREATE_LESSON_NOTE' || message.type === 'LOOKUP_LESSON_NOTE') {
+    const lookup = message.type === 'LOOKUP_LESSON_NOTE';
     if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/i.test(message.id) ||
-        typeof message.content !== 'string' || !message.content.trim() || message.content.length > 19800)
+        (!lookup && (typeof message.content !== 'string' || !message.content.trim() || message.content.length > 19800)))
       throw new Error('Write a lesson Note of up to 19,800 characters.');
     const source = new URL(sender.tab.url);
     const videoId = source.searchParams.get('v');
@@ -166,7 +167,7 @@ async function handleAction(message, sender) {
     if (source.protocol !== 'https:' || !['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com'].includes(source.hostname) ||
         source.pathname !== '/watch' || !/^[A-Za-z0-9_-]{11}$/.test(videoId || '') ||
         !/^[A-Za-z0-9_-]{10,120}$/.test(playlistId || '')) throw new Error('Open a tracked playlist video first.');
-    return apiRequest('/api/extension/learning-note', { method: 'POST', body: JSON.stringify({ id: message.id, videoId, playlistId, content: message.content }) });
+    return apiRequest('/api/extension/learning-note', { method: 'POST', body: JSON.stringify({ id: message.id, videoId, playlistId, mode: lookup ? 'lookup' : 'save', content: message.content, expectedTopicKey: message.expectedTopicKey, expectedSubjectSlug: message.expectedSubjectSlug, expectedVideoId: message.expectedVideoId, expectedNoteId: message.expectedNoteId, expectedVersion: message.expectedVersion }) });
   }
   if (message.type === 'LIST_LEARNING_TRACKS') {
     const data = await apiRequest('/api/extension/learning-track');
