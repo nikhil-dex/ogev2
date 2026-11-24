@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import SiteNavbar from '../components/site-navbar';
 import { buildDailyLessons, currentLearningDay } from '../../lib/learning-tracks.js';
+import { buildIdentityLessonDays, currentIdentityLearningDay } from '../../lib/learning-track-video-progress.js';
 import styles from './learning-tracks.module.css';
 
 async function read(response) {
@@ -58,14 +59,48 @@ export default function LearningTracksPage() {
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
-  async function progress(track, delta) {
+  async function progress(track, delta, videoId = null) {
+    if (busy) return;
+    if (track.progressMode === 'videoIds' && !videoId) {
+      setError('Discover this playlist before updating individual lessons.'); return;
+    }
     setBusy(true); setError(''); setMessage('');
     try {
       const { track: updated } = await read(await fetch('/api/learning-tracks', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: track.id, expectedCompleted: track.completedVideos, completedVideos: track.completedVideos + delta }),
+        body: JSON.stringify(track.progressMode === 'videoIds'
+          ? { id: track.id, action: delta > 0 ? 'complete-video' : 'undo-video',
+            videoId, expectedUpdatedAt: track.updatedAt }
+          : { id: track.id, expectedCompleted: track.completedVideos,
+            completedVideos: track.completedVideos + delta }),
       }));
       setTracks((current) => current.map((item) => item.id === track.id ? updated : item));
+    } catch (err) { setError(err.message); await load(); }
+    finally { setBusy(false); }
+  }
+  async function adoptVideoProgress(track, snapshot) {
+    if (busy || track.progressMode === 'videoIds') return;
+    if (track.completedVideos > snapshot.videos.length) {
+      setError('Recorded progress exceeds this playlist. Reconcile the count before switching.'); return;
+    }
+    const completed = snapshot.videos.slice(0, track.completedVideos).map((video) => video.videoId);
+    if (new Set(completed).size !== completed.length) {
+      setError('The completed playlist prefix contains repeated video IDs. Keep your count until the duplicate entries are reviewed.'); return;
+    }
+    const prompt = track.completedVideos === 0
+      ? 'Use video-specific completion for this playlist?'
+      : 'Confirm that the FIRST ' + track.completedVideos + ' videos in the CURRENT playlist order were already completed. If the creator reordered the playlist, cancel; your old count will remain unchanged.';
+    if (!window.confirm(prompt)) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { track: updated } = await read(await fetch('/api/learning-tracks', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: track.id, action: 'adopt-video-ids',
+          expectedUpdatedAt: track.updatedAt, expectedCompleted: track.completedVideos,
+          videoIds: completed }),
+      }));
+      setTracks((current) => current.map((item) => item.id === track.id ? updated : item));
+      setMessage('Progress now follows video IDs for ' + track.title + '.');
     } catch (err) { setError(err.message); await load(); }
     finally { setBusy(false); }
   }
@@ -236,10 +271,17 @@ export default function LearningTracksPage() {
         {!loading && tracks.length === 0 && <p>No tracks yet. Add your first playlist.</p>}
         {tracks.map((track) => {
           const snapshot = discovered[track.id];
-          const validProgress = snapshot && track.completedVideos <= snapshot.totalVideos;
-          const days = validProgress ? buildDailyLessons(snapshot.videos, track.videosPerDay, track.completedVideos, track.startDate || '') : [];
-          const focus = validProgress ? currentLearningDay(days, track.completedVideos, track.videosPerDay) : null;
-          const currentDay = Math.floor(track.completedVideos / track.videosPerDay);
+          const identityMode = track.progressMode === 'videoIds';
+          const validProgress = snapshot && (identityMode || track.completedVideos <= snapshot.totalVideos);
+          const days = validProgress ? identityMode
+            ? buildIdentityLessonDays(snapshot.videos, track.videosPerDay, track.completedVideoIds, track.startDate || '', buildDailyLessons)
+            : buildDailyLessons(snapshot.videos, track.videosPerDay, track.completedVideos, track.startDate || '') : [];
+          const focus = validProgress ? identityMode
+            ? currentIdentityLearningDay(days)
+            : currentLearningDay(days, track.completedVideos, track.videosPerDay) : null;
+          const currentDay = identityMode
+            ? Math.max(0, days.findIndex((day) => day.videos.some((video) => !video.completed)))
+            : Math.floor(track.completedVideos / track.videosPerDay);
           const upcoming = days.slice(currentDay, currentDay + 7);
           const unavailableVideos = snapshot && noteLinkingEnabled
             ? (lessonLinks[track.id] || []).filter((link) =>
@@ -265,13 +307,26 @@ export default function LearningTracksPage() {
             <div className={styles.actions}>
               <a href={track.url} target="_blank" rel="noopener noreferrer">Open playlist ↗</a>
               <button type="button" disabled={busy} onClick={() => discover(track)}>{snapshot ? 'Refresh lessons' : 'Discover lessons'}</button>
-              <button type="button" disabled={busy || track.completedVideos <= 0} onClick={() => progress(track, -1)}>Undo one</button>
-              <button type="button" disabled={busy || (track.totalVideos !== null && track.completedVideos >= track.totalVideos) || (snapshot && track.completedVideos >= snapshot.totalVideos)} onClick={() => progress(track, 1)}>Completed one +</button>
+              <button type="button" disabled={busy || track.completedVideos <= 0 ||
+                (identityMode && !track.completedVideoIds?.length)}
+                onClick={() => progress(track, -1, identityMode
+                  ? track.completedVideoIds[track.completedVideoIds.length - 1] : null)}>Undo one</button>
+              {!identityMode && <button type="button" disabled={busy || (track.totalVideos !== null && track.completedVideos >= track.totalVideos) || (snapshot && track.completedVideos >= snapshot.totalVideos)} onClick={() => progress(track, 1)}>Completed one +</button>}
               {noteLinkingEnabled && snapshot && <button type="button" disabled={busy} onClick={() => refreshLinks(track)}>Refresh Note links</button>}
               <button type="button" disabled={busy} onClick={() => remove(track)}>Remove</button>
             </div>
             {snapshot && <section className={styles.lessons} aria-label={'Lessons for ' + track.title}>
-              <p>Snapshot: {snapshot.totalVideos} public playlist entries. Read-only discovery; titles and order can change. Completed count follows playlist order, not video identity.</p>
+              <p>Snapshot: {snapshot.totalVideos} public playlist entries. Titles and order can change. {identityMode
+                ? 'Completed videos are matched by video ID, even if positions change.'
+                : 'Legacy progress follows playlist order, not video identity.'}</p>
+              {!identityMode && <div className={styles.identityUpgrade}>
+                <p>Switch to video-specific progress to keep completed lessons marked when a playlist is reordered. Existing progress is not converted automatically.</p>
+                <button type="button" disabled={busy || track.completedVideos > snapshot.videos.length}
+                  onClick={() => adoptVideoProgress(track, snapshot)}>Use video-specific progress</button>
+              </div>}
+              {identityMode && (track.completedVideoIds || []).some((id) =>
+                !snapshot.videos.some((video) => video.videoId === id)) &&
+                <p className={styles.error}>Some completed videos are no longer in this playlist snapshot. Their completion records remain saved; review before changing the playlist.</p>}
               {unavailableVideos > 0 && <p className={styles.error}>{unavailableVideos} saved Note link(s) are absent from this playlist snapshot. Check manually; no links or Notes were changed.</p>}
               {track.totalVideos !== null && track.totalVideos !== snapshot.totalVideos &&
                 <p className={styles.error}>Your manually recorded total ({track.totalVideos}) differs from the discovered count ({snapshot.totalVideos}). This does not overwrite your saved total.</p>}
@@ -294,9 +349,11 @@ export default function LearningTracksPage() {
                     </ol>
                     <div className={styles.actions}>
                       <a className={styles.watchNext} href={focus.next.url} target="_blank" rel="noopener noreferrer">Watch next lesson ↗</a>
-                      <button type="button" disabled={busy} onClick={() => progress(track, 1)}>Mark next complete ✓</button>
+                      <button type="button" disabled={busy} onClick={() => progress(track, 1, identityMode ? focus.next.videoId : null)}>Mark next complete ✓</button>
                     </div>
-                    <p className={styles.focusHint}>Mark complete after watching. Progress follows playlist order, not video identity; refreshing a reordered playlist can change which lesson appears next.</p>
+                    <p className={styles.focusHint}>Mark complete after watching. {identityMode
+                      ? 'Completion follows video IDs, not playlist positions.'
+                      : 'Legacy progress follows playlist order; switch to video-specific progress after reviewing the current playlist.'}</p>
                   </section>}
                   <p>Schedule: {track.videosPerDay} per day{track.startDate ? ' · starting ' + track.startDate : ' · dates not set'}. Edit the plan above to change this track only.</p>
                   <p>{days.length} lesson days total · showing {upcoming.length} upcoming day{upcoming.length === 1 ? '' : 's'}</p>
@@ -306,6 +363,10 @@ export default function LearningTracksPage() {
                       <strong>Day {day.day}{day.date ? ' · ' + day.date : ''}</strong>
                       <ul>{day.videos.map((video) => <li key={video.position}>
                         {video.completed ? '✓ ' : ''}<a href={video.url} target="_blank" rel="noopener noreferrer">{video.title}</a>
+                        {identityMode && <button type="button" disabled={busy}
+                          onClick={() => progress(track, video.completed ? -1 : 1, video.videoId)}>
+                          {video.completed ? 'Mark not complete' : 'Mark complete'}
+                        </button>}
                         {noteLinkingEnabled && <>
                           {(lessonLinks[track.id] || []).some((link) => link.videoId === video.videoId) ?
                             <span className={styles.noteActions}>
