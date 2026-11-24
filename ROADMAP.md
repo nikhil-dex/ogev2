@@ -1462,3 +1462,7 @@ Report implemented vs tested separately after each milestone, include the commit
 
 - Shared Notes interface (regular and Vault) shows a compact Playlists section for the selected subject when tracks are assigned; each entry opens the associated track in the subject-filtered Learning Tracks page. Existing Notes remain unchanged and global Notes search is unaffected. Empty or disabled tracks do not add a section.
 - Subject-to-playlist mapping implementation is in place. Actual per-playlist Note filtering requires the contextual Note associations planned for LT5–LT7; no existing staging-only Note link gates were bypassed. Acceptance in both storage modes and CI remain pending.
+
+### LT4 manual topic grouping checkpoint
+
+- Added stable per-track topic IDs and video-ID assignments, editable topic names, merging, splitting by reassigning selected lessons, and ungrouping. Ungrouped lessons fall back to their own title and video ID. Website topic editor appears after discovery; saves validate selected IDs against current playlist metadata and preserve progress/subject settings. No Notes are created or moved. Tests added; CI/live acceptance pending. Optional Gemini assistance deferred until provider policy review; manual workflow is usable without AI. Future Note creation must retain associations when topic grouping changes, rather than silently moving or deleting existing Notes.

@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { changeTrackTopics } from '../../../lib/learning-track-topics.js';
+import { cachedPublicPlaylist } from '../../../lib/youtube-playlist-cache.js';
+import { PlaylistDiscoveryError } from '../../../lib/youtube-playlist-discovery.js';
 import { changeVideoCompletion } from '../../../lib/learning-track-video-progress.js';
 import { learningTrackNoteLinksEnabled } from '../../../lib/oge-learning-track-note-links.js';
 import { auth } from '../../../auth.js';
@@ -20,7 +23,7 @@ async function context() {
   return { db: await getDatabase(), ownerId: session.user.id, sessionVersion: session.user.sessionVersion };
 }
 async function requestBody(request) {
-  try { return { value: JSON.parse(await readLimitedBody(request, 4096)) }; }
+  try { return { value: JSON.parse(await readLimitedBody(request, 16384)) }; }
   catch (error) { return { error: json({ error: error?.status === 413 ? 'Request too large.' : 'Invalid JSON.' }, error?.status || 400) }; }
 }
 export async function GET() {
@@ -70,6 +73,7 @@ export async function PATCH(request) {
   const parsed = await requestBody(request);
   if (parsed.error) return parsed.error;
   const { id, expectedCompleted, completedVideos, action } = parsed.value || {};
+  if (['assign-topic', 'rename-topic', 'merge-topic', 'clear-topic'].includes(action)) return updateTopics(parsed.value);
   if (action === 'set-subject') return updateTrackSubject(parsed.value);
   if (action) return updateIdentityProgress(parsed.value);
   if (!idValid(id) || !Number.isInteger(expectedCompleted) || expectedCompleted < 0 ||
@@ -218,5 +222,38 @@ async function updateTrackSubject(data) {
   } catch (error) {
     console.error('Learning Track subject assignment failed:', error?.name);
     return json({ error: 'Could not assign subject.' }, 503);
+  }
+}
+
+async function updateTopics(data) {
+  const { id, expectedUpdatedAt } = data;
+  if (!idValid(id) || typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt)))
+    return json({ error: 'Refresh track before editing topics.' }, 400);
+  try {
+    const ctx = await context();
+    if (!ctx) return json({ error: 'Sign in to edit topics.' }, 401);
+    const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'learning-tracks');
+    if (!throttle.allowed) return rateLimitResponse(throttle);
+    const tracks = ctx.db.collection('learningTracks');
+    const track = await tracks.findOne({ _id: id, ownerId: ctx.ownerId });
+    if (!track) return json({ error: 'Track not found.' }, 404);
+    const needsSnapshot = ['assign-topic', 'clear-topic'].includes(data.action);
+    const snapshot = needsSnapshot ? await cachedPublicPlaylist(ctx.db, track.playlistId, ctx.ownerId) : null;
+    if (snapshot?.stale) return json({ error: 'Refresh playlist before changing lesson assignments.' }, 409);
+    return await withActiveOwnerMutation(ctx.db, ctx.ownerId, async session => {
+      const current = await tracks.findOne({ _id: id, ownerId: ctx.ownerId, playlistId: track.playlistId }, { session });
+      if (!current || new Date(current.updatedAt).toISOString() !== expectedUpdatedAt)
+        return json({ error: 'Track changed. Refresh before editing topics.' }, 409);
+      const change = changeTrackTopics(current, data, snapshot?.videos || [], randomUUID());
+      if (change.error) return json({ error: change.error }, 400);
+      const updatedAt = new Date(Math.max(Date.now(), new Date(current.updatedAt).getTime() + 1));
+      const result = await tracks.updateOne({ _id: id, ownerId: ctx.ownerId, updatedAt: current.updatedAt }, { $set: { topics: change.value, updatedAt } }, { session });
+      if (result.matchedCount !== 1) return json({ error: 'Track changed. Refresh and retry.' }, 409);
+      return json({ track: publicLearningTrack({ ...current, topics: change.value, updatedAt }) });
+    }, { sessionVersion: ctx.sessionVersion });
+  } catch (error) {
+    if (error instanceof PlaylistDiscoveryError) return json({ error: error.message }, error.status);
+    console.error('Learning Track topic edit failed:', error?.name);
+    return json({ error: 'Could not save topics.' }, 503);
   }
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import SiteNavbar from '../components/site-navbar';
+import TrackTopics from './track-topics.js';
 import { buildDailyLessons, currentLearningDay } from '../../lib/learning-tracks.js';
 import { buildIdentityLessonDays, currentIdentityLearningDay } from '../../lib/learning-track-video-progress.js';
 import styles from './learning-tracks.module.css';
@@ -114,6 +115,20 @@ export default function LearningTracksPage() {
       setTracks((current) => current.map((item) => item.id === track.id ? updated : item));
       setMessage('Progress now follows video IDs for ' + track.title + '.');
     } catch (err) { setError(err.message); await load(); }
+    finally { setBusy(false); }
+  }
+  async function saveTopics(track, action) {
+    if (busy) return false;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const { track: updated } = await read(await fetch('/api/learning-tracks', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: track.id, expectedUpdatedAt: track.updatedAt, ...action }),
+      }));
+      setTracks(current => current.map(item => item.id === track.id ? updated : item));
+      setMessage('Topics saved.');
+      return true;
+    } catch (err) { setError(err.message); return false; }
     finally { setBusy(false); }
   }
   async function assignSubject(track, subjectSlug) {
@@ -349,6 +364,7 @@ export default function LearningTracksPage() {
               <p>Snapshot: {snapshot.totalVideos} public playlist entries. Titles and order can change. {identityMode
                 ? 'Completed videos are matched by video ID, even if positions change.'
                 : 'Legacy progress follows playlist order, not video identity.'}</p>
+              <TrackTopics track={track} videos={snapshot.videos} busy={busy} onSave={saveTopics} />
               {!identityMode && <div className={styles.identityUpgrade}>
                 <p>Switch to video-specific progress to keep completed lessons marked when a playlist is reordered. Existing progress is not converted automatically.</p>
                 <button type="button" disabled={busy || track.completedVideos > snapshot.videos.length}
