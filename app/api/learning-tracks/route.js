@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { learningTrackNoteLinksEnabled } from '../../../lib/oge-learning-track-note-links.js';
 import { auth } from '../../../auth.js';
 import { getDatabase } from '../../../lib/mongodb.js';
-import { normalizeLearningTrack, publicLearningTrack } from '../../../lib/learning-tracks.js';
+import { normalizeLearningTrack, normalizeTrackSchedule, publicLearningTrack } from '../../../lib/learning-tracks.js';
 import { readLimitedBody } from '../../../lib/read-limited-body.js';
 import { withActiveOwnerMutation } from '../../../lib/active-owner-mutation.js';
 import { checkOwnerMutationLimit, rateLimitResponse } from '../../../lib/rate-limit.js';
@@ -96,6 +96,41 @@ export async function PATCH(request) {
     return json({ error: 'Could not update learning progress.' }, 503);
   }
 }
+// Update one track's plan without rewriting its completed-video count.
+export async function PUT(request) {
+  if (!enabled()) return json({ error: 'Learning Tracks preview is disabled.' }, 404);
+  const parsed = await requestBody(request);
+  if (parsed.error) return parsed.error;
+  const { id, expectedUpdatedAt } = parsed.value || {};
+  const plan = normalizeTrackSchedule(parsed.value);
+  if (!idValid(id) || typeof expectedUpdatedAt !== 'string' ||
+      !Number.isFinite(Date.parse(expectedUpdatedAt)) || plan.error)
+    return json({ error: plan.error || 'Select a track and refresh its plan before saving.' }, 400);
+  try {
+    const ctx = await context();
+    if (!ctx) return json({ error: 'Sign in to change your learning plan.' }, 401);
+    const throttle = await checkOwnerMutationLimit(ctx.db, ctx.ownerId, 'learning-tracks');
+    if (!throttle.allowed) return rateLimitResponse(throttle);
+    return await withActiveOwnerMutation(ctx.db, ctx.ownerId, async (session) => {
+      const collection = ctx.db.collection('learningTracks');
+      const track = await collection.findOne({ _id: id, ownerId: ctx.ownerId }, { session });
+      if (!track) return json({ error: 'Learning track not found.' }, 404);
+      if (new Date(track.updatedAt).toISOString() !== expectedUpdatedAt)
+        return json({ error: 'Track changed on another device. Refresh before changing its plan.' }, 409);
+      const updatedAt = new Date();
+      const result = await collection.updateOne(
+        { _id: id, ownerId: ctx.ownerId, updatedAt: track.updatedAt },
+        { $set: { ...plan.value, updatedAt } }, { session });
+      if (result.matchedCount !== 1)
+        return json({ error: 'Track changed. Refresh before saving its plan.' }, 409);
+      return json({ track: publicLearningTrack({ ...track, ...plan.value, updatedAt }) });
+    }, { sessionVersion: ctx.sessionVersion });
+  } catch (error) {
+    console.error('Learning Tracks plan PUT failed:', error?.name);
+    return json({ error: 'Could not save the learning plan.' }, 503);
+  }
+}
+
 export async function DELETE(request) {
   if (!enabled()) return json({ error: 'Learning Tracks preview is disabled.' }, 404);
   const id = new URL(request.url).searchParams.get('id');
