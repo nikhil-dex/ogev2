@@ -55,7 +55,7 @@ test('learning page offers direct next-lesson action with completion using exist
   assert.match(source, /Mark next complete/);
   assert.match(source, /onClick=\{\(\) => progress\(track, 1\)\}/);
   assert.match(source, /track.completedVideos >= snapshot.totalVideos/);
-  assert.match(source, /Progress follows playlist order, not video identity/);
+  assert.match(source, /Legacy progress follows playlist order, not video identity/);
   assert.match(css, /\.focusList/);
   assert.match(css, /@media\(max-width:500px\)/);
 });
