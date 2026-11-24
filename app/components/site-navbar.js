@@ -7,13 +7,12 @@ import { usePathname } from 'next/navigation';
 import PixelStrip from './pixel-strip';
 
 const links = [
-  { href: '/', label: 'Home' },
   { href: '/notes', label: 'Notes' },
   { href: '/news', label: 'News' },
   { href: '/profile', label: 'Profile' },
 ];
 
-export default function SiteNavbar({ actions = null, notesHref = '/notes', showFiles = false, showNews = null }) {
+export default function SiteNavbar({ actions = null, notesHref = '/notes', showNews = null }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [newsPreference, setNewsPreference] = useState(null);
@@ -31,7 +30,7 @@ export default function SiteNavbar({ actions = null, notesHref = '/notes', showF
     <Link className="brand" href="/" aria-label="OgeNotes home" onClick={() => setMenuOpen(false)}><span className="brand-mark" aria-hidden="true">O</span><span>Oge<span className="brand-light">Notes</span></span></Link>
     <button className="site-navbar-toggle" type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="site-navbar-content" onClick={() => setMenuOpen((open) => !open)}><span aria-hidden="true">{menuOpen ? '×' : '☰'}</span></button>
     <div id="site-navbar-content" className={'site-navbar-content' + (menuOpen ? ' is-open' : '')}>
-      <nav className="site-navbar-links" aria-label="Main navigation">{(showFiles ? [...links, { href: '/files', label: 'My Files' }] : links).filter((link) => link.href !== '/news' || newsEnabled).map((link) => {
+      <nav className="site-navbar-links" aria-label="Main navigation">{links.filter((link) => link.href !== '/news' || newsEnabled).map((link) => {
         const href = link.href === '/notes' ? notesHref : link.href;
         const active = href === '/' ? pathname === '/' :
           pathname === href || pathname.startsWith(href + '/');
