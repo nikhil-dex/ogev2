@@ -280,7 +280,7 @@ export default function LearningTracksPage() {
             ? currentIdentityLearningDay(days)
             : currentLearningDay(days, track.completedVideos, track.videosPerDay) : null;
           const currentDay = identityMode
-            ? Math.max(0, days.findIndex((day) => day.videos.some((video) => !video.completed)))
+            ? (focus ? days.findIndex((day) => day.day === focus.day) : days.length)
             : Math.floor(track.completedVideos / track.videosPerDay);
           const upcoming = days.slice(currentDay, currentDay + 7);
           const unavailableVideos = snapshot && noteLinkingEnabled
