@@ -50,7 +50,7 @@
   // HTML is static extension-owned markup; user content uses textContent.
   panel.innerHTML = [
     '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
-    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
+    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
     '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Notes subject<select data-track-subject><option value="">Unassigned</option></select></label><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
@@ -116,7 +116,7 @@
       button.classList.toggle('selected', button.dataset.tool === tool);
     }
     setStatus('');
-    if (tool === 'note') { note.focus(); void loadSubjects(); }
+    if (tool === 'note') { note.focus(); void loadSubjects(); void syncLessonDestination(); }
     if (tool === 'links') void loadLinks();
     if (tool === 'tracks') void loadTracks();
   }
@@ -205,7 +205,7 @@
     if (open) {
       positionPanel();
       void loadTracks();
-      if (active === 'note') { note.focus(); void loadSubjects(); }
+      if (active === 'note') { note.focus(); void loadSubjects(); void syncLessonDestination(); }
     }
   }
   let launcherDrag = null;
@@ -437,14 +437,108 @@
     }
   }
   noteSelect.addEventListener('change', () => {
-    lessonDestination = null;
+    chooseManualDestination();
     pendingSavedUpdate = null;
     pendingVaultCapture = null;
     updateNoteButton();
   });
   noteMore.addEventListener('click', () => { if (!pickerBusy) void loadNotes(false); });
   let lessonDestination = null;
+  let lessonLookupVersion = 0;
+  let lessonLookupBusy = false;
+  let lessonLookupFailed = false;
+  let manualLessonDestination = false;
+  let lessonPageKey = '';
+  let draftLessonKey = '';
+  const lessonContext = panel.querySelector('[data-lesson-context]');
+  const manualDestination = panel.querySelector('[data-manual-destination]');
+  const autoDestination = panel.querySelector('[data-auto-destination]');
+  function currentLessonKey() {
+    const url = new URL(location.href);
+    if (!['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com'].includes(url.hostname) || url.pathname !== '/watch') return '';
+    const video = url.searchParams.get('v') || '';
+    const playlist = url.searchParams.get('list') || '';
+    return /^[A-Za-z0-9_-]{11}$/.test(video) && /^[A-Za-z0-9_-]{10,120}$/.test(playlist) ? playlist + ':' + video : '';
+  }
+  function chooseManualDestination() {
+    ++lessonLookupVersion;
+    lessonLookupBusy = false;
+    lessonLookupFailed = false;
+    lessonDestination = null;
+    manualLessonDestination = true;
+    draftLessonKey = '';
+    updateNoteButton();
+  }
+  async function syncLessonDestination() {
+    const key = currentLessonKey();
+    if (lessonPageKey !== key) {
+      lessonPageKey = key;
+      manualLessonDestination = false;
+      lessonDestination = null;
+    }
+    if (manualLessonDestination || savingCapture) return;
+    const version = ++lessonLookupVersion;
+    lessonLookupFailed = false;
+    lessonDestination = null;
+    if (!key) { lessonLookupBusy = false; lessonLookupFailed = Boolean(note.value.trim() && draftLessonKey); updateNoteButton(); return; }
+    if (note.value.trim() && draftLessonKey && draftLessonKey !== key) {
+      lessonLookupBusy = false;
+      lessonLookupFailed = true;
+      updateNoteButton();
+      return;
+    }
+    lessonLookupBusy = true;
+    updateNoteButton();
+    try {
+      const result = await send('LIST_LEARNING_TRACKS');
+      if (version !== lessonLookupVersion || currentLessonKey() !== key) return;
+      const track = (result.tracks || []).find(item => item.playlistId === key.split(':')[0] && item.subjectSlug);
+      if (!track) return;
+      const destination = await send('LOOKUP_LESSON_NOTE', { id: track.id });
+      if (version !== lessonLookupVersion || currentLessonKey() !== key) return;
+      lessonDestination = { ...destination, trackId: track.id };
+      if (note.value.trim() && !draftLessonKey) draftLessonKey = key;
+    } catch {
+      if (version === lessonLookupVersion) lessonLookupFailed = true;
+    } finally {
+      if (version === lessonLookupVersion) {
+        lessonLookupBusy = false;
+        updateNoteButton();
+      }
+    }
+  }
+  manualDestination.addEventListener('click', chooseManualDestination);
+  autoDestination.addEventListener('click', () => {
+    if (note.value.trim() && draftLessonKey && draftLessonKey !== currentLessonKey()) {
+      if (!window.confirm('Use this unsaved text for the currently playing lesson?')) return;
+    }
+    draftLessonKey = currentLessonKey();
+    manualLessonDestination = false;
+    void syncLessonDestination();
+  });
+  note.addEventListener('input', () => {
+    if (!note.value.trim()) draftLessonKey = '';
+    else if (!draftLessonKey && !manualLessonDestination) draftLessonKey = currentLessonKey();
+  });
+  function onLessonNavigation() {
+    if (currentLessonKey() !== lessonPageKey) void syncLessonDestination();
+  }
+  document.addEventListener('yt-navigate-finish', onLessonNavigation);
+  window.addEventListener('popstate', onLessonNavigation);
   function updateNoteButton() {
+    const contextual = Boolean(lessonDestination || lessonLookupBusy || lessonLookupFailed);
+    lessonContext.hidden = !contextual;
+    manualDestination.hidden = !contextual;
+    autoDestination.hidden = !manualLessonDestination && !lessonLookupFailed;
+    subjectSelect.disabled = contextual;
+    noteSelect.disabled = contextual || pickerBusy;
+    noteSave.disabled = savingCapture || lessonLookupBusy || lessonLookupFailed || (!lessonDestination && vaultReady === null);
+    if (lessonLookupBusy || lessonLookupFailed) {
+      lessonContext.textContent = lessonLookupBusy ? 'Finding current lesson Note…' : 'Lesson destination unavailable or unsaved text belongs to a previous video. Choose a destination explicitly.';
+      noteSave.textContent = 'Choose Note destination';
+      return;
+    }
+    if (lessonDestination) lessonContext.textContent = 'Current lesson Note · ' + lessonDestination.subject + ' / ' + lessonDestination.title;
     if (lessonDestination) {
       noteSave.textContent = (lessonDestination.existing ? 'Append to ' : 'Save to ') + lessonDestination.title;
       return;
@@ -461,7 +555,7 @@
         : subjectSelect.value ? 'Save to selected subject →' : 'Save to Quick Notes';
   }
   subjectSelect.addEventListener('change', () => {
-    lessonDestination = null;
+    chooseManualDestination();
     pendingSavedUpdate = null;
     pendingVaultCapture = null;
     void loadNotes();
@@ -469,7 +563,7 @@
   });
 
   noteSave.addEventListener('click', async () => {
-    if (savingCapture) return;
+    if (savingCapture || lessonLookupBusy || lessonLookupFailed) return;
     if (!note.value.trim()) return setStatus('Write something before saving.', true);
     if (lessonDestination) {
       const target = lessonDestination;
@@ -479,11 +573,12 @@
         const result = await send('CREATE_LESSON_NOTE', { id: target.trackId, content: submitted, expectedTopicKey: target.topicKey, expectedSubjectSlug: target.subjectSlug, expectedVideoId: target.videoId, expectedNoteId: target.id, expectedVersion: target.version });
         if (result.confirmed !== true) throw new Error('Lesson Note Save was not confirmed.');
         if (note.value === submitted) note.value = '';
-        if (lessonDestination === target) lessonDestination = null;
+        if (lessonDestination === target) lessonDestination = { ...target, existing: true, id: result.id, title: result.title, version: result.version || result.sha };
+        if (!note.value.trim()) draftLessonKey = '';
         setStatus('Saved lesson Note “' + result.title + '”.');
         void loadNotes();
       } catch (error) { setStatus(error.message + ' Your text remains in the editor. Reopen Lesson Note before retrying.', true); }
-      finally { savingCapture = false; noteSave.disabled = vaultReady === null; updateNoteButton(); }
+      finally { savingCapture = false; updateNoteButton(); if (currentLessonKey() !== lessonPageKey) void syncLessonDestination(); }
       return;
     }
     if (vaultReady === null) return setStatus('Load your Oge Notes connection before saving.', true);
@@ -731,6 +826,13 @@
               try {
                 const destination = await send('LOOKUP_LESSON_NOTE', { id: track.id });
                 if (version !== trackLoadVersion || active !== 'tracks') return;
+                ++lessonLookupVersion;
+                lessonLookupBusy = false;
+                lessonLookupFailed = false;
+                manualLessonDestination = false;
+                lessonPageKey = currentLessonKey();
+                if (note.value.trim() && draftLessonKey && draftLessonKey !== lessonPageKey && !window.confirm('Use this unsaved text for the current lesson?')) return;
+                draftLessonKey = note.value.trim() ? lessonPageKey : '';
                 lessonDestination = { ...destination, trackId: track.id };
                 setPanel('note');
                 updateNoteButton();

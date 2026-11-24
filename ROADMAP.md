@@ -1474,3 +1474,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT5/LT6 contextual save checkpoint
 
 - Added read-only current lesson destination lookup and explicit Lesson Note shortcut from Tracks to Quick note. Save label reflects new or existing topic Note. Subsequent captures reuse existing owner-scoped append API with expected Note revision; mismatched video, subject or topic requires reopening destination. Editor text retained on error; no automatic append retry after unknown outcome. Context is explicitly selected via shortcut, not yet automatically selected on every video navigation. Source links/timestamps and playlist Note filters remain pending. Tests/CI/live acceptance pending.
+
+### LT6 automatic current lesson destination checkpoint
+
+- Quick Note automatically resolves an assigned track and current lesson when opened and on YouTube navigation. Contextual Save/Append is the default; explicit manual destination override remains available. Unsaved text from a previous lesson blocks automatic retargeting until the user chooses a destination. Successful contextual Save retains the returned Note revision for further appends. No automatic retry of uncertain writes. Regression source checks added; browser/CI validation, playlist Note filter, source links and timestamps remain pending.
