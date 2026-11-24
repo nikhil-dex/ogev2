@@ -109,6 +109,7 @@ test('M128 live extension widget handler defaults GitHub Save to Quick Notes and
     note, noteSave, noteNewCapture: { hidden: true, addEventListener() {} },
     noteOpenSaved: { hidden: true },
     subjectSelect: { value: '', addEventListener() {} },
+    noteSelect: { value: '' }, listedNotes: new Map(), loadNotes: async () => {},
     vaultReady: true,
     pendingSavedUpdate: null, pendingVaultCapture: null,
     savingCapture: false, lastSavedVaultNoteId: null,
