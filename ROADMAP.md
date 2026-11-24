@@ -1384,3 +1384,5 @@ These criteria are release blockers, not optional polish:
 - [x] Add an owner-scoped, token-authenticated extension list endpoint and display saved tracks, recorded completion totals and daily goals in the floating widget.
 - [x] Reveal Tracks only when the connected server accepts listing; refresh on widget open, explicit refresh and creation. Preserve the two-tab layout otherwise.
 - [ ] Verify signed-in extension with real playlists; next-lesson playback, individual completion and linked Note actions remain pending. No calendar-day completion inference from aggregate counts.
+
+- [x] Extend floating-widget keyboard shortcut isolation to Track inputs and other focused form controls, keeping native input defaults. Regression coverage added; live YouTube confirmation pending.

@@ -253,9 +253,11 @@
   panel.querySelectorAll('[data-tool]').forEach((button) => {
     button.addEventListener('click', () => setPanel(button.dataset.tool));
   });
-  // Preserve the original page-shortcut protection while typing notes.
+  // Keep website keyboard shortcuts away from focused widget form controls.
+  // Do not preventDefault: native typing, selection and Tab navigation remain available.
   const stopPageShortcutsWhileTyping = (event) => {
-    if (panel.classList.contains('hidden') || shadow.activeElement !== note) return;
+    const focused = shadow.activeElement;
+    if (panel.classList.contains('hidden') || !focused?.matches('textarea, input, select, button, [contenteditable="true"]')) return;
     event.stopPropagation();
     event.stopImmediatePropagation();
   };
