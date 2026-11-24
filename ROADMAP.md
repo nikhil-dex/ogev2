@@ -1457,3 +1457,8 @@ Report implemented vs tested separately after each milestone, include the commit
 
 - Optional subject slug on track creation via website and extension; owner-scoped subject existence validation and revision-checked reassignment/unassignment on website. Existing tracks remain unassigned; multiple tracks can share a subject. Website track filtering by subject and extension subject label added. Missing subjects display as unassigned; no Notes are moved or created.
 - Pending: playlist grouping/filter on actual Notes pages, extension reassignment if useful, integration testing and verification of both storage modes. LT3 remains unchecked.
+
+### LT3 Notes workspace checkpoint
+
+- Shared Notes interface (regular and Vault) shows a compact Playlists section for the selected subject when tracks are assigned; each entry opens the associated track in the subject-filtered Learning Tracks page. Existing Notes remain unchanged and global Notes search is unaffected. Empty or disabled tracks do not add a section.
+- Subject-to-playlist mapping implementation is in place. Actual per-playlist Note filtering requires the contextual Note associations planned for LT5–LT7; no existing staging-only Note link gates were bypassed. Acceptance in both storage modes and CI remain pending.

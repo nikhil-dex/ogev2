@@ -16,7 +16,15 @@ export default function LearningTracksPage() {
   const [subjects, setSubjects] = useState([]);
   const [subjectsLoaded, setSubjectsLoaded] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState('all');
+  useEffect(() => {
+    const subject = new URLSearchParams(window.location.search).get('subject');
+    if (subject && /^[a-f0-9-]{36}$/i.test(subject)) setSubjectFilter(subject);
+  }, []);
   const [form, setForm] = useState({ title: '', url: '', videosPerDay: '2', totalVideos: '', subjectSlug: '' });
+  useEffect(() => {
+    const track = new URLSearchParams(window.location.search).get('track');
+    if (track && /^[a-f0-9-]{36}$/i.test(track)) document.getElementById('track-' + track)?.scrollIntoView({ block: 'start' });
+  }, [tracks, subjectFilter]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -306,7 +314,7 @@ export default function LearningTracksPage() {
           const unavailableVideos = snapshot && noteLinkingEnabled
             ? (lessonLinks[track.id] || []).filter((link) =>
               !snapshot.videos.some((video) => video.videoId === link.videoId)).length : 0;
-          return <article key={track.id} className={styles.track}>
+          return <article key={track.id} id={'track-' + track.id} className={styles.track}>
             <h3>{track.title}</h3>
             <label>Notes subject <select disabled={busy || !subjectsLoaded} value={subjects.some(subject => subject.slug === track.subjectSlug) ? track.subjectSlug : ''} onChange={e => void assignSubject(track, e.target.value)}><option value="">Unassigned</option>{subjects.map(subject => <option key={subject.slug} value={subject.slug}>{subject.name}</option>)}</select></label>
             {subjectsLoaded && track.subjectSlug && !subjects.some(subject => subject.slug === track.subjectSlug) && <p>Previous subject unavailable. Choose a new subject.</p>}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import SiteNavbar from '../components/site-navbar';
+import SubjectLearningPlaylists from '../components/subject-learning-playlists.js';
 import VaultOfflineQueue from '../components/vault-offline-queue';
 import { vaultOfflineQueueKey, enqueueVaultOfflineChange } from '../../lib/oge-vault-offline-queue.js';
 import { markdownHtml } from '../../lib/markdown.js';
@@ -1446,6 +1447,8 @@ export default function NotesPage({
         <div className="search-wrap"><span aria-hidden="true">⌕</span><input type="search" placeholder={globalSearch ? 'Search all subjects…' : 'Search this subject…'} aria-label="Search notes" value={query} onChange={(event) => setQuery(event.target.value)} />{query && <button type="button" className="search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>}</div>
         <button type="button" className={globalSearch ? 'global-search-toggle active' : 'global-search-toggle'} aria-pressed={globalSearch} onClick={() => { setGlobalSearch((value) => !value); setQuery(''); setSelectedTag(''); }}>⌕ {globalSearch ? 'All subjects' : 'Search all subjects'}</button>
       </section>
+
+      {!globalSearch && activeSubject && <SubjectLearningPlaylists subjectSlug={activeSubject} />}
 
       <section className="notes-section">
         <div className="section-heading">
