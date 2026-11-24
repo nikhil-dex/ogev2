@@ -20,7 +20,9 @@ export default function LearningTracksPage() {
   const [subjectFilter, setSubjectFilter] = useState('all');
   useEffect(() => {
     const subject = new URLSearchParams(window.location.search).get('subject');
-    if (subject && /^[a-f0-9-]{36}$/i.test(subject)) setSubjectFilter(subject);
+    let active = true;
+    Promise.resolve().then(() => { if (active && subject && /^[a-f0-9-]{36}$/i.test(subject)) setSubjectFilter(subject); });
+    return () => { active = false; };
   }, []);
   const [form, setForm] = useState({ title: '', url: '', videosPerDay: '2', totalVideos: '', subjectSlug: '' });
   useEffect(() => {
@@ -370,7 +372,7 @@ export default function LearningTracksPage() {
                 <span className={styles.focusEyebrow}>FLEXIBLE STUDY PLAN</span>
                 <p>{flexible.completedToday} / {track.videosPerDay} explicitly marked complete today (device local date).</p>
                 {flexible.undatedCompleted > 0 && <p>{flexible.undatedCompleted} older completions have no recorded date.</p>}
-                {flexible.goalMet && <p>Today's goal is met. You can continue or resume tomorrow.</p>}
+                {flexible.goalMet && <p>Today&apos;s goal is met. You can continue or resume tomorrow.</p>}
                 <p>{flexible.remaining} unique lessons remaining. Unfinished lessons carry forward automatically.</p>
                 <ol className={styles.dayList}>{flexible.blocks.slice(0, 7).map(block => <li key={block.date}><strong>{block.date}</strong><ul>{block.videos.map(video => <li key={video.videoId}><a href={video.url} target="_blank" rel="noopener noreferrer">{video.title}</a></li>)}</ul></li>)}</ol>
               </section>}

@@ -1494,3 +1494,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT10 playlist Note filtering checkpoint
 
 - Successful contextual creates and appends register owner/track/subject/storage Note IDs only, not content. Shared Notes workspace offers playlist filters alongside All Notes; Vault pagination remains available. Associations survive topic edits because captured identities are retained. Older captures are registered when subsequently saved; no bulk backfill yet. If association persistence fails after confirmed content save, the save remains successful and association can be retried on a subsequent save. CI and live provider acceptance pending.
+
+### LT10 CI lint checkpoint
+
+- Run 45458339649 passed Chromium desktop/mobile smoke, MongoDB replica-set integration and secret scan; validation stopped at ESLint before unit tests/build. Fixed synchronous subject-filter state update inside effect and unescaped apostrophe in the flexible plan UI. No lint rules disabled. Awaiting new CI results.
