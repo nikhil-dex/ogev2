@@ -699,6 +699,30 @@
           complete.addEventListener('click', () => void update(false));
           undo.addEventListener('click', () => void update(true));
           actions.append(complete, undo);
+          if (track.subjectSlug) {
+            const capture = document.createElement('button');
+            capture.type = 'button';
+            capture.textContent = 'Save lesson Note';
+            capture.addEventListener('click', async () => {
+              if (savingCapture) return;
+              const submitted = note.value;
+              if (!submitted.trim()) { setPanel('note'); return setStatus('Write your lesson Notes, then return to Tracks to save.'); }
+              savingCapture = true; capture.disabled = true; noteSave.disabled = true;
+              setStatus('Saving lesson Note…');
+              try {
+                const result = await send('CREATE_LESSON_NOTE', { id: track.id, content: submitted });
+                if (result.existing) {
+                  setStatus('A topic Note already exists: “' + result.title + '”. Select it in Quick note to append. Your text is retained.');
+                  return;
+                }
+                if (result.confirmed !== true) throw new Error('Lesson Note Save was not confirmed.');
+                if (note.value === submitted) note.value = '';
+                setStatus('Saved lesson Note “' + result.title + '”.');
+              } catch (error) { setStatus(error.message + ' Your text remains in the editor.', true); }
+              finally { savingCapture = false; capture.disabled = false; noteSave.disabled = vaultReady === null; updateNoteButton(); }
+            });
+            actions.append(capture);
+          }
         }
         row.append(title, subjectLabel, progress, actions);
         container.append(row);

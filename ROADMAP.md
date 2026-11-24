@@ -1466,3 +1466,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT4 manual topic grouping checkpoint
 
 - Added stable per-track topic IDs and video-ID assignments, editable topic names, merging, splitting by reassigning selected lessons, and ungrouping. Ungrouped lessons fall back to their own title and video ID. Website topic editor appears after discovery; saves validate selected IDs against current playlist metadata and preserve progress/subject settings. No Notes are created or moved. Tests added; CI/live acceptance pending. Optional Gemini assistance deferred until provider policy review; manual workflow is usable without AI. Future Note creation must retain associations when topic grouping changes, rather than silently moving or deleting existing Notes.
+
+### LT5 on-demand creation checkpoint (partial)
+
+- Added explicit Save lesson Note action for current tracked video with assigned subject. Resolves topic or individual title from discovered metadata, derives stable owner/track/subject/topic Note identity, writes only nonempty content via existing Vault create handler or legacy owner transaction. Existing topic Note is detected rather than overwritten or duplicated; text is retained for manual append using the existing picker. No permanent MongoDB Note body for Vault users. Topic/subject changes do not move existing Notes. Remaining: direct contextual append and selection, mapping/filter integration, retry/revision edge cases, CI/live acceptance. Source links and timestamps remain LT7/LT8.
