@@ -53,7 +53,7 @@ test('learning page offers direct next-lesson action with completion using exist
   assert.match(source, /aria-label=\{'Next lessons for ' \+ track.title\}/);
   assert.match(source, /href=\{focus.next.url\}/);
   assert.match(source, /Mark next complete/);
-  assert.match(source, /onClick=\{\(\) => progress\(track, 1\)\}/);
+  assert.match(source, /progress\(track, 1, identityMode \? focus.next.videoId : null\)/);
   assert.match(source, /track.completedVideos >= snapshot.totalVideos/);
   assert.match(source, /Legacy progress follows playlist order, not video identity/);
   assert.match(css, /\.focusList/);
