@@ -44,3 +44,20 @@
 .plan input { margin-top: 5px; width: 100%; }
 .plan button { flex: 0 0 auto; min-height: 41px; }
 @media (max-width: 500px) { .plan { flex-direction: column; align-items: stretch; } .plan label, .plan button { width: 100%; flex: auto; } }
+
+
+/* Next lesson focus: compact, accessible and independent of playlist length. */
+.focus { margin: 14px 0 19px; padding: 16px; border-radius: 12px; border: 1px solid rgba(60,145,90,.4); background: rgba(63,143,91,.065); }
+.focusHeading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.focusHeading h4 { font-size: 1.15rem; margin: 4px 0 5px; }
+.focusEyebrow { font-size: .69rem; font-weight: 800; letter-spacing: .1em; color: #398f5d; }
+.focusCount { flex: 0 0 auto; padding: 5px 9px; border-radius: 12px; background: rgba(63,143,91,.13); font-size: .76rem; font-weight: 700; }
+.focusList { list-style: none; margin: 13px 0; padding: 0; display: grid; gap: 8px; }
+.focusList li { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding: 9px 11px; border: 1px solid rgba(128,128,128,.22); border-radius: 9px; }
+.focusList a { flex: 1 1 150px; overflow-wrap: anywhere; }
+.focusNumber { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: rgba(63,143,91,.15); font-weight: 800; }
+.nextBadge { font-size: .72rem; font-weight: 700; color: #398f5d; }
+.focus .actions { margin-top: 12px; }
+.focus .watchNext { font-weight: 700; }
+.focus p.focusHint { margin-top: 13px; font-size: .78rem; opacity: .73; line-height: 1.5; }
+@media(max-width:500px){.focus{padding:12px}.focusHeading{align-items:center}.focusList li{align-items:start}.focus .actions>*{flex:1 1 100%;text-align:center}}
