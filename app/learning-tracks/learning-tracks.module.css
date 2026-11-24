@@ -61,3 +61,9 @@
 .focus .watchNext { font-weight: 700; }
 .focus p.focusHint { margin-top: 13px; font-size: .78rem; opacity: .73; line-height: 1.5; }
 @media(max-width:500px){.focus{padding:12px}.focusHeading{align-items:center}.focusList li{align-items:start}.focus .actions>*{flex:1 1 100%;text-align:center}}
+
+
+/* Video-ID progress conversion is an explicit user choice for legacy tracks. */
+.identityUpgrade { margin: 12px 0; padding: 13px; border: 1px dashed rgba(63,143,91,.55); border-radius: 10px; background: rgba(63,143,91,.06); }
+.identityUpgrade p { margin: 0 0 9px; }
+.identityUpgrade button { font-weight: 700; }
