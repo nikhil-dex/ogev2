@@ -1354,3 +1354,15 @@ These criteria are release blockers, not optional polish:
 - [x] Provide compact responsive study-plan controls and focused regression tests.
 - [ ] Test against a signed-in owner with actual playlist discovery; verify two tracks, reload, date change, concurrent edit and daily-progress updates.
 - [ ] Continue usability work: stable per-video completion when playlist order changes, better lesson navigation and practical extension integration.
+
+
+## Learning Tracks — Continue Learning / next lessons (24 Nov 2026)
+
+- [x] Show a prominent **Continue Learning** card for the current block of the discovered playlist rather than making users scroll through seven-day schedules.
+- [x] Display the next unfinished lesson, its direct YouTube link, the number remaining today/in the current block, and optional saved schedule date.
+- [x] Provide **Watch next lesson** and **Mark next complete** actions, reusing the existing manual owner-scoped progress API; respect in-flight changes and the discovered playlist's total.
+- [x] Handle partial days, final short blocks, fully completed playlists and each track's independently stored daily goal.
+- [x] Keep playlist-order-based progress limitation visible; no claim of video-ID-stable completion or automatic YouTube watch tracking.
+- [x] Add deterministic helper tests, page source checks, and responsive styling.
+- [ ] Signed-in browser acceptance with a real YouTube playlist and a configured YouTube Data API key.
+- [ ] Next improvement: progress tied to stable video identity so reorderings cannot mark the wrong videos complete.
