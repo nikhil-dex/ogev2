@@ -62,6 +62,17 @@ export async function POST(request) {
     const appendRequest = (noteId, version, previous) => appendNote(new Request(request.url, { method: 'POST', headers: { authorization, 'Content-Type': 'application/json' }, body: JSON.stringify({ noteId, version, subjectSlug: track.subjectSlug, content: lessonSourceCapture(content, video, previous, playbackSeconds) }) }));
     if (!lookup && (data.expectedTopicKey !== topic.key || data.expectedSubjectSlug !== track.subjectSlug || data.expectedVideoId !== videoId)) return json({ error: 'Lesson topic changed. Reopen the lesson Note destination.' }, 409);
     const ids = learningCaptureIds(owner.googleSub, id, track.subjectSlug, topic.key);
+    const remember = async (response, storage) => {
+      if (!response.ok) return response;
+      const result = await response.clone().json();
+      if (result.confirmed !== true || typeof result.id !== 'string') return response;
+      const expected = storage === 'vault' ? ids.vaultId : ids.mongoId;
+      if (result.id !== expected) return response;
+      try {
+        await tracks.updateOne({ _id: id, ownerId: owner.googleSub }, { $addToSet: { capturedNotes: { subjectSlug: track.subjectSlug, storage, noteId: expected } } });
+      } catch (error) { console.error('Learning Note association failed:', error?.name); }
+      return response;
+    };
     const current = await tracks.findOne({ _id: id, ownerId: owner.googleSub, updatedAt: track.updatedAt });
     if (!current) return json({ error: 'Track changed. Refresh before saving.' }, 409);
     if (vaultCaptureAvailable(owner)) {
@@ -72,9 +83,9 @@ export async function POST(request) {
       if (existing) {
         if (existing.subjectId !== track.subjectSlug) return json({ error: 'Existing topic Note belongs to another subject.' }, 409);
         if (lookup) return json(destination(existing, existing.sha, 'vault'));
-        if (data.expectedVersion === existing.sha && data.expectedNoteId === existing.id) return appendRequest(existing.id, existing.sha, existing.answer);
+        if (data.expectedVersion === existing.sha && data.expectedNoteId === existing.id) return remember(await appendRequest(existing.id, existing.sha, existing.answer), 'vault');
         if (data.expectedVersion == null && existing.heading === heading && existing.answer === firstCapture)
-          return json({ confirmed: true, id: existing.id, title: existing.heading, version: existing.sha, destination: 'vault', alreadySaved: true });
+          return remember(json({ confirmed: true, id: existing.id, title: existing.heading, version: existing.sha, destination: 'vault', alreadySaved: true }), 'vault');
         return json({ error: 'Topic Note changed or already exists. Reopen the destination before saving.' }, 409);
       }
       if (lookup) return json(destination(null, null, 'vault'));
@@ -82,7 +93,7 @@ export async function POST(request) {
       // Reuse the existing explicit GitHub Note writer, with a deterministic capture ID.
       const response = await createVaultNote(new Request(request.url, { method: 'POST', headers: { authorization, 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: heading + '\n' + firstCapture, subjectSlug: track.subjectSlug, captureId: ids.vaultId }) }));
-      return response;
+      return remember(response, 'vault');
     }
     if (owner.notesStorage === 'github' || owner.notesStorage === 'unselected')
       return json({ error: 'Connect your selected Notes storage before saving.' }, 409);
@@ -97,9 +108,9 @@ export async function POST(request) {
       const previous = await db.collection('notes').findOne({ _id: new ObjectId(ids.mongoId), ownerId: owner.googleSub, subjectSlug: track.subjectSlug });
       if (!previous || new Date(previous.updatedAt || previous.createdAt).toISOString() !== data.expectedVersion)
         return json({ error: 'Topic Note changed. Reopen the destination before saving.' }, 409);
-      return appendRequest(ids.mongoId, data.expectedVersion, previous.answer);
+      return remember(await appendRequest(ids.mongoId, data.expectedVersion, previous.answer), 'notes');
     }
-    return await withActiveOwnerMutation(db, owner.googleSub, async session => {
+    const response = await withActiveOwnerMutation(db, owner.googleSub, async session => {
       const cutover = await inspectLegacyCutoverForOwner(db, owner.googleSub, { extensionTokenHash: tokenHash }, { session });
       if (cutover.blocked) return legacyCutoverBlockedResponse(cutover, { headers: HEADERS });
       const liveTrack = await tracks.findOne({ _id: id, ownerId: owner.googleSub, updatedAt: track.updatedAt }, { session });
@@ -117,6 +128,7 @@ export async function POST(request) {
       await notes.insertOne({ _id: noteId, ownerId: owner.googleSub, subjectSlug: track.subjectSlug, heading, answer: firstCapture, tags: [], favorite: false, createdAt: now, updatedAt: now, revisions: [] }, { session });
       return json({ id: ids.mongoId, title: heading, destination: 'notes', confirmed: true, version: now.toISOString() }, 201);
     }, { extensionTokenHash: tokenHash });
+    return remember(response, 'notes');
   } catch (error) {
     console.error('Learning lesson Note creation failed:', error?.name);
     return json({ error: 'Lesson Note Save was not confirmed. Keep your editor text and retry.' }, 503);

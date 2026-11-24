@@ -1490,3 +1490,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT9 flexible daily schedule checkpoint
 
 - Added explicit completion timestamps for new video-ID progress on website and extension, preserving dates on repeat completion and removing date on undo; legacy migrated completions remain undated. Flexible plan groups unique unfinished video IDs from local today (or future start date), subtracts actual dated completions from today's goal and carries remaining lessons forward without resetting progress. Website distinguishes original calendar plan and study block from flexible daily plan. Daily counts reflect current saved completions, not viewing history. Device-local date is used rather than a fixed account timezone. Tests added; CI/live verification and deferred playlist Note filtering remain pending.
+
+### LT10 playlist Note filtering checkpoint
+
+- Successful contextual creates and appends register owner/track/subject/storage Note IDs only, not content. Shared Notes workspace offers playlist filters alongside All Notes; Vault pagination remains available. Associations survive topic edits because captured identities are retained. Older captures are registered when subsequently saved; no bulk backfill yet. If association persistence fails after confirmed content save, the save remains successful and association can be retried on a subsequent save. CI and live provider acceptance pending.

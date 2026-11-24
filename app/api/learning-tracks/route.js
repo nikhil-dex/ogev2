@@ -34,7 +34,10 @@ export async function GET() {
     if (!ctx) return json({ error: 'Sign in to view learning tracks.' }, 401);
     const tracks = await ctx.db.collection('learningTracks').find({ ownerId: ctx.ownerId })
       .sort({ createdAt: -1 }).limit(100).toArray();
-    return json({ tracks: tracks.map(publicLearningTrack), noteLinkingEnabled: learningTrackNoteLinksEnabled() });
+    return json({ tracks: tracks.map(track => {
+      const capturedNotes = Array.isArray(track.capturedNotes) ? track.capturedNotes : [];
+      return { ...publicLearningTrack(track), capturedNotes };
+    }), noteLinkingEnabled: learningTrackNoteLinksEnabled() });
   } catch (error) {
     console.error('Learning Tracks GET failed:', error?.name);
     return json({ error: 'Unable to read learning tracks.' }, 503);

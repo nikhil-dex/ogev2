@@ -51,6 +51,8 @@ export default function NotesPage({
   const [searchScanStatus, setSearchScanStatus] = useState('');
   const searchScanRef = useRef(null);
   const [activeSubject, setActiveSubject] = useState('');
+  const [playlistFilter, setPlaylistFilter] = useState(null);
+  const currentPlaylistFilter = playlistFilter?.subjectSlug === activeSubject ? playlistFilter : null;
   const [query, setQuery] = useState('');
   const [globalSearch, setGlobalSearch] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -463,6 +465,7 @@ export default function NotesPage({
     const needle = query.trim().toLocaleLowerCase();
     return notes
       .filter((note) => globalSearch || !activeSubject || note.subjectSlug === activeSubject)
+      .filter((note) => globalSearch || !currentPlaylistFilter || currentPlaylistFilter.noteIds.includes(String(note.id)))
       .filter((note) => !needle || (note.heading + ' ' + note.answer + ' ' + (note.tags || []).join(' ')).toLocaleLowerCase().includes(needle))
       .filter((note) => !favoritesOnly || note.favorite)
       .filter((note) => !pinnedOnly || note.pinned)
@@ -474,7 +477,7 @@ export default function NotesPage({
         if (sortOrder === 'title-desc') return b.heading.localeCompare(a.heading);
         return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
       });
-  }, [notes, activeSubject, query, globalSearch, favoritesOnly, pinnedOnly, selectedTag, sortOrder]);
+  }, [notes, activeSubject, query, globalSearch, favoritesOnly, pinnedOnly, selectedTag, sortOrder, currentPlaylistFilter]);
   const readerSequence = readerSequenceForNote(readerNote, visibleNotes, notes, sortOrder);
   const readerIndex = readerNote ? readerSequence.findIndex((note) => note.id === readerNote.id) : -1;
   const readerLinks = linkScan?.complete && linkScan.noteId === readerNote?.id
@@ -1448,18 +1451,19 @@ export default function NotesPage({
         <button type="button" className={globalSearch ? 'global-search-toggle active' : 'global-search-toggle'} aria-pressed={globalSearch} onClick={() => { setGlobalSearch((value) => !value); setQuery(''); setSelectedTag(''); }}>⌕ {globalSearch ? 'All subjects' : 'Search all subjects'}</button>
       </section>
 
-      {!globalSearch && activeSubject && <SubjectLearningPlaylists subjectSlug={activeSubject} />}
+      {!globalSearch && activeSubject && <SubjectLearningPlaylists subjectSlug={activeSubject} vaultMode={vaultMode} selectedTrack={currentPlaylistFilter} onSelect={setPlaylistFilter} />}
 
       <section className="notes-section">
+        {!globalSearch && currentPlaylistFilter && <p role="status">Showing saved Notes associated with this playlist.{vaultMode && nextNotesCursor ? ' Load more GitHub Notes to see older results.' : ''} Older captures may need to be saved again to register their association.</p>}
         <div className="section-heading">
-          <div><p className="eyebrow">THE LIBRARY</p><h2>{globalSearch ? 'Search results' : 'All notes'} <span className="count-pill">{visibleNotes.length}</span></h2></div>
+          <div><p className="eyebrow">THE LIBRARY</p><h2>{globalSearch ? 'Search results' : currentPlaylistFilter ? currentPlaylistFilter.title + ' notes' : 'All notes'} <span className="count-pill">{visibleNotes.length}</span></h2></div>
           <label className="sort-control">Sort <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort notes"><option value="latest">Latest updated</option><option value="oldest">Oldest first</option><option value="title-asc">Title A–Z</option><option value="title-desc">Title Z–A</option></select></label>
         </div>
         <div className="note-filters" aria-label="Note filters">
           <button type="button" className={favoritesOnly ? 'filter-chip active' : 'filter-chip'} aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>★ Favorites</button>
           <button type="button" className={pinnedOnly ? 'filter-chip active' : 'filter-chip'} aria-pressed={pinnedOnly} onClick={() => setPinnedOnly((value) => !value)}>📌 Pinned</button>
           {availableTags.length > 0 && <label className="tag-filter">Tag <select value={selectedTag} onChange={(event) => setSelectedTag(event.target.value)} aria-label="Filter notes by tag"><option value="">All tags</option>{availableTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}</select></label>}
-          {(query || globalSearch || favoritesOnly || pinnedOnly || selectedTag) && <button type="button" className="clear-filters" onClick={() => { setQuery(''); setGlobalSearch(false); setFavoritesOnly(false); setPinnedOnly(false); setSelectedTag(''); }}>Clear all</button>}
+          {(query || globalSearch || favoritesOnly || pinnedOnly || selectedTag || currentPlaylistFilter) && <button type="button" className="clear-filters" onClick={() => { setQuery(''); setGlobalSearch(false); setFavoritesOnly(false); setPinnedOnly(false); setSelectedTag(''); setPlaylistFilter(null); }}>Clear all</button>}
         </div>
 
         {vaultMode && query.trim() && nextNotesCursor && <div className="oge-vault-notes-pagination" role="group" aria-label="Search all GitHub Notes">

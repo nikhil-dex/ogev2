@@ -12,3 +12,10 @@ test('LT3 both Notes storage modes share subject playlists without changing Note
   assert.ok(playlists.includes("fetch('/api/learning-tracks'"));
   assert.ok(playlists.includes('if (!assigned.length) return null'));
 });
+
+test('LT10 playlist filtering uses captured Note identities', async () => {
+ const notes = await readFile(new URL('../app/notes/page.js', import.meta.url), 'utf8');
+ const capture = await readFile(new URL('../app/api/extension/learning-note/route.js', import.meta.url), 'utf8');
+ assert.ok(notes.includes('currentPlaylistFilter.noteIds.includes(String(note.id))'));
+ assert.ok(capture.includes('$addToSet: { capturedNotes:'));
+});

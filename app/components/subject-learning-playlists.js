@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-export default function SubjectLearningPlaylists({ subjectSlug }) {
+export default function SubjectLearningPlaylists({ subjectSlug, vaultMode, selectedTrack, onSelect }) {
   const [tracks, setTracks] = useState([]);
   useEffect(() => {
     const controller = new AbortController();
@@ -21,9 +21,10 @@ export default function SubjectLearningPlaylists({ subjectSlug }) {
       <Link className="filter-chip" href={'/learning-tracks?subject=' + encodeURIComponent(subjectSlug)}>Manage playlists</Link>
     </div>
     <div className="note-filters">
-      {assigned.map(track => <Link className="filter-chip" key={track.id} href={'/learning-tracks?subject=' + encodeURIComponent(subjectSlug) + '&track=' + encodeURIComponent(track.id)}>
+      <button type="button" className={!selectedTrack ? 'filter-chip active' : 'filter-chip'} aria-pressed={!selectedTrack} onClick={() => onSelect(null)}>All Notes</button>
+      {assigned.map(track => <button type="button" className={selectedTrack?.id === track.id ? 'filter-chip active' : 'filter-chip'} aria-pressed={selectedTrack?.id === track.id} key={track.id} onClick={() => onSelect({ id: track.id, title: track.title, subjectSlug, noteIds: (track.capturedNotes || []).filter(item => item.subjectSlug === subjectSlug && item.storage === (vaultMode ? 'vault' : 'notes')).map(item => item.noteId) })}>
         {track.title} · {track.completedVideos}{track.totalVideos == null ? '' : '/' + track.totalVideos} completed
-      </Link>)}
+      </button>)}
     </div>
   </section>;
 }
