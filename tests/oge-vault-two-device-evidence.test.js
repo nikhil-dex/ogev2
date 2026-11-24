@@ -22,8 +22,8 @@ const fdB = new Set([
 ]);
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 const now = Date.parse('2026-11-16T17:00:00.000Z');
-function fixture() {
-  const startedAt = new Date(now - 60_000).toISOString();
+function fixture(referenceNow = now) {
+  const startedAt = new Date(referenceNow - 60_000).toISOString();
   const a = randomUUID(), b = randomUUID();
   return {
     format: 'oge-vault-two-device-external-evidence', version: 1,
@@ -32,7 +32,7 @@ function fixture() {
       scenario,
       channel: fdA.has(scenario) ? 'device-a'
         : fdB.has(scenario) ? 'device-b' : 'operator',
-      observedAt: new Date(now - 30_000).toISOString(),
+      observedAt: new Date(referenceNow - 30_000).toISOString(),
       outcome: 'observed-pass',
       evidenceSha256: sha256('synthetic-external-file-' + scenario),
       sessionMarker: fdA.has(scenario) ? a : fdB.has(scenario) ? b : null,
@@ -131,7 +131,7 @@ test('M67 read-only operator CLI requires isolated staging and a private 0600 ev
   });
   try {
     await chmod(folder, 0o700);
-    await writeFile(path, JSON.stringify(fixture()), { mode: 0o600 });
+    await writeFile(path, JSON.stringify(fixture(Date.now())), { mode: 0o600 });
     const good = run();
     assert.equal(good.status, 0, good.stderr);
     const report = JSON.parse(good.stdout);
@@ -151,10 +151,14 @@ test('M67 read-only operator CLI requires isolated staging and a private 0600 ev
       assert.equal(bad.stdout, '');
       assert.match(bad.stderr, /BLOCKED:/);
     }
+    // Explicitly verify expired metadata remains rejected by the real-clock CLI.
+    await writeFile(path, JSON.stringify(fixture(Date.now() - 8 * 86400000)));
+    assert.equal(run().status, 2);
+    await writeFile(path, JSON.stringify(fixture(Date.now())));
     await chmod(path, 0o644);
     assert.equal(run().status, 2);
     await chmod(path, 0o600);
-    const partial = fixture();
+    const partial = fixture(Date.now());
     partial.records.pop();
     await writeFile(path, JSON.stringify(partial));
     const incomplete = run();
@@ -163,7 +167,7 @@ test('M67 read-only operator CLI requires isolated staging and a private 0600 ev
       false);
     await rm(path);
     const target = join(folder, 'actual-evidence.json');
-    await writeFile(target, JSON.stringify(fixture()), { mode: 0o600 });
+    await writeFile(target, JSON.stringify(fixture(Date.now())), { mode: 0o600 });
     await symlink(target, path);
     const link = run();
     assert.equal(link.status, 2);
