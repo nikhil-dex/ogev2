@@ -61,19 +61,24 @@ test('widget keyboard guard protects Track inputs and other controls without can
   const shadow = { activeElement: null };
   let hidden = false;
   const panel = { classList: { contains: () => hidden } };
-  const guard = new Function('panel', 'shadow', source + '; return stopPageShortcutsWhileTyping;')(panel, shadow);
+  let wakes = 0;
+  const guard = new Function('panel', 'shadow', 'wake', source + '; return stopPageShortcutsWhileTyping;')(panel, shadow, () => { wakes++; });
   for (const tag of ['textarea', 'input', 'select', 'button']) {
     shadow.activeElement = { matches: selector => selector.split(', ').includes(tag) };
     for (const key of [' ', 'm', 'k', 'ArrowLeft', 'Tab']) {
       let stopped = 0;
+      const previousWakes = wakes;
       guard({ key, stopPropagation: () => stopped++, stopImmediatePropagation: () => stopped++, preventDefault: () => assert.fail('native default cancelled') });
       assert.equal(stopped, 2);
+      assert.equal(wakes, previousWakes + 1);
     }
   }
   for (const state of [{ hidden: true, focused: { matches: () => true } }, { hidden: false, focused: null }, { hidden: false, focused: { matches: () => false } }]) {
     hidden = state.hidden;
     shadow.activeElement = state.focused;
+    const previousWakes = wakes;
     guard({ stopPropagation: () => assert.fail('outside widget blocked'), stopImmediatePropagation: () => assert.fail('outside widget blocked') });
+    assert.equal(wakes, previousWakes);
   }
   assert.match(script, /window\.addEventListener\(name, stopPageShortcutsWhileTyping, true\)/);
 });
