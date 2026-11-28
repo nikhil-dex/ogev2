@@ -1518,3 +1518,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### Study timer completion toast
 
 - Prior timer commit 8ed964e passed all four CI jobs (run 46168384527). Added a standalone top-right ChatGPT-style toast with theme-aware styling, ten-second dismissal (paused during hover/focus), Reset, Reuse and best-effort Web Audio chime. Serialized one-time completion claim in the service worker prevents repeated multi-tab alerts; stale toast actions cannot change a newer session. If no focused supported web page is available, the alert appears when one is focused again; browser autoplay policy may mute the chime. No system notifications, alarms, added permissions or backend writes. New CI and manual browser acceptance pending.
+
+### Study timer background notification fallback
+
+- Prior toast commit e9acc55 passed CI run 46168858241. Added Chrome alarms and notifications permissions, timestamp-based deadline scheduling, alarm recovery on startup/install, focused-tab toast delivery with native desktop fallback, serialized deduplication and deferred in-page claim if desktop permission is denied. Chrome must remain running; OS focus mode or notification settings can suppress banners. New CI and real cross-application notification testing pending.

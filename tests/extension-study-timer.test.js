@@ -61,3 +61,35 @@ test('toast appears outside the toolbelt and supports dismiss, reuse and reset',
  assert.ok(ui.includes('document.hasFocus()'));
  assert.ok(ui.includes('setTimeout(dismissStudyToast, 10000)'));
 });
+
+test('background completion prefers a focused page and falls back to desktop once', async () => {
+ let stored = { goalMinutes: 2, elapsedMs: 0, startedAt: Date.now() - 180000, sessionId: 42, notified: false };
+ let focused = false, desktop = 0, toast = 0;
+ const sandbox = { chrome: { storage: { local: {
+   get: async () => ({ ogeStudyTimer: stored }),
+   set: async value => { stored = value.ogeStudyTimer; }
+ } }, windows: { getLastFocused: async () => ({ focused, type: 'normal', id: 1 }) },
+ tabs: { query: async () => [{ id: 2 }], sendMessage: async () => { toast++; return { shown: true }; } },
+ notifications: { getPermissionLevel: async () => 'granted', create: async () => { desktop++; } } } };
+ vm.runInNewContext(source, sandbox);
+ await Promise.all([sandbox.updateLocalStudyTimer('alarm'), sandbox.updateLocalStudyTimer('alarm')]);
+ assert.equal(desktop, 1);
+ assert.equal(toast, 0);
+ assert.equal(stored.notified, true);
+ stored = { ...stored, sessionId: 43, notified: false };
+ focused = true;
+ await sandbox.updateLocalStudyTimer('alarm');
+ assert.equal(desktop, 1);
+ assert.equal(toast, 1);
+});
+test('denied desktop notification leaves the in-page alert available', async () => {
+ let stored = { goalMinutes: 1, elapsedMs: 60000, startedAt: null, sessionId: 1, notified: false };
+ const sandbox = { chrome: { storage: { local: {
+   get: async () => ({ ogeStudyTimer: stored }), set: async value => { stored = value.ogeStudyTimer; }
+ } }, windows: { getLastFocused: async () => ({ focused: false }) },
+ notifications: { getPermissionLevel: async () => 'denied' } } };
+ vm.runInNewContext(source, sandbox);
+ await sandbox.updateLocalStudyTimer('alarm');
+ assert.equal(stored.notified, false);
+ assert.equal((await sandbox.updateLocalStudyTimer('claim')).claimed, true);
+});

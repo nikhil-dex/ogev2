@@ -241,6 +241,16 @@
     toastTimeout = setTimeout(dismissStudyToast, 10000);
     studyCompletionChime();
   }
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message?.type !== 'SHOW_STUDY_COMPLETION' || sender.id !== chrome.runtime.id) return false;
+    if (document.hidden || !document.hasFocus()) { respond({ shown: false }); return false; }
+    const completed = message.timer;
+    if (!completed || !Number.isInteger(completed.goalMinutes) || completed.goalMinutes < 1 ||
+        completed.elapsedMs < completed.goalMinutes * 60000) { respond({ shown: false }); return false; }
+    if (toastSession !== completed.sessionId) showStudyToast(completed);
+    respond({ shown: true });
+    return false;
+  });
   async function maybeShowStudyToast() {
     if (claimingToast || !timerState || timerState.notified || document.hidden || !document.hasFocus()) return;
     const elapsed = timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt));
