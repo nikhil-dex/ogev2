@@ -29,10 +29,11 @@
       <small class="hint">Copy a URL or open it in a new browser tab. Update links in your OgeNotes Profile.</small>
     </section>
     <section id="connectPanel" class="tool-panel" aria-label="Connection settings" hidden>
-      <label for="baseUrl">App URL</label>
-      <input id="baseUrl" type="url" value="http://localhost:3000" spellcheck="false">
+      <label for="baseUrl">Oge website address</label>
+      <input id="baseUrl" type="url" placeholder="Enter your Oge website URL" autocomplete="url" spellcheck="false">
+      <small class="hint">Copy the website address and connection token from your Oge Browser Extension page.</small>
       <label for="token">Extension token</label>
-      <input id="token" type="password" placeholder="oge_…" autocomplete="off" spellcheck="false">
+      <input id="token" type="password" placeholder="Paste your extension token" autocomplete="off" spellcheck="false">
       <button id="saveSettings" class="secondary" type="button">Save connection</button>
       <div class="connection-reset">
         <strong>Reset this extension</strong>
