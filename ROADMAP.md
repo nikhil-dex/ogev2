@@ -1343,3 +1343,170 @@ These criteria are release blockers, not optional polish:
 - [x] Regression tests and existing source-level storage-path audit updated.
 - [ ] Authenticated manual test in Chrome: fresh/default note, choose recent Note, Show more, append, subject switch, lost connection, mobile-width widget.
 - [ ] Merge and deployment only after review.
+
+
+## Learning Tracks — Per-playlist daily study plan (24 Nov 2026)
+
+- [x] Give each YouTube playlist its own editable daily video goal (1–20), rather than requiring track deletion to change the goal.
+- [x] Save the optional schedule start date in the owner's existing `learningTracks` metadata. Existing tracks remain undated until configured.
+- [x] Recalculate discovered upcoming lessons with each track's saved goal and start date; editing one track does not affect the others.
+- [x] Persist the plan through the existing authenticated owner-scoped API with expected revision checks; do not modify completed progress, GitHub Notes, or stored video data.
+- [x] Provide compact responsive study-plan controls and focused regression tests.
+- [ ] Test against a signed-in owner with actual playlist discovery; verify two tracks, reload, date change, concurrent edit and daily-progress updates.
+- [x] Implement stable per-video completion, lesson navigation and initial extension integration (see subsequent milestones; remaining extension completion and Notes work is in the revised roadmap below).
+
+
+## Learning Tracks — Continue Learning / next lessons (24 Nov 2026)
+
+- [x] Show a prominent **Continue Learning** card for the current block of the discovered playlist rather than making users scroll through seven-day schedules.
+- [x] Display the next unfinished lesson, its direct YouTube link, the number remaining today/in the current block, and optional saved schedule date.
+- [x] Provide **Watch next lesson** and **Mark next complete** actions, reusing the existing manual owner-scoped progress API; respect in-flight changes and the discovered playlist's total.
+- [x] Handle partial days, final short blocks, fully completed playlists and each track's independently stored daily goal.
+- [x] Keep playlist-order-based progress limitation visible; no claim of video-ID-stable completion or automatic YouTube watch tracking.
+- [x] Add deterministic helper tests, page source checks, and responsive styling.
+- [ ] Signed-in browser acceptance with a real YouTube playlist and a configured YouTube Data API key.
+- [x] Superseded by the implemented video-ID completion milestone below.
+
+
+## Learning Tracks — Video-ID completion survives playlist reordering (24 Nov 2026)
+
+- [x] Add owner-scoped `completedVideoIds` metadata (maximum 500 distinct YouTube video IDs), keeping the existing completed count and previous schedules intact.
+- [x] Keep existing count-based tracks unchanged until the owner explicitly confirms that the current playlist's first N videos represent the prior completed count; reject repeated IDs in that prefix instead of silently losing progress.
+- [x] After conversion, allow marking and unmarking individual videos, keep the next unfinished lesson based on the actual video ID, and retain completion when a playlist is reordered.
+- [x] Alert when previously completed IDs disappear from a refreshed playlist snapshot; retain those records rather than automatically discarding them.
+- [x] Preserve per-track goal, start date, Note links, and owner authentication; stale updates return a conflict rather than replacing newer progress.
+- [x] Deterministic tests cover explicit conversion, duplicate prevention, reorder, deleted-from-playlist cases and final completion.
+- [ ] Live authenticated YouTube playlist test, including real reorder and refresh; manual verification remains necessary.
+- **Removed from active scope:** API-key-free discovery. Use Oge's server-side YouTube Data API key; no individual user key or YouTube sign-in for accessible public playlists.
+
+## Learning Tracks — Extension track overview (24 Nov 2026)
+
+- [x] Add an owner-scoped, token-authenticated extension list endpoint and display saved tracks, recorded completion totals and daily goals in the floating widget.
+- [x] Reveal Tracks only when the connected server accepts listing; refresh on widget open, explicit refresh and creation. Preserve the two-tab layout otherwise.
+- [ ] Verify signed-in extension with real playlists; playback is implemented below, while individual completion and linked Note actions remain pending. No calendar-day completion inference from aggregate counts.
+
+- [x] Extend floating-widget keyboard shortcut isolation to Track inputs and other focused form controls, keeping native input defaults. Regression coverage added; live YouTube confirmation pending.
+
+## Learning Tracks — Extension Watch Next (24 Nov 2026)
+
+- [x] Explicit Watch next action uses fresh public playlist discovery, current owner-scoped progress and stable video IDs; zero-progress legacy tracks can start, nonzero legacy tracks must confirm migration on the website.
+- [x] Open canonical YouTube watch URL (initially new tab; superseded by same-tab navigation below); share the existing five-discoveries-per-owner/hour limit and keep the API key server-side. No automatic completion.
+- [ ] Live extension playback test and manual lesson completion/Note integration remain pending.
+
+## Learning Tracks — Automatic playlist count and same-tab navigation (24 Nov 2026)
+
+- [x] Extension creation discovers the public playlist and stores its detected total; removes manual total input and starts new tracks with empty video-ID progress.
+- [x] Watch next navigates the invoking tab, skips the currently playing lesson in the same playlist and does not mark it complete. No later unfinished lesson is distinct from all lessons complete.
+- [ ] Existing stored totals are not migrated yet; live YouTube and extension verification pending. Discovery remains capped at 500 videos and shares the existing quota guard.
+
+
+## Learning Tracks — Revised product roadmap (24 Nov 2026)
+
+**Active plan; supersedes earlier Learning Tracks future-work suggestions.** Keep the existing completed milestones and historical implementation records. Goal: a student can import a YouTube playlist, choose a subject and a daily goal, watch lessons, write relevant Notes, and advance without leaving the YouTube tab or manually organizing every Note. Support public playlists without YouTube login; Oge account/extension connection is required for saved progress.
+
+### Existing foundation (implemented; live acceptance not complete)
+
+- [x] Playlist intake from extension, automatic total count for new extension tracks, public playlist discovery and video titles/IDs via the server-side YouTube Data API (current 500-video discovery cap).
+- [x] Per-track daily goal, optional start date, saved plan, current study block and website Continue Learning.
+- [x] Video-ID progress, explicit migration for nonzero legacy count-based tracks, playlist reorder handling and retention of completion IDs for removed videos.
+- [x] Extension track overview, refresh, keyboard shortcut isolation and same-tab Watch Next that skips the current video without silently marking it complete.
+- [x] Existing generic subject/Note selection and append workflow; existing lesson-to-Note linking foundation is not yet automatic context-aware capture.
+
+### Remaining milestones — ordered implementation priorities
+
+- [x] **LT1 — Complete & Next (implemented, acceptance pending):** explicit mark-current-lesson-complete and advance in the same tab; validate current video and playlist against the selected track, synchronize by video ID with the website, support manual undo and prevent duplicate completion. If saving progress fails, do not advance. Keep Watch Next as a separate non-completing action.
+- [ ] **LT2 — Shared playlist cache and refresh:** reuse public playlist metadata across users where permitted by YouTube policies; bound retention, refresh/delete stale data, deduplicate concurrent fetches, handle exhausted quota with eligible cached data and clear messages. Keep API key server-side, basic quota/error logging, manual playlist refresh; update existing stored totals from valid discoveries without losing completion records. Review provider data-use and retention rules before enabling shared caching.
+- [ ] **LT3 — Subject-to-playlist mapping:** select an existing subject when creating/editing a track, allow an unassigned track until the user chooses a subject, display playlist grouping/filter within existing Notes rather than introducing a separate Notes storage system.
+- [ ] **LT4 — Topic grouping:** simple manual topic names and lesson-to-topic assignment, with rename/merge/split; use individual lesson titles as fallback. Optional Gemini-assisted grouping only where provider terms permit it and user has configured/consented to AI usage. No mandatory AI dependency.
+- [ ] **LT5 — On-demand Note creation:** create the relevant lesson/topic Note only on first explicit Save; related videos can share a Note. Reuse existing subject and Note save/append paths, respect configured storage mode (GitHub Vault committed Note bodies stay in GitHub; MongoDB may hold metadata and temporary drafts). Avoid precreating empty Notes, duplicate Notes and redundant GitHub writes.
+- [ ] **LT6 — Context-aware capture:** identify the current tracked video and select its existing lesson/topic Note in the floating extension; show Current Lesson Note and allow user override. Append to the mapped Note, preserve previous content and retain editor text if Save fails. Do not modify manually pinned Notes.
+- [ ] **LT7 — Automatic source video references (default on):** when creating/appending a Note from a tracked YouTube video, save the actual video title and canonical watch URL as a Markdown reference inside the Note. Associate written content with its source; append a new source reference for a different video within the same topic; deduplicate the same video by stable video ID rather than URL spelling. Preserve previous references, user-written content and portability in exported/GitHub Notes. Use current browser tab identity and verified playlist metadata, not an arbitrary page-provided URL.
+- [ ] **LT8 — Optional timestamp references:** offer a user-controlled option to attach the current playback position as a timestamped YouTube link on Save. Keep canonical source links even when timestamp is unavailable/off; allow distinct timestamp references to the same video without duplicating the primary source link. Do not infer watch completion from playback position.
+- [ ] **LT9 — Flexible daily schedule:** carry forward unfinished lessons into the next study block without resetting saved completion; keep daily goals editable, show actual daily completion only when date-aware progress exists, distinguish calendar plan from current study block and avoid double counting.
+- [ ] **LT10 — End-to-end acceptance:** verify logged-in and logged-out YouTube playback with connected Oge, new and legacy tracks, count detection/refresh/reorder, quota/cache fallback, same-tab navigation, complete/undo sync, topic and subject mapping, first Save/append/source dedup/timestamps, both supported Notes storage modes, keyboard isolation, responsive extension UI and error/retry handling. Run regression tests/CI, resolve or separately document existing failures, and keep merge/deploy decisions separate from implementation.
+
+### Deliberately removed or simplified
+
+- No automatic watch-history detection or completion based on playback percentages; completion stays explicit.
+- No mandatory Gemini grouping, mass creation of empty Notes, separate playlist Notes storage system, or automatic manipulation of manually pinned Notes.
+- No API-key-free scraping/discovery or dedicated quota dashboard at this stage; server-side key, compliant cache and basic logs are sufficient.
+
+### Completion reporting
+
+Report implemented vs tested separately after each milestone, include the commit/PR, remaining blockers, and switch/pull instructions when relevant. The ten remaining milestones above are the active work queue; do not treat previous implementation percentages as production readiness.
+
+### LT1 implementation checkpoint
+
+- Explicit completion and undo from current tracked video; server verifies playlist membership and owner, reuses video-ID progress, and confirms save before same-tab advance. Duplicate completion is idempotent. Undo applies to the currently open video; navigate back to undo a previous lesson. Regression tests added, CI/live verification pending. Existing five-discoveries/hour limit still applies until LT2.
+
+### LT2 implementation checkpoint (partial; acceptance pending)
+
+- Shared per-playlist MongoDB metadata cache: one-hour freshness, 24-hour TTL, in-process concurrent request coalescing, five actual discovery attempts per owner/hour, bounded fallback for transient provider failures and quota. Website Refresh lessons requests fresh metadata; extension creation/navigation/completion share the cache. No audiovisual data stored. Completion updates detected total without discarding previous IDs.
+- Pending: explicit extension playlist refresh and stale-data indicator, cross-instance request coalescing, reconciliation of existing totals independent of completion, CI/live tests and review of overall YouTube data retention/visibility compliance. LT2 remains unchecked until these are addressed. Policy reference: https://developers.google.com/youtube/terms/developer-policies (III.E.4).
+
+### LT2 refresh checkpoint
+
+- Added explicit per-track Refresh playlist in extension and website refresh mutation; fresh counts reconcile with existing tracks through owner-scoped updates without deleting completed IDs. Stale fallback does not overwrite stored totals. Extension shows stale notices on refresh and non-navigation outcomes.
+- Ambiguous provider access denial no longer returns stale metadata; distinguish actual quota errors in subsequent work. Cross-instance cache coalescing, precise provider quota classification, compliance review and CI/live acceptance remain pending; LT2 remains partial.
+
+### LT2 coordination checkpoint
+
+- Added MongoDB per-playlist refresh leases (120-second expiry), bounded polling for concurrent refreshes, TTL cleanup and owner-independent cache reuse. Recognized YouTube quota/rate-limit reasons permit bounded fallback; access denial invalidates cached metadata. Tests added for quota classification and competing lease. Implementation awaits CI, real concurrent MongoDB verification and provider-policy review; do not claim production readiness.
+
+### LT3 subject mapping checkpoint (partial)
+
+- Optional subject slug on track creation via website and extension; owner-scoped subject existence validation and revision-checked reassignment/unassignment on website. Existing tracks remain unassigned; multiple tracks can share a subject. Website track filtering by subject and extension subject label added. Missing subjects display as unassigned; no Notes are moved or created.
+- Pending: playlist grouping/filter on actual Notes pages, extension reassignment if useful, integration testing and verification of both storage modes. LT3 remains unchecked.
+
+### LT3 Notes workspace checkpoint
+
+- Shared Notes interface (regular and Vault) shows a compact Playlists section for the selected subject when tracks are assigned; each entry opens the associated track in the subject-filtered Learning Tracks page. Existing Notes remain unchanged and global Notes search is unaffected. Empty or disabled tracks do not add a section.
+- Subject-to-playlist mapping implementation is in place. Actual per-playlist Note filtering requires the contextual Note associations planned for LT5–LT7; no existing staging-only Note link gates were bypassed. Acceptance in both storage modes and CI remain pending.
+
+### LT4 manual topic grouping checkpoint
+
+- Added stable per-track topic IDs and video-ID assignments, editable topic names, merging, splitting by reassigning selected lessons, and ungrouping. Ungrouped lessons fall back to their own title and video ID. Website topic editor appears after discovery; saves validate selected IDs against current playlist metadata and preserve progress/subject settings. No Notes are created or moved. Tests added; CI/live acceptance pending. Optional Gemini assistance deferred until provider policy review; manual workflow is usable without AI. Future Note creation must retain associations when topic grouping changes, rather than silently moving or deleting existing Notes.
+
+### LT5 on-demand creation checkpoint (partial)
+
+- Added explicit Save lesson Note action for current tracked video with assigned subject. Resolves topic or individual title from discovered metadata, derives stable owner/track/subject/topic Note identity, writes only nonempty content via existing Vault create handler or legacy owner transaction. Existing topic Note is detected rather than overwritten or duplicated; text is retained for manual append using the existing picker. No permanent MongoDB Note body for Vault users. Topic/subject changes do not move existing Notes. Remaining: direct contextual append and selection, mapping/filter integration, retry/revision edge cases, CI/live acceptance. Source links and timestamps remain LT7/LT8.
+
+### LT5/LT6 contextual save checkpoint
+
+- Added read-only current lesson destination lookup and explicit Lesson Note shortcut from Tracks to Quick note. Save label reflects new or existing topic Note. Subsequent captures reuse existing owner-scoped append API with expected Note revision; mismatched video, subject or topic requires reopening destination. Editor text retained on error; no automatic append retry after unknown outcome. Context is explicitly selected via shortcut, not yet automatically selected on every video navigation. Source links/timestamps and playlist Note filters remain pending. Tests/CI/live acceptance pending.
+
+### LT6 automatic current lesson destination checkpoint
+
+- Quick Note automatically resolves an assigned track and current lesson when opened and on YouTube navigation. Contextual Save/Append is the default; explicit manual destination override remains available. Unsaved text from a previous lesson blocks automatic retargeting until the user chooses a destination. Successful contextual Save retains the returned Note revision for further appends. No automatic retry of uncertain writes. Regression source checks added; browser/CI validation, playlist Note filter, source links and timestamps remain pending.
+
+### LT7 source reference checkpoint
+
+- Contextual lesson saves now embed a Markdown source title and canonical YouTube watch URL in the Note body for both storage modes. Each capture includes a lesson heading; existing source video IDs are recognized across canonical, short and playlist URL forms so repeated captures do not insert duplicate primary links. Different lessons sharing a topic add distinct references. Existing content is preserved by the revision-aware append path. Tests added; no bulk migration of old Notes and manual override saves do not automatically add references. Timestamp support and playlist Note filtering remain pending; CI/browser acceptance pending.
+
+### LT8 timestamp reference checkpoint
+
+- Optional default-off Attach current video timestamp control in contextual Quick Note. Capture reads current main HTML5 player time on explicit Save; ads, missing/invalid players and live/infinite duration fall back to canonical source. Browser preserves attempted timestamp for unchanged retries. Server validates numeric range, floors seconds, formats portable Markdown timestamp links and avoids repeating identical generated timestamp links. Different positions may coexist for the same video. Timestamp is not evidence of completion. Tests added, CI/live acceptance pending.
+
+### LT9 flexible daily schedule checkpoint
+
+- Added explicit completion timestamps for new video-ID progress on website and extension, preserving dates on repeat completion and removing date on undo; legacy migrated completions remain undated. Flexible plan groups unique unfinished video IDs from local today (or future start date), subtracts actual dated completions from today's goal and carries remaining lessons forward without resetting progress. Website distinguishes original calendar plan and study block from flexible daily plan. Daily counts reflect current saved completions, not viewing history. Device-local date is used rather than a fixed account timezone. Tests added; CI/live verification and deferred playlist Note filtering remain pending.
+
+### LT10 playlist Note filtering checkpoint
+
+- Successful contextual creates and appends register owner/track/subject/storage Note IDs only, not content. Shared Notes workspace offers playlist filters alongside All Notes; Vault pagination remains available. Associations survive topic edits because captured identities are retained. Older captures are registered when subsequently saved; no bulk backfill yet. If association persistence fails after confirmed content save, the save remains successful and association can be retried on a subsequent save. CI and live provider acceptance pending.
+
+### LT10 CI lint checkpoint
+
+- Run 45458339649 passed Chromium desktop/mobile smoke, MongoDB replica-set integration and secret scan; validation stopped at ESLint before unit tests/build. Fixed synchronous subject-filter state update inside effect and unescaped apostrophe in the flexible plan UI. No lint rules disabled. Awaiting new CI results.
+
+### LT10 regression and routing checkpoint
+
+- CI 45458786082 passed lint and three independent jobs; unit failures exposed outdated isolated extension fixture state, hidden Tracks markup expectation, new legacy content route audit and pre-existing M67 evidence failure. Updated fixture dependencies without removing assertions, registered guarded legacy capture path, and allowed bearer-authenticated learning-note route through proxy (route independently validates token). Removed incorrect current-count ceiling on historical completion IDs; website completion checks discovered membership, extension uses existing membership check. Historical 500-ID cap remains. CI verification pending; M67 baseline not changed.
+
+### LT10 final baseline regression checkpoint
+
+- CI run 45460403517: lint passed, secret scan, MongoDB replica-set and Chromium smoke passed. Unit suite 1145 total: 1071 passed, 73 skipped, 1 failed (pre-existing M67 CLI fixture). Its fixed November 16 timestamp expired against the CLI's real seven-day freshness window. Updated only synthetic CLI fixtures to use current time, preserving deterministic pure-validator tests and adding explicit expired-evidence rejection. No production validation or security policy changed. New CI/build and live YouTube/Vault acceptance remain pending.
+
+### LT10 extension Tracks visual polish
+
+- Scoped floating Tracks UI styles to the Tracks panel. Added light/dark theme tokens, compact playlist cards, current-playlist emphasis, responsive action grids, distinct Complete & Next and Lesson Note actions, readable creation form and empty state. Retained existing actions, API messages, drag/resize behavior and Quick Note/My Links styling. Avoided a percentage bar because historical completed IDs may include removed lessons. Previous commit 3e526b7 had all four CI jobs green; this visual change requires new CI and browser inspection.

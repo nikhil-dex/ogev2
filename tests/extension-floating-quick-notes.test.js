@@ -17,7 +17,7 @@ test('floating toolbelt is injected on websites and retains old Quick Note behav
     assert.ok(script.includes(phrase), phrase);
   }
   assert.match(script, /textarea maxlength="20000"/);
-  assert.match(script, /shadow\.activeElement !== note/);
+  assert.match(script, /const focused = shadow\.activeElement/);
   assert.match(worker, /sender\.id !== chrome\.runtime\.id/);
   assert.match(worker, /sender\.tab\?\.id/);
   assert.match(worker, /chrome\.permissions\.contains/);
@@ -53,4 +53,27 @@ test('new extension retains existing popup toolbelt and profile links', async ()
   assert.match(popup, /id="toolSave"/);
   assert.match(popup, /id="toolLinks"/);
   assert.match(popup, /id="toolConnect"/);
+});
+
+test('widget keyboard guard protects Track inputs and other controls without cancelling native defaults', async () => {
+  const script = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
+  const source = script.match(/const stopPageShortcutsWhileTyping = \(event\) => \{[\s\S]*?\n  \};/)[0];
+  const shadow = { activeElement: null };
+  let hidden = false;
+  const panel = { classList: { contains: () => hidden } };
+  const guard = new Function('panel', 'shadow', source + '; return stopPageShortcutsWhileTyping;')(panel, shadow);
+  for (const tag of ['textarea', 'input', 'select', 'button']) {
+    shadow.activeElement = { matches: selector => selector.split(', ').includes(tag) };
+    for (const key of [' ', 'm', 'k', 'ArrowLeft', 'Tab']) {
+      let stopped = 0;
+      guard({ key, stopPropagation: () => stopped++, stopImmediatePropagation: () => stopped++, preventDefault: () => assert.fail('native default cancelled') });
+      assert.equal(stopped, 2);
+    }
+  }
+  for (const state of [{ hidden: true, focused: { matches: () => true } }, { hidden: false, focused: null }, { hidden: false, focused: { matches: () => false } }]) {
+    hidden = state.hidden;
+    shadow.activeElement = state.focused;
+    guard({ stopPropagation: () => assert.fail('outside widget blocked'), stopImmediatePropagation: () => assert.fail('outside widget blocked') });
+  }
+  assert.match(script, /window\.addEventListener\(name, stopPageShortcutsWhileTyping, true\)/);
 });

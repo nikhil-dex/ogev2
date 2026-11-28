@@ -60,6 +60,10 @@ function simulateFloatingSave({
   const ctx = {
     noteSave, noteNewCapture, note, subjectSelect, vaultReady,
     noteSelect: { value: '' }, listedNotes: new Map(), loadNotes: async () => {},
+    lessonDestination: null, lessonLookupBusy: false, lessonLookupFailed: false,
+    manualLessonDestination: false, pickerBusy: false,
+    lessonContext: {}, timestampControl: { style: {} }, timestampToggle: {}, manualDestination: {}, autoDestination: {},
+    chooseManualDestination() {},
     savingCapture: false,
     pendingVaultCapture: null,
     pendingSavedUpdate: null,

@@ -80,10 +80,61 @@ test('M98 server-only credentials, authenticated owner scope, default-off previe
   assert.match(route, /OGE_LEARNING_TRACKS_PREVIEW/);
   assert.match(route, /session\.user\.id/);
   assert.match(route, /ownerId: session\.user\.id/);
-  assert.match(route, /scope: 'learning-track-discover'/);
+  assert.match(route, /cachedPublicPlaylist/);
   assert.match(route, /OGE_YOUTUBE_DATA_API_KEY/);
   assert.doesNotMatch(route + pageSource, /collection\(['"]notes['"]\)/);
   assert.doesNotMatch(pageSource, /OGE_YOUTUBE_DATA_API_KEY/);
   assert.match(env, /OGE_YOUTUBE_DATA_API_KEY=/);
   assert.match(pageSource, /Discover lessons/);
+});
+
+test('LT2 shared cache reuses fresh metadata and expires stale fallback', async () => {
+  const { cachedPublicPlaylist, PLAYLIST_RETENTION_MS } = await import('../lib/youtube-playlist-cache.js');
+  let stored, calls = 0, time = 100000000;
+  const db = { databaseName: 'cache-test', collection: name => name === 'youtubePlaylistLeases' ? { updateOne: async () => {}, findOne: async () => ({}), deleteOne: async () => {} } : ({
+    findOne: async () => stored && stored.expiresAt > new Date(time) ? stored : null,
+    updateOne: async (_, update) => { stored = update.$set; },
+    deleteOne: async () => { stored = null; },
+  }) };
+  const opts = { now: () => time, throttle: async () => ({ allowed: true }), discover: async () => {
+    calls++; return { videos: [{ videoId: 'abc12345678' }], totalVideos: 1 };
+  }};
+  const first = await cachedPublicPlaylist(db, id, 'owner-a', opts);
+  assert.equal(first.cached, false);
+  assert.equal((await cachedPublicPlaylist(db, id, 'owner-b', opts)).cached, true);
+  assert.equal(calls, 1);
+  const fallback = await cachedPublicPlaylist(db, id, 'owner-b', { ...opts, refresh: true,
+    discover: async () => { throw new PlaylistDiscoveryError('quota', 503, 'quota'); } });
+  assert.equal(fallback.stale, true);
+  time += PLAYLIST_RETENTION_MS + 1;
+  await assert.rejects(cachedPublicPlaylist(db, id, 'owner-a', { ...opts,
+    discover: async () => { throw new PlaylistDiscoveryError('quota', 503, 'quota'); } }), PlaylistDiscoveryError);
+});
+
+test('LT2 refresh is explicit and preserves completion history', async () => {
+  const web = await readFile(new URL('../app/api/learning-tracks/discover/route.js', import.meta.url), 'utf8');
+  const extension = await readFile(new URL('../app/api/extension/learning-track/route.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../extension/service-worker.js', import.meta.url), 'utf8');
+  for (const source of [web, extension]) {
+    assert.ok(source.includes('snapshot.stale ? current.totalVideos : snapshot.totalVideos'));
+    assert.ok(source.includes('$set: { totalVideos: count, updatedAt }'));
+  }
+  assert.ok(worker.includes('REFRESH_TRACK_PLAYLIST'));
+});
+
+test('LT2 distinguishes provider quota from access denial', async () => {
+  for (const [reason, status, expected] of [['quotaExceeded', 403, 'quota'], ['playlistItemsNotAccessible', 403, 'denied'], ['forbidden', 403, 'denied']]) {
+    await assert.rejects(discoverPublicPlaylist(id, apiKey, async () => ({ ok: false, status,
+      json: async () => ({ error: { errors: [{ reason }] } }) })),
+      error => error instanceof PlaylistDiscoveryError && error.reason === expected);
+  }
+});
+test('LT2 another instance holding a refresh lease prevents duplicate provider requests', async () => {
+  const { cachedPublicPlaylist } = await import('../lib/youtube-playlist-cache.js');
+  const db = { databaseName: 'lease-test', collection: name => name === 'youtubePlaylistLeases' ? {
+    updateOne: async () => { throw Object.assign(new Error('duplicate'), { code: 11000 }); },
+  } : { findOne: async () => null } };
+  await assert.rejects(cachedPublicPlaylist(db, id, 'owner-a', {
+    wait: async () => {}, discover: async () => assert.fail('duplicate provider request'),
+  }), error => error.status === 409);
 });

@@ -1,8 +1,6 @@
 (() => {
-  // Learning Tracks remains an unfinished prototype. Keep it out of the
-  // user-facing extension until the feature's roadmap work is resumed.
-  // The separate, server-gated prototype is deliberately retained.
-  const LEARNING_TRACKS_EXTENSION_PREVIEW = false;
+  // Render the Tracks controls only after the connected server accepts the list request.
+  const LEARNING_TRACKS_EXTENSION_PREVIEW = true;
   if (window.top !== window || document.getElementById('oge-floating-toolbelt-host')) return;
   const host = document.createElement('div');
   host.id = 'oge-floating-toolbelt-host';
@@ -23,7 +21,8 @@
     '.primary{display:block;width:100%;margin-top:9px;padding:9px;border:0;border-radius:8px;background:#316b50;color:white;font-size:11px;font-weight:750;cursor:pointer}.primary:hover{background:#23563d}',
     '.body [data-open-saved-vault-note],.body [data-new-vault-note]{display:block;width:100%;margin-top:6px;padding:8px;border:1px solid #b6d8bf;border-radius:8px;background:#e9f5ec;color:#245b38;font-size:11px;cursor:pointer}.body [data-open-saved-vault-note][hidden],.body [data-new-vault-note][hidden]{display:none}',
     'button:disabled{opacity:.65;cursor:wait}.status{min-height:0;margin:0 12px;color:#316b50;font-size:10px;overflow-wrap:anywhere}.status:not(:empty){padding:6px 0}.error{color:#b42318}',
-    '.belt{display:grid;grid-template-columns:repeat(' + (LEARNING_TRACKS_EXTENSION_PREVIEW ? 3 : 2) + ',1fr);gap:5px;padding:7px 10px;border-top:1px solid #e7eee8;background:#fafcfb}',
+    '.belt{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;padding:7px 10px;border-top:1px solid #e7eee8;background:#fafcfb}',
+    '.belt.tracks-enabled{grid-template-columns:repeat(3,1fr)}.belt button[hidden]{display:none}',
     '.belt button{padding:7px 2px;border:1px solid transparent;border-radius:7px;background:transparent;color:#52685a;font-size:10px;font-weight:600;cursor:pointer}',
     '.belt button.selected{border-color:#b6d8bf;background:#e5f3e9;color:#275d39}',
     '.link{display:grid;gap:8px;padding:9px 0;border-bottom:1px solid #e4eee6}.link:last-child{border:0}.link strong{font-size:12px}',
@@ -44,6 +43,35 @@
     ':host([data-oge-theme="dark"]) .corner-button{color:#a2afa7;border-color:#3b4d40}'+
     ':host([data-oge-theme="dark"]) .corner-button:hover{background:#293c30;color:#e4ebe6}',
     '.note-more{display:block;margin:7px 0 0 auto;padding:6px 9px;border:1px solid #b6d8bf;border-radius:7px;background:#e9f5ec;color:#245b38;font-size:11px;cursor:pointer}.note-more[hidden],[data-existing-note-picker][hidden]{display:none}.note-more:hover{background:#dcefe0}:host([data-oge-theme="dark"]) .note-more{background:#293c30;color:#a9d3b8;border-color:#44654d}.track-input{width:100%;padding:8px;margin:5px 0 8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}.empty{font-size:11px;color:#637568}.subject-label{display:block;margin:8px 0 4px;font-size:10px;font-weight:700;color:#546d5b}.subject-select{display:block;width:100%;padding:8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}:focus-visible{outline:2px solid #40795e;outline-offset:2px}',
+    '[data-panel="tracks"]{--track-bg:#f7faf7;--track-card:#fff;--track-border:#dbe5de;--track-muted:#637568;--track-accent:#316b50;--track-soft:#e9f5ec;--track-on-accent:#fff;padding:12px;min-width:0}',
+    ':host([data-oge-theme="dark"]) [data-panel="tracks"]{--track-bg:#202b24;--track-card:#1c261f;--track-border:#3b4d40;--track-muted:#a2afa7;--track-accent:#a9d3b8;--track-soft:#293c30;--track-on-accent:#15251b}',
+    '[data-panel="tracks"] .track-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}',
+    '[data-panel="tracks"] .track-section-head h2{margin:0;font-size:13px;font-weight:750;letter-spacing:-.02em}',
+    '[data-panel="tracks"] .track-kicker{display:block;color:var(--track-muted);font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin:0 0 2px}',
+    '[data-panel="tracks"] [data-refresh-tracks]{margin:0;flex-shrink:0}',
+    '[data-panel="tracks"] [data-track-list]{display:grid;gap:9px}',
+    '[data-panel="tracks"] .track-card{display:grid;gap:9px;padding:11px;border:1px solid var(--track-border);border-radius:10px;background:var(--track-card);min-width:0}',
+    '[data-panel="tracks"] .track-card.is-current{border-color:var(--track-accent)}',
+    '[data-panel="tracks"] .track-card-title{font-size:12px;line-height:1.4;font-weight:750;overflow-wrap:anywhere}',
+    '[data-panel="tracks"] .track-subject{display:block;color:var(--track-muted);font-size:10px;overflow-wrap:anywhere}',
+    '[data-panel="tracks"] .track-current-label{font-size:9px;font-weight:700;color:var(--track-accent);letter-spacing:.06em;text-transform:uppercase}',
+    '[data-panel="tracks"] .track-progress{display:grid;gap:5px;padding:8px;border-radius:7px;background:var(--track-bg)}',
+    '[data-panel="tracks"] .track-progress-text{font-size:10px;color:var(--track-muted);overflow-wrap:anywhere}',
+    '[data-panel="tracks"] .track-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));gap:6px}',
+    '[data-panel="tracks"] .track-actions button,[data-panel="tracks"] [data-open-learning-tracks]{min-width:0;min-height:32px;padding:7px 5px;border:1px solid var(--track-border);border-radius:7px;background:var(--track-card);color:inherit;font-size:10px;font-weight:650;line-height:1.35;white-space:normal;overflow-wrap:anywhere;cursor:pointer}',
+    '[data-panel="tracks"] .track-actions button:hover:not(:disabled),[data-panel="tracks"] [data-open-learning-tracks]:hover{background:var(--track-soft);border-color:var(--track-accent);color:var(--track-accent)}',
+    '[data-panel="tracks"] .track-actions .track-complete{grid-column:1/-1;background:var(--track-accent);border-color:var(--track-accent);color:var(--track-on-accent);font-weight:750}',
+    '[data-panel="tracks"] .track-actions .track-complete:hover:not(:disabled){background:var(--track-accent);color:var(--track-on-accent);filter:brightness(.93)}',
+    '[data-panel="tracks"] .track-actions .track-note{grid-column:1/-1;background:var(--track-soft);color:var(--track-accent)}',
+    '[data-panel="tracks"] .track-empty{padding:13px 10px;text-align:center;border:1px dashed var(--track-border);border-radius:9px;background:var(--track-bg);color:var(--track-muted);margin:0;font-size:11px}',
+    '[data-panel="tracks"] .track-create{margin-top:12px;padding:11px;border:1px solid var(--track-border);border-radius:10px;background:var(--track-bg)}',
+    '[data-panel="tracks"] .track-create h3{margin:0 0 5px;font-size:12px;font-weight:750}',
+    '[data-panel="tracks"] .track-create .hint{color:var(--track-muted);margin:5px 0 8px}',
+    '[data-panel="tracks"] .track-input,[data-panel="tracks"] [data-track-subject]{display:block;width:100%;min-width:0;margin:4px 0 0;padding:8px;border:1px solid var(--track-border);border-radius:7px;background:var(--track-card);color:inherit;font-size:11px}',
+    '[data-panel="tracks"] .track-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,105px),1fr));gap:8px}',
+    '[data-panel="tracks"] .track-create .subject-label{min-width:0;margin:7px 0 0}',
+    '[data-panel="tracks"] [data-open-learning-tracks]{display:block;width:100%;margin-top:9px;background:transparent;color:var(--track-accent)}',
+    '[data-panel="tracks"] button:focus-visible,[data-panel="tracks"] input:focus-visible,[data-panel="tracks"] select:focus-visible{outline:2px solid var(--track-accent);outline-offset:2px}',
   ].join('');
   const panel = document.createElement('section');
   panel.className = 'panel hidden';
@@ -51,13 +79,13 @@
   // HTML is static extension-owned markup; user content uses textContent.
   panel.innerHTML = [
     '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
-    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
+    '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><label class="subject-label" data-lesson-timestamp hidden><input type="checkbox" data-attach-timestamp> Attach current video timestamp</label><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
-    '<div class="body" data-panel="tracks" hidden><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Total videos (optional)<input class="track-input" data-track-total type="number" min="1" max="10000" placeholder="Unknown"></label><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
+    '<div class="body" data-panel="tracks" hidden><div class="track-section-head"><div><span class="track-kicker">Learning</span><h2>Your tracks</h2></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button></div><div data-track-list aria-live="polite"></div><section class="track-create"><span class="track-kicker">New playlist</span><h3>Create a track</h3><p class="hint">Open a YouTube playlist or a video inside one.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><div class="track-fields"><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Notes subject<select data-track-subject><option value="">Unassigned</option></select></label></div><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button></section><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge ↗</button></div>',
     ] : []),
     '<p class="status" role="status" aria-live="polite"></p>',
-    '<nav class="belt" aria-label="OgeNotes tools"><button class="selected" data-tool="note" type="button">✎ Quick note</button><button data-tool="links" type="button">☷ My links</button>' + (LEARNING_TRACKS_EXTENSION_PREVIEW ? '<button data-tool="tracks" type="button">▷ Tracks</button>' : '') + '</nav>',
+    '<nav class="belt" aria-label="OgeNotes tools"><button class="selected" data-tool="note" type="button">✎ Quick note</button><button data-tool="links" type="button">☷ My links</button>' + (LEARNING_TRACKS_EXTENSION_PREVIEW ? '<button data-tool="tracks" type="button" hidden>▷ Tracks</button>' : '') + '</nav>',
     '<button class="resize-corner resize-corner-left" type="button" aria-label="Resize widget from left corner" title="Drag left or down to resize">↙</button>',
     '<button class="resize-corner" type="button" aria-label="Resize widget width and height" title="Drag to resize width and height">↘</button>',
   ].join('');
@@ -117,8 +145,9 @@
       button.classList.toggle('selected', button.dataset.tool === tool);
     }
     setStatus('');
-    if (tool === 'note') { note.focus(); void loadSubjects(); }
+    if (tool === 'note') { note.focus(); void loadSubjects(); void syncLessonDestination(); }
     if (tool === 'links') void loadLinks();
+    if (tool === 'tracks') void loadTracks();
   }
   // The fixed panel overlays the launcher footprint; no reserved 54px gap.
   const GAP = 8;
@@ -204,7 +233,8 @@
     wake();
     if (open) {
       positionPanel();
-      if (active === 'note') { note.focus(); void loadSubjects(); }
+      void loadTracks();
+      if (active === 'note') { note.focus(); void loadSubjects(); void syncLessonDestination(); }
     }
   }
   let launcherDrag = null;
@@ -252,9 +282,11 @@
   panel.querySelectorAll('[data-tool]').forEach((button) => {
     button.addEventListener('click', () => setPanel(button.dataset.tool));
   });
-  // Preserve the original page-shortcut protection while typing notes.
+  // Keep website keyboard shortcuts away from focused widget form controls.
+  // Do not preventDefault: native typing, selection and Tab navigation remain available.
   const stopPageShortcutsWhileTyping = (event) => {
-    if (panel.classList.contains('hidden') || shadow.activeElement !== note) return;
+    const focused = shadow.activeElement;
+    if (panel.classList.contains('hidden') || !focused?.matches('textarea, input, select, button, [contenteditable="true"]')) return;
     event.stopPropagation();
     event.stopImmediatePropagation();
   };
@@ -434,12 +466,123 @@
     }
   }
   noteSelect.addEventListener('change', () => {
+    chooseManualDestination();
     pendingSavedUpdate = null;
     pendingVaultCapture = null;
     updateNoteButton();
   });
   noteMore.addEventListener('click', () => { if (!pickerBusy) void loadNotes(false); });
+  let lessonDestination = null;
+  let lessonLookupVersion = 0;
+  let lessonLookupBusy = false;
+  let lessonLookupFailed = false;
+  let manualLessonDestination = false;
+  let lessonPageKey = '';
+  let draftLessonKey = '';
+  const lessonContext = panel.querySelector('[data-lesson-context]');
+  const timestampControl = panel.querySelector('[data-lesson-timestamp]');
+  const timestampToggle = panel.querySelector('[data-attach-timestamp]');
+  let pendingLessonTimestamp = null;
+  function capturePlaybackSeconds() {
+    const player = document.querySelector('#movie_player video.html5-main-video');
+    if (!player || !Number.isFinite(player.currentTime) || player.currentTime < 0 || player.currentTime > 864000 || !Number.isFinite(player.duration) || document.querySelector('#movie_player.ad-showing')) return null;
+    return Math.floor(player.currentTime);
+  }
+  const manualDestination = panel.querySelector('[data-manual-destination]');
+  const autoDestination = panel.querySelector('[data-auto-destination]');
+  function currentLessonKey() {
+    const url = new URL(location.href);
+    if (!['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com'].includes(url.hostname) || url.pathname !== '/watch') return '';
+    const video = url.searchParams.get('v') || '';
+    const playlist = url.searchParams.get('list') || '';
+    return /^[A-Za-z0-9_-]{11}$/.test(video) && /^[A-Za-z0-9_-]{10,120}$/.test(playlist) ? playlist + ':' + video : '';
+  }
+  function chooseManualDestination() {
+    ++lessonLookupVersion;
+    lessonLookupBusy = false;
+    lessonLookupFailed = false;
+    lessonDestination = null;
+    manualLessonDestination = true;
+    draftLessonKey = '';
+    updateNoteButton();
+  }
+  async function syncLessonDestination() {
+    const key = currentLessonKey();
+    if (lessonPageKey !== key) {
+      lessonPageKey = key;
+      manualLessonDestination = false;
+      lessonDestination = null;
+    }
+    if (manualLessonDestination || savingCapture) return;
+    const version = ++lessonLookupVersion;
+    lessonLookupFailed = false;
+    lessonDestination = null;
+    if (!key) { lessonLookupBusy = false; lessonLookupFailed = Boolean(note.value.trim() && draftLessonKey); updateNoteButton(); return; }
+    if (note.value.trim() && draftLessonKey && draftLessonKey !== key) {
+      lessonLookupBusy = false;
+      lessonLookupFailed = true;
+      updateNoteButton();
+      return;
+    }
+    lessonLookupBusy = true;
+    updateNoteButton();
+    try {
+      const result = await send('LIST_LEARNING_TRACKS');
+      if (version !== lessonLookupVersion || currentLessonKey() !== key) return;
+      const track = (result.tracks || []).find(item => item.playlistId === key.split(':')[0] && item.subjectSlug);
+      if (!track) return;
+      const destination = await send('LOOKUP_LESSON_NOTE', { id: track.id });
+      if (version !== lessonLookupVersion || currentLessonKey() !== key) return;
+      lessonDestination = { ...destination, trackId: track.id };
+      if (note.value.trim() && !draftLessonKey) draftLessonKey = key;
+    } catch {
+      if (version === lessonLookupVersion) lessonLookupFailed = true;
+    } finally {
+      if (version === lessonLookupVersion) {
+        lessonLookupBusy = false;
+        updateNoteButton();
+      }
+    }
+  }
+  manualDestination.addEventListener('click', chooseManualDestination);
+  autoDestination.addEventListener('click', () => {
+    if (note.value.trim() && draftLessonKey && draftLessonKey !== currentLessonKey()) {
+      if (!window.confirm('Use this unsaved text for the currently playing lesson?')) return;
+    }
+    draftLessonKey = currentLessonKey();
+    manualLessonDestination = false;
+    void syncLessonDestination();
+  });
+  note.addEventListener('input', () => {
+    if (!note.value.trim()) draftLessonKey = '';
+    else if (!draftLessonKey && !manualLessonDestination) draftLessonKey = currentLessonKey();
+  });
+  function onLessonNavigation() {
+    if (currentLessonKey() !== lessonPageKey) void syncLessonDestination();
+  }
+  document.addEventListener('yt-navigate-finish', onLessonNavigation);
+  window.addEventListener('popstate', onLessonNavigation);
   function updateNoteButton() {
+    const contextual = Boolean(lessonDestination || lessonLookupBusy || lessonLookupFailed);
+    lessonContext.hidden = !contextual;
+    timestampControl.hidden = !lessonDestination;
+    timestampControl.style.display = lessonDestination ? '' : 'none';
+    timestampToggle.disabled = savingCapture || lessonLookupBusy;
+    manualDestination.hidden = !contextual;
+    autoDestination.hidden = !manualLessonDestination && !lessonLookupFailed;
+    subjectSelect.disabled = contextual;
+    noteSelect.disabled = contextual || pickerBusy;
+    noteSave.disabled = savingCapture || lessonLookupBusy || lessonLookupFailed || (!lessonDestination && vaultReady === null);
+    if (lessonLookupBusy || lessonLookupFailed) {
+      lessonContext.textContent = lessonLookupBusy ? 'Finding current lesson Note…' : 'Lesson destination unavailable or unsaved text belongs to a previous video. Choose a destination explicitly.';
+      noteSave.textContent = 'Choose Note destination';
+      return;
+    }
+    if (lessonDestination) lessonContext.textContent = 'Current lesson Note · ' + lessonDestination.subject + ' / ' + lessonDestination.title;
+    if (lessonDestination) {
+      noteSave.textContent = (lessonDestination.existing ? 'Append to ' : 'Save to ') + lessonDestination.title;
+      return;
+    }
     const selected = listedNotes.get(noteSelect.value);
     const continuing = !selected && vaultReady === true && pendingSavedUpdate &&
       pendingSavedUpdate.subjectSlug === subjectSelect.value;
@@ -452,6 +595,7 @@
         : subjectSelect.value ? 'Save to selected subject →' : 'Save to Quick Notes';
   }
   subjectSelect.addEventListener('change', () => {
+    chooseManualDestination();
     pendingSavedUpdate = null;
     pendingVaultCapture = null;
     void loadNotes();
@@ -459,8 +603,29 @@
   });
 
   noteSave.addEventListener('click', async () => {
-    if (savingCapture) return;
+    if (savingCapture || lessonLookupBusy || lessonLookupFailed) return;
     if (!note.value.trim()) return setStatus('Write something before saving.', true);
+    if (lessonDestination) {
+      const target = lessonDestination;
+      const submitted = note.value;
+      const retryKey = JSON.stringify([target.trackId, target.videoId, target.version, submitted, timestampToggle.checked]);
+      if (pendingLessonTimestamp?.key !== retryKey) pendingLessonTimestamp = { key: retryKey, seconds: timestampToggle.checked ? capturePlaybackSeconds() : null };
+      const playbackSeconds = pendingLessonTimestamp.seconds;
+      const timestampUnavailable = timestampToggle.checked && playbackSeconds === null;
+      savingCapture = true; noteSave.disabled = true;
+      try {
+        const result = await send('CREATE_LESSON_NOTE', { id: target.trackId, content: submitted, expectedTopicKey: target.topicKey, expectedSubjectSlug: target.subjectSlug, expectedVideoId: target.videoId, expectedNoteId: target.id, expectedVersion: target.version, playbackSeconds });
+        if (result.confirmed !== true) throw new Error('Lesson Note Save was not confirmed.');
+        if (note.value === submitted) note.value = '';
+        if (lessonDestination === target) lessonDestination = { ...target, existing: true, id: result.id, title: result.title, version: result.version || result.sha };
+        if (!note.value.trim()) draftLessonKey = '';
+        pendingLessonTimestamp = null;
+        setStatus('Saved lesson Note “' + result.title + '”.' + (timestampUnavailable ? ' Playback time unavailable; video source saved.' : ''));
+        void loadNotes();
+      } catch (error) { setStatus(error.message + ' Your text remains in the editor. Reopen Lesson Note before retrying.', true); }
+      finally { savingCapture = false; updateNoteButton(); if (currentLessonKey() !== lessonPageKey) void syncLessonDestination(); }
+      return;
+    }
     if (vaultReady === null) return setStatus('Load your Oge Notes connection before saving.', true);
     // Snapshot exactly what this request intends to commit. The user can
     // keep typing while the network is slow; that newer text is NOT part
@@ -608,7 +773,155 @@
     } catch (error) { setStatus(error.message, true); }
     finally { urlSave.disabled = false; }
   });
+  let trackLoadVersion = 0;
+  async function loadTracks() {
+    const container = panel.querySelector('[data-track-list]');
+    const tab = panel.querySelector('[data-tool="tracks"]');
+    if (!container || !tab) return;
+    const version = ++trackLoadVersion;
+    try {
+      const result = await send('LIST_LEARNING_TRACKS');
+      if (version !== trackLoadVersion) return;
+      tab.hidden = false;
+      panel.querySelector('.belt').classList.add('tracks-enabled');
+      container.replaceChildren();
+      const tracks = Array.isArray(result.tracks) ? result.tracks : [];
+      const subjectPicker = panel.querySelector('[data-track-subject]');
+      let subjects = [];
+      try { const response = await send('GET_SUBJECTS'); subjects = Array.isArray(response.subjects) ? response.subjects : []; } catch { /* unassigned remains usable */ }
+      if (version !== trackLoadVersion) return;
+      const previous = subjectPicker.value;
+      subjectPicker.replaceChildren(new Option('Unassigned', ''));
+      for (const subject of subjects) subjectPicker.add(new Option(subject.name, subject.slug));
+      if (subjects.some(subject => subject.slug === previous)) subjectPicker.value = previous;
+      if (!tracks.length) {
+        const empty = document.createElement('p');
+        empty.className = 'track-empty';
+        empty.textContent = 'No learning tracks yet. Create your first track below.';
+        container.append(empty);
+      }
+      for (const track of tracks) {
+        const row = document.createElement('div');
+        row.className = 'track-card';
+        const source = new URL(location.href);
+        const current = source.pathname === '/watch' && source.searchParams.get('list') === track.playlistId;
+        if (current) {
+          row.classList.add('is-current');
+          const label = document.createElement('span');
+          label.className = 'track-current-label';
+          label.textContent = 'Current playlist';
+          row.append(label);
+        }
+        const title = document.createElement('strong');
+        title.className = 'track-card-title';
+        title.textContent = track.title;
+        const subjectLabel = document.createElement('span');
+        subjectLabel.className = 'track-subject';
+        subjectLabel.textContent = 'Subject: ' + (subjects.find(subject => subject.slug === track.subjectSlug)?.name || 'Unassigned');
+        const progressBox = document.createElement('div');
+        progressBox.className = 'track-progress';
+        const progress = document.createElement('span');
+        progress.className = 'track-progress-text';
+        progressBox.append(progress);
+        progress.textContent = track.completedVideos + (track.totalVideos == null ? '' : ' / ' + track.totalVideos) + ' completed · ' + track.videosPerDay + ' videos/day';
+        const actions = document.createElement('div');
+        actions.className = 'track-actions';
+        const watch = document.createElement('button');
+        watch.type = 'button';
+        watch.textContent = 'Watch next';
+        watch.addEventListener('click', async () => {
+          watch.disabled = true;
+          setStatus('Finding next lesson…');
+          try {
+            const result = await send('WATCH_NEXT_LESSON', { id: track.id });
+            if (version === trackLoadVersion && active === 'tracks') {
+              if (Number.isInteger(result.totalVideos))
+                progress.textContent = track.completedVideos + ' / ' + result.totalVideos + ' completed · ' + track.videosPerDay + ' videos/day';
+              setStatus((result.finished ? 'All current playlist lessons are complete.' : result.noLater ? 'No later unfinished lesson. Open Learning Tracks to review earlier lessons.' : 'Opened: ' + result.title) + (result.stale ? ' (Cached playlist; refresh unavailable.)' : ''));
+            }
+          } catch (error) {
+            if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
+          } finally { watch.disabled = false; }
+        });
+        const refresh = document.createElement('button');
+        refresh.type = 'button';
+        refresh.textContent = 'Refresh playlist';
+        refresh.addEventListener('click', async () => {
+          refresh.disabled = true;
+          setStatus('Refreshing playlist…');
+          try {
+            const result = await send('REFRESH_TRACK_PLAYLIST', { id: track.id });
+            if (version !== trackLoadVersion || active !== 'tracks') return;
+            progress.textContent = result.completedVideos + (result.totalVideos == null ? '' : ' / ' + result.totalVideos) + ' completed · ' + track.videosPerDay + ' videos/day';
+            setStatus(result.stale ? 'Refresh unavailable. Using previously retrieved playlist metadata.' : 'Playlist refreshed.');
+          } catch (error) {
+            if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
+          } finally { refresh.disabled = false; }
+        });
+        actions.append(watch, refresh);
+        if (current) {
+          const complete = document.createElement('button');
+          const undo = document.createElement('button');
+          complete.type = undo.type = 'button';
+          complete.className = 'track-complete';
+          complete.textContent = 'Complete & Next';
+          undo.textContent = 'Undo current';
+          const update = async (isUndo) => {
+            complete.disabled = undo.disabled = watch.disabled = refresh.disabled = true;
+            setStatus('Saving lesson progress…');
+            try {
+              const result = await send(isUndo ? 'UNDO_CURRENT_LESSON' : 'COMPLETE_NEXT_LESSON', { id: track.id });
+              if (version !== trackLoadVersion || active !== 'tracks') return;
+              progress.textContent = result.completedVideos + ' / ' + result.totalVideos + ' completed · ' + track.videosPerDay + ' videos/day';
+              setStatus((isUndo ? 'Current lesson marked unfinished.' : result.navigationFailed ? 'Progress saved; could not open next lesson.' : result.next ? 'Progress saved. Opening next lesson…' : result.hasUnfinished ? 'Progress saved. Earlier lessons remain.' : 'All current lessons complete.') + (result.stale ? ' (Cached playlist; refresh unavailable.)' : ''));
+            } catch (error) {
+              if (version === trackLoadVersion && active === 'tracks') setStatus(error.message, true);
+            } finally { complete.disabled = undo.disabled = watch.disabled = refresh.disabled = false; }
+          };
+          complete.addEventListener('click', () => void update(false));
+          undo.addEventListener('click', () => void update(true));
+          actions.append(complete, undo);
+          if (track.subjectSlug) {
+            const capture = document.createElement('button');
+            capture.type = 'button';
+            capture.className = 'track-note';
+            capture.textContent = 'Lesson Note';
+            capture.addEventListener('click', async () => {
+              if (savingCapture) return;
+              capture.disabled = true;
+              try {
+                const destination = await send('LOOKUP_LESSON_NOTE', { id: track.id });
+                if (version !== trackLoadVersion || active !== 'tracks') return;
+                ++lessonLookupVersion;
+                lessonLookupBusy = false;
+                lessonLookupFailed = false;
+                manualLessonDestination = false;
+                lessonPageKey = currentLessonKey();
+                if (note.value.trim() && draftLessonKey && draftLessonKey !== lessonPageKey && !window.confirm('Use this unsaved text for the current lesson?')) return;
+                draftLessonKey = note.value.trim() ? lessonPageKey : '';
+                lessonDestination = { ...destination, trackId: track.id };
+                setPanel('note');
+                updateNoteButton();
+                setStatus((destination.existing ? 'Append to ' : 'Save to ') + destination.title + ' · ' + destination.subject);
+              } catch (error) { setStatus(error.message, true); }
+              finally { capture.disabled = false; }
+            });
+            actions.append(capture);
+          }
+        }
+        row.append(title, subjectLabel, progressBox, actions);
+        container.append(row);
+      }
+    } catch {
+      if (version !== trackLoadVersion) return;
+      container.replaceChildren();
+      tab.hidden = true;
+      panel.querySelector('.belt').classList.remove('tracks-enabled');
+      if (active === 'tracks') setPanel('note');
+    }
+  }
   if (LEARNING_TRACKS_EXTENSION_PREVIEW) {
+    panel.querySelector('[data-refresh-tracks]').addEventListener('click', () => void loadTracks());
     panel.querySelector('[data-open-learning-tracks]').addEventListener('click', async () => {
       try { await send('OPEN_LEARNING_TRACKS'); setStatus('Opened Learning Tracks in Oge.'); }
       catch (error) { setStatus(error.message || 'Could not open Learning Tracks.'); }
@@ -617,17 +930,17 @@
     trackSave.addEventListener('click', async () => {
       const title = panel.querySelector('[data-track-title]').value.trim();
       const dailyRaw = panel.querySelector('[data-track-daily]').value;
-      const totalRaw = panel.querySelector('[data-track-total]').value;
-      if (!title || !dailyRaw || (totalRaw && !Number.isInteger(Number(totalRaw)))) {
+      if (!title || !dailyRaw) {
         return setStatus('Enter a title and valid video counts.', true);
       }
       trackSave.disabled = true;
-      setStatus('Adding playlist track…');
+      setStatus('Detecting playlist videos…');
       try {
         const result = await send('CREATE_LEARNING_TRACK', {
-          title, videosPerDay: Number(dailyRaw), totalVideos: totalRaw ? Number(totalRaw) : null,
+          title, videosPerDay: Number(dailyRaw), subjectSlug: panel.querySelector('[data-track-subject]').value,
         });
-        setStatus('Learning track created: “' + result.title + '”. See Learning Tracks in Oge.');
+        void loadTracks();
+        setStatus('Created “' + result.title + '” with ' + result.totalVideos + ' videos.');
       } catch (error) { setStatus(error.message || 'Could not create learning track.', true); }
       finally { trackSave.disabled = false; }
     });
