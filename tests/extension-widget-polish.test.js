@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 test('collapsed launcher supports direct dragging without triggering a click', async () => {
   const script = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
@@ -115,4 +116,57 @@ test('header one-tap position button cycles clockwise starting top right', async
   assert.match(script, /if \(snappedCorner\) placeSnappedCorner\(\)/);
   assert.match(script, /function placeLauncher\(x, y\) \{\s*snappedCorner = null/);
   assert.match(script, /cornerButton\.setAttribute\('aria-label', 'Move widget to ' \+ next \+ ' corner'\)/);
+});
+
+test('typing in focused widget resets idle clock before page shortcuts are stopped', async () => {
+  const script = await readFile(new URL('../extension/content.js', import.meta.url), 'utf8');
+  const idle = script.slice(script.indexOf('  let idleTimer;'), script.indexOf('  function openPanel(open)'));
+  const shortcuts = script.slice(script.indexOf('  const stopPageShortcutsWhileTyping ='), script.indexOf('  // Header movement'));
+  const listeners = new Map();
+  const shadowListeners = new Map();
+  let now = 0, nextId = 0, hidden = false;
+  const pending = new Map();
+  const host = { style: {} };
+  const shadow = { activeElement: { matches: () => true }, addEventListener: (name, fn) => {
+    const list = shadowListeners.get(name) || []; list.push(fn); shadowListeners.set(name, list);
+  } };
+  const context = { host, shadow, panel: { classList: { contains: () => hidden } },
+    window: { addEventListener: (name, fn, options) => {
+      const list = listeners.get(name) || []; list.push({ fn, capture: options === true }); listeners.set(name, list);
+    } },
+    document: { addEventListener() {}, hidden: false },
+    setTimeout: (fn, delay) => { const id = ++nextId; pending.set(id, { fn, at: now + delay }); return id; },
+    clearTimeout: id => pending.delete(id),
+  };
+  vm.runInNewContext(idle + shortcuts + '\nwake();', context);
+  const advance = ms => {
+    const until = now + ms;
+    while (true) {
+      const next = [...pending.entries()].sort((a,b) => a[1].at - b[1].at)[0];
+      if (!next || next[1].at > until) break;
+      now = next[1].at; pending.delete(next[0]); next[1].fn();
+    }
+    now = until;
+  };
+  const type = () => {
+    let stopped = false;
+    const event = { stopPropagation() {}, stopImmediatePropagation() { stopped = true; } };
+    for (const listener of [...listeners.get('keydown')].sort((a,b) => Number(b.capture) - Number(a.capture))) {
+      if (stopped) break;
+      listener.fn(event);
+    }
+    assert.equal(stopped, true);
+  };
+  for (let i = 0; i < 4; i++) { advance(10000); type(); assert.equal(host.style.opacity, '1'); }
+  advance(11999); assert.equal(host.style.opacity, '1');
+  advance(1); assert.equal(host.style.opacity, '.78');
+  shadowListeners.get('input').forEach(fn => fn());
+  assert.equal(host.style.opacity, '1');
+  shadowListeners.get('compositionstart').forEach(fn => fn());
+  advance(24000); assert.equal(host.style.opacity, '1');
+  shadowListeners.get('compositionend').forEach(fn => fn());
+  advance(12000); assert.equal(host.style.opacity, '.78');
+  hidden = true;
+  vm.runInNewContext('wake()', context);
+  advance(12000); assert.equal(host.style.opacity, '.38');
 });
