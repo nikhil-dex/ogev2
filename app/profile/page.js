@@ -94,7 +94,7 @@ export default async function ProfilePage({ searchParams }) {
               </div>
               <div>
                 <label htmlFor="profile-username">Username</label>
-                <input id="profile-username" name="username" defaultValue={user.username || ''} placeholder="your_username" autoCapitalize="none" autoComplete="off" minLength={3} maxLength={24} pattern="[a-zA-Z][a-zA-Z0-9_-]{1,22}[a-zA-Z0-9]" required />
+                <input id="profile-username" name="username" defaultValue={user.username || ''} placeholder="Choose a username" autoCapitalize="none" autoComplete="off" minLength={3} maxLength={24} pattern="[a-zA-Z][a-zA-Z0-9_-]{1,22}[a-zA-Z0-9]" required />
                 <small>Unique across OgeNotes, 3–24 characters. Start with a letter; use letters, numbers, hyphens or underscores; end with a letter or number.</small>
               </div>
             </div>
@@ -106,21 +106,21 @@ export default async function ProfilePage({ searchParams }) {
                 <div>
                   <label htmlFor="profile-github">GitHub</label>
                   <input id="profile-github" name="github" type="url" inputMode="url" autoComplete="url"
-                    placeholder="https://github.com/username" maxLength={2048}
+                    placeholder="Your GitHub profile URL" maxLength={2048}
                     defaultValue={user.socialLinks?.github || ''} />
                   <small>Enter the full HTTPS link to your GitHub profile.</small>
                 </div>
                 <div>
                   <label htmlFor="profile-linkedin">LinkedIn</label>
                   <input id="profile-linkedin" name="linkedin" type="url" inputMode="url" autoComplete="url"
-                    placeholder="https://www.linkedin.com/in/username" maxLength={2048}
+                    placeholder="Your LinkedIn profile URL" maxLength={2048}
                     defaultValue={user.socialLinks?.linkedin || ''} />
                   <small>Enter the full HTTPS link to your LinkedIn profile.</small>
                 </div>
                 <div>
                   <label htmlFor="profile-portfolio">Portfolio website</label>
                   <input id="profile-portfolio" name="portfolio" type="url" inputMode="url" autoComplete="url"
-                    placeholder="https://your-portfolio.example.org" maxLength={2048}
+                    placeholder="Your website or portfolio URL" maxLength={2048}
                     defaultValue={user.socialLinks?.portfolio || ''} />
                   <small>Any public HTTPS portfolio website. Leave blank to hide it.</small>
                 </div>

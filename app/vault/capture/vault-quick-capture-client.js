@@ -419,7 +419,7 @@ export default function VaultQuickCaptureClient({ ownerId, repoId }) {
       <form onSubmit={createSubject} className="oge-note-editor-actions">
         <label htmlFor="vault-capture-new-subject">New subject</label>
         <input id="vault-capture-new-subject" value={newSubjectName}
-          maxLength={60} placeholder="e.g. Machine Learning"
+          maxLength={60} placeholder="Enter a subject name"
           onChange={(event) => setNewSubjectName(event.target.value)}
           disabled={busy || uncertain || creatingSubject} />
         <button type="submit" className="oge-primary-link"
