@@ -43,6 +43,35 @@
     ':host([data-oge-theme="dark"]) .corner-button{color:#a2afa7;border-color:#3b4d40}'+
     ':host([data-oge-theme="dark"]) .corner-button:hover{background:#293c30;color:#e4ebe6}',
     '.note-more{display:block;margin:7px 0 0 auto;padding:6px 9px;border:1px solid #b6d8bf;border-radius:7px;background:#e9f5ec;color:#245b38;font-size:11px;cursor:pointer}.note-more[hidden],[data-existing-note-picker][hidden]{display:none}.note-more:hover{background:#dcefe0}:host([data-oge-theme="dark"]) .note-more{background:#293c30;color:#a9d3b8;border-color:#44654d}.track-input{width:100%;padding:8px;margin:5px 0 8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}.empty{font-size:11px;color:#637568}.subject-label{display:block;margin:8px 0 4px;font-size:10px;font-weight:700;color:#546d5b}.subject-select{display:block;width:100%;padding:8px;border:1px solid #d5e0d8;border-radius:8px;background:#fff;color:#15251b;font:11px system-ui}:focus-visible{outline:2px solid #40795e;outline-offset:2px}',
+    '[data-panel="tracks"]{--track-bg:#f7faf7;--track-card:#fff;--track-border:#dbe5de;--track-muted:#637568;--track-accent:#316b50;--track-soft:#e9f5ec;--track-on-accent:#fff;padding:12px;min-width:0}',
+    ':host([data-oge-theme="dark"]) [data-panel="tracks"]{--track-bg:#202b24;--track-card:#1c261f;--track-border:#3b4d40;--track-muted:#a2afa7;--track-accent:#a9d3b8;--track-soft:#293c30;--track-on-accent:#15251b}',
+    '[data-panel="tracks"] .track-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}',
+    '[data-panel="tracks"] .track-section-head h2{margin:0;font-size:13px;font-weight:750;letter-spacing:-.02em}',
+    '[data-panel="tracks"] .track-kicker{display:block;color:var(--track-muted);font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin:0 0 2px}',
+    '[data-panel="tracks"] [data-refresh-tracks]{margin:0;flex-shrink:0}',
+    '[data-panel="tracks"] [data-track-list]{display:grid;gap:9px}',
+    '[data-panel="tracks"] .track-card{display:grid;gap:9px;padding:11px;border:1px solid var(--track-border);border-radius:10px;background:var(--track-card);min-width:0}',
+    '[data-panel="tracks"] .track-card.is-current{border-color:var(--track-accent)}',
+    '[data-panel="tracks"] .track-card-title{font-size:12px;line-height:1.4;font-weight:750;overflow-wrap:anywhere}',
+    '[data-panel="tracks"] .track-subject{display:block;color:var(--track-muted);font-size:10px;overflow-wrap:anywhere}',
+    '[data-panel="tracks"] .track-current-label{font-size:9px;font-weight:700;color:var(--track-accent);letter-spacing:.06em;text-transform:uppercase}',
+    '[data-panel="tracks"] .track-progress{display:grid;gap:5px;padding:8px;border-radius:7px;background:var(--track-bg)}',
+    '[data-panel="tracks"] .track-progress-text{font-size:10px;color:var(--track-muted);overflow-wrap:anywhere}',
+    '[data-panel="tracks"] .track-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));gap:6px}',
+    '[data-panel="tracks"] .track-actions button,[data-panel="tracks"] [data-open-learning-tracks]{min-width:0;min-height:32px;padding:7px 5px;border:1px solid var(--track-border);border-radius:7px;background:var(--track-card);color:inherit;font-size:10px;font-weight:650;line-height:1.35;white-space:normal;overflow-wrap:anywhere;cursor:pointer}',
+    '[data-panel="tracks"] .track-actions button:hover:not(:disabled),[data-panel="tracks"] [data-open-learning-tracks]:hover{background:var(--track-soft);border-color:var(--track-accent);color:var(--track-accent)}',
+    '[data-panel="tracks"] .track-actions .track-complete{grid-column:1/-1;background:var(--track-accent);border-color:var(--track-accent);color:var(--track-on-accent);font-weight:750}',
+    '[data-panel="tracks"] .track-actions .track-complete:hover:not(:disabled){background:var(--track-accent);color:var(--track-on-accent);filter:brightness(.93)}',
+    '[data-panel="tracks"] .track-actions .track-note{grid-column:1/-1;background:var(--track-soft);color:var(--track-accent)}',
+    '[data-panel="tracks"] .track-empty{padding:13px 10px;text-align:center;border:1px dashed var(--track-border);border-radius:9px;background:var(--track-bg);color:var(--track-muted);margin:0;font-size:11px}',
+    '[data-panel="tracks"] .track-create{margin-top:12px;padding:11px;border:1px solid var(--track-border);border-radius:10px;background:var(--track-bg)}',
+    '[data-panel="tracks"] .track-create h3{margin:0 0 5px;font-size:12px;font-weight:750}',
+    '[data-panel="tracks"] .track-create .hint{color:var(--track-muted);margin:5px 0 8px}',
+    '[data-panel="tracks"] .track-input,[data-panel="tracks"] [data-track-subject]{display:block;width:100%;min-width:0;margin:4px 0 0;padding:8px;border:1px solid var(--track-border);border-radius:7px;background:var(--track-card);color:inherit;font-size:11px}',
+    '[data-panel="tracks"] .track-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,105px),1fr));gap:8px}',
+    '[data-panel="tracks"] .track-create .subject-label{min-width:0;margin:7px 0 0}',
+    '[data-panel="tracks"] [data-open-learning-tracks]{display:block;width:100%;margin-top:9px;background:transparent;color:var(--track-accent)}',
+    '[data-panel="tracks"] button:focus-visible,[data-panel="tracks"] input:focus-visible,[data-panel="tracks"] select:focus-visible{outline:2px solid var(--track-accent);outline-offset:2px}',
   ].join('');
   const panel = document.createElement('section');
   panel.className = 'panel hidden';
@@ -53,7 +82,7 @@
     '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><label class="subject-label" data-lesson-timestamp hidden><input type="checkbox" data-attach-timestamp> Attach current video timestamp</label><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
-    '<div class="body" data-panel="tracks" hidden><div data-track-list aria-live="polite"></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button><p class="hint">Open a YouTube playlist or a video inside one. This adds a playlist tracker, not video notes.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Notes subject<select data-track-subject><option value="">Unassigned</option></select></label><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge</button></div>',
+    '<div class="body" data-panel="tracks" hidden><div class="track-section-head"><div><span class="track-kicker">Learning</span><h2>Your tracks</h2></div><button type="button" class="note-more" data-refresh-tracks>Refresh tracks</button></div><div data-track-list aria-live="polite"></div><section class="track-create"><span class="track-kicker">New playlist</span><h3>Create a track</h3><p class="hint">Open a YouTube playlist or a video inside one.</p><label class="subject-label">Track name<input class="track-input" data-track-title maxlength="120" placeholder="Machine learning course"></label><div class="track-fields"><label class="subject-label">Videos per day<input class="track-input" data-track-daily type="number" min="1" max="20" value="2"></label><label class="subject-label">Notes subject<select data-track-subject><option value="">Unassigned</option></select></label></div><p class="hint">Total videos are detected automatically from YouTube when you create the track.</p><button class="primary" type="button" data-save-track>Create learning track</button></section><button type="button" data-open-learning-tracks>Open Learning Tracks in Oge ↗</button></div>',
     ] : []),
     '<p class="status" role="status" aria-live="polite"></p>',
     '<nav class="belt" aria-label="OgeNotes tools"><button class="selected" data-tool="note" type="button">✎ Quick note</button><button data-tool="links" type="button">☷ My links</button>' + (LEARNING_TRACKS_EXTENSION_PREVIEW ? '<button data-tool="tracks" type="button" hidden>▷ Tracks</button>' : '') + '</nav>',
@@ -765,18 +794,38 @@
       subjectPicker.replaceChildren(new Option('Unassigned', ''));
       for (const subject of subjects) subjectPicker.add(new Option(subject.name, subject.slug));
       if (subjects.some(subject => subject.slug === previous)) subjectPicker.value = previous;
-      if (!tracks.length) container.textContent = 'No learning tracks yet.';
+      if (!tracks.length) {
+        const empty = document.createElement('p');
+        empty.className = 'track-empty';
+        empty.textContent = 'No learning tracks yet. Create your first track below.';
+        container.append(empty);
+      }
       for (const track of tracks) {
         const row = document.createElement('div');
-        row.className = 'link';
+        row.className = 'track-card';
+        const source = new URL(location.href);
+        const current = source.pathname === '/watch' && source.searchParams.get('list') === track.playlistId;
+        if (current) {
+          row.classList.add('is-current');
+          const label = document.createElement('span');
+          label.className = 'track-current-label';
+          label.textContent = 'Current playlist';
+          row.append(label);
+        }
         const title = document.createElement('strong');
+        title.className = 'track-card-title';
         title.textContent = track.title;
         const subjectLabel = document.createElement('span');
+        subjectLabel.className = 'track-subject';
         subjectLabel.textContent = 'Subject: ' + (subjects.find(subject => subject.slug === track.subjectSlug)?.name || 'Unassigned');
+        const progressBox = document.createElement('div');
+        progressBox.className = 'track-progress';
         const progress = document.createElement('span');
+        progress.className = 'track-progress-text';
+        progressBox.append(progress);
         progress.textContent = track.completedVideos + (track.totalVideos == null ? '' : ' / ' + track.totalVideos) + ' completed · ' + track.videosPerDay + ' videos/day';
         const actions = document.createElement('div');
-        actions.className = 'link-actions';
+        actions.className = 'track-actions';
         const watch = document.createElement('button');
         watch.type = 'button';
         watch.textContent = 'Watch next';
@@ -810,11 +859,11 @@
           } finally { refresh.disabled = false; }
         });
         actions.append(watch, refresh);
-        const source = new URL(location.href);
-        if (source.pathname === '/watch' && source.searchParams.get('list') === track.playlistId) {
+        if (current) {
           const complete = document.createElement('button');
           const undo = document.createElement('button');
           complete.type = undo.type = 'button';
+          complete.className = 'track-complete';
           complete.textContent = 'Complete & Next';
           undo.textContent = 'Undo current';
           const update = async (isUndo) => {
@@ -835,6 +884,7 @@
           if (track.subjectSlug) {
             const capture = document.createElement('button');
             capture.type = 'button';
+            capture.className = 'track-note';
             capture.textContent = 'Lesson Note';
             capture.addEventListener('click', async () => {
               if (savingCapture) return;
@@ -859,7 +909,7 @@
             actions.append(capture);
           }
         }
-        row.append(title, subjectLabel, progress, actions);
+        row.append(title, subjectLabel, progressBox, actions);
         container.append(row);
       }
     } catch {

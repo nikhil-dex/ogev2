@@ -1506,3 +1506,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT10 final baseline regression checkpoint
 
 - CI run 45460403517: lint passed, secret scan, MongoDB replica-set and Chromium smoke passed. Unit suite 1145 total: 1071 passed, 73 skipped, 1 failed (pre-existing M67 CLI fixture). Its fixed November 16 timestamp expired against the CLI's real seven-day freshness window. Updated only synthetic CLI fixtures to use current time, preserving deterministic pure-validator tests and adding explicit expired-evidence rejection. No production validation or security policy changed. New CI/build and live YouTube/Vault acceptance remain pending.
+
+### LT10 extension Tracks visual polish
+
+- Scoped floating Tracks UI styles to the Tracks panel. Added light/dark theme tokens, compact playlist cards, current-playlist emphasis, responsive action grids, distinct Complete & Next and Lesson Note actions, readable creation form and empty state. Retained existing actions, API messages, drag/resize behavior and Quick Note/My Links styling. Avoided a percentage bar because historical completed IDs may include removed lessons. Previous commit 3e526b7 had all four CI jobs green; this visual change requires new CI and browser inspection.
