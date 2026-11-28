@@ -1526,3 +1526,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### Extension idle visibility fix
 
 - Fixed focused-editor key events being stopped in capture phase before the old window bubble-phase idle listener. Refresh inactivity deadline inside shortcut isolation before stopping propagation. Also observe input, paste, change and composition activity; hold full opacity during IME composition. Existing 12-second idle delay and collapsed/expanded fade levels retained. Added deterministic simulated-clock regression test for continued typing, idle fade, input wake and composition. CI and manual browser acceptance pending.
+
+### Production-facing extension and Learning Tracks copy
+
+- Removed development URL defaults from first-run/reset popup, added copy-current-site-address setup action, retained explicit optional loopback support for developers, and made course placeholders domain-neutral. Updated extension instructions and Learning Tracks intro to describe shipped capabilities. Preserved server feature gates and existing authentication/storage behavior. No deployed origin is assumed and no production deployment initiated. CI and live release acceptance pending.

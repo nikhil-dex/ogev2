@@ -47,11 +47,15 @@ export default function ExtensionPage() {
     finally { setWorking(false); }
   }
   async function revoke() {
-    if (!window.confirm('Revoke the current extension token? The extension will stop saving links until you generate a new token.')) return;
+    if (!window.confirm('Revoke the current extension token? Connected capture and link features will stop working until you generate a new token.')) return;
     setWorking(true); setError(''); setMessage(''); setToken('');
     try { await readJson(await fetch('/api/extension-token', { method: 'DELETE', cache: 'no-store' })); setStatus({ connected: false, expiresAt: null, createdAt: null }); setMessage('Extension token revoked.'); }
     catch (err) { setError(err.message || 'Could not revoke token.'); }
     finally { setWorking(false); }
+  }
+  async function copyWebsiteAddress() {
+    try { await navigator.clipboard.writeText(window.location.origin); setMessage('Website address copied. Paste it into the extension connection settings.'); }
+    catch { setError('Clipboard unavailable. Copy the website address from your browser address bar.'); }
   }
   async function copyToken() {
     try { await navigator.clipboard.writeText(token); setMessage('Token copied. Paste it into the extension.'); }
@@ -61,12 +65,12 @@ export default function ExtensionPage() {
   return (
     <main className="shell oge-shell oge-feature-page oge-workflow-page">
       <SiteNavbar actions={<><Link className="oge-signin" href="/settings">Settings <span aria-hidden="true">↗</span></Link><ThemeToggle /></>} />
-      <section className="oge-notes-hero oge-workflow-hero"><div className="oge-eyebrow"><span className="oge-status-dot" /> CAPTURE WHILE YOU BROWSE</div><h1>Save it for <span>later.</span></h1><p className="oge-hero-copy">Use a draggable floating OgeNotes widget on websites to write Quick Notes, save URLs, and copy or visit your profile links. Your connection token stays in the extension and can be revoked at any time.</p></section>
+      <section className="oge-notes-hero oge-workflow-hero"><div className="oge-eyebrow"><span className="oge-status-dot" /> CAPTURE WHILE YOU BROWSE</div><h1>Save it for <span>later.</span></h1><p className="oge-hero-copy">Use a draggable floating OgeNotes widget on websites to write Notes, save URLs, manage learning playlists when available, and track study time. Your connection token stays in the extension and can be revoked at any time.</p></section>
 
       <section className="oge-workflow-summary" aria-label="Extension overview">
         <div className="oge-workflow-stat"><span className="oge-section-kicker">CONNECTION</span><strong>{loading ? 'Checking…' : status.connected ? 'Connected' : 'Not connected'}</strong><span>{loading ? 'Checking token status' : status.connected ? 'Token is valid' : 'Generate a token to begin'}</span></div>
         <div className="oge-workflow-stat"><span className="oge-section-kicker">EXPIRES</span><strong>{status.connected ? dateLabel(status.expiresAt) : '—'}</strong><span>Tokens expire after 90 days</span></div>
-        <div className="oge-workflow-stat"><span className="oge-section-kicker">DESTINATION</span><strong>Saved Links</strong><span>Only your signed-in account</span></div>
+        <div className="oge-workflow-stat"><span className="oge-section-kicker">DESTINATION</span><strong>Notes &amp; links</strong><span>Only your signed-in account</span></div>
       </section>
 
       <section className="oge-extension-content oge-extension-content-refined">
@@ -80,7 +84,7 @@ export default function ExtensionPage() {
 
         <article className="oge-extension-instructions oge-workflow-card">
           <span className="oge-section-kicker">QUICK SETUP</span><h2>Ready in a few steps.</h2>
-          <ol className="oge-extension-steps"><li><span>01</span><div><strong>Load the extension</strong><p>Download or clone this repository and open its <code>extension/</code> folder. In Chrome, visit <code>chrome://extensions</code>, enable Developer mode, then choose “Load unpacked”.</p></div></li><li><span>02</span><div><strong>Set the API address</strong><p>In the extension popup, enter your deployed OgeNotes origin, or <code>http://localhost:3000</code> for local development.</p></div></li><li><span>03</span><div><strong>Connect your account</strong><p>Paste the token created here into the extension popup and save the settings.</p></div></li><li><span>04</span><div><strong>Use the floating toolbelt</strong><p>Reload your open website tabs after installing or updating the extension. Click the floating O button, then choose Quick Note, Save URL, or My Links. With a connected GitHub Vault, choose a subject and captures appear in <Link href="/vault/notes">GitHub Notes</Link>. Otherwise they appear in <Link href="/quick-notes">Quick Notes</Link>. Saved pages appear in <Link href="/saved-links">Saved Links</Link>.</p></div></li></ol>
+          <ol className="oge-extension-steps"><li><span>01</span><div><strong>Load the extension</strong><p>Download or clone this repository and open its <code>extension/</code> folder. In Chrome, visit <code>chrome://extensions</code>, enable Developer mode, then choose “Load unpacked”.</p></div></li><li><span>02</span><div><strong>Connect to this website</strong><p>Copy this website address into the extension popup under Connect.</p><button type="button" className="oge-primary-link" onClick={copyWebsiteAddress}>Copy website address <span aria-hidden="true">▣</span></button></div></li><li><span>03</span><div><strong>Connect your account</strong><p>Paste the token created here into the extension popup and save the settings.</p></div></li><li><span>04</span><div><strong>Use the floating toolbelt</strong><p>Reload your open website tabs after installing or updating the extension. Click the floating O button, then choose Quick Note, My Links, or Tracks when available. Use the header clock for your study timer. With a connected GitHub Vault, choose a subject and captures appear in <Link href="/vault/notes">GitHub Notes</Link>. Otherwise they appear in <Link href="/quick-notes">Quick Notes</Link>. Saved pages appear in <Link href="/saved-links">Saved Links</Link>.</p></div></li></ol>
           <p className="oge-settings-note">Security tip: never commit a token to GitHub or send it in screenshots. If it may be exposed, revoke it here and generate a replacement.</p>
         </article>
       </section>

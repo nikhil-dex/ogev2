@@ -9,9 +9,9 @@ The Chrome Manifest V3 extension now combines the original OgeNotes floating Qui
 
 ## Install and connect
 
-1. In Chrome, visit `chrome://extensions`, turn on Developer mode, and click **Load unpacked**. Select the `extension/` directory of the **oge** repository.
+1. In Chrome, visit `chrome://extensions`, turn on Developer mode, and click **Load unpacked**. Select the `extension/` directory of the **Oge** repository.
 2. Sign in to your OgeNotes site and open **Browser Extension**. Generate an extension token.
-3. Open the Chrome extension popup, choose **Connect**, paste the site origin (such as `http://localhost:3000` for local development) and the token, and click **Save connection**. Approve host permission.
+3. Open the Chrome extension popup, choose **Connect**, paste the website address and token copied from the Browser Extension page, and click **Save connection**. Approve host permission.
 4. **Reload existing website tabs** to inject the widget, click the floating **O** button, and use **Quick note** or **My links**. The header can be dragged.
 5. For connected Vault accounts, **Quick Notes** captures appear in the Quick Notes inbox; subject-selected captures appear in GitHub Notes. Other accounts use their selected storage. Saved tabs appear in **Saved Links**.
 
@@ -31,10 +31,10 @@ The Chrome Manifest V3 extension now combines the original OgeNotes floating Qui
 
 ## Append to an existing Note (subject selected)
 
-1. In the floating **Quick note** tool, select a subject such as **ML**. The new **Note** dropdown defaults to **Default (new Note)**.
-2. With **Default** selected, type a title on the first line (for example, **ML P2**) and your notes below it. The existing **Save to selected subject** action creates that Note.
-3. To continue an existing Note, select **ML** and choose **ML P2** in the Note dropdown. It initially lists the **five most recently updated Notes** in that subject; **Show more** adds five more each time.
-4. Write your new text. The button becomes **Append to ML P2 →**. A confirmed append adds the text after the original Note content, retaining its heading and other metadata, and clears the submitted editor text.
+1. In the floating **Quick note** tool, select a subject such as **History**. The new **Note** dropdown defaults to **Default (new Note)**.
+2. With **Default** selected, type a title on the first line (for example, **Lesson 2**) and your notes below it. The existing **Save to selected subject** action creates that Note.
+3. To continue an existing Note, select **History** and choose **Lesson 2** in the Note dropdown. It initially lists the **five most recently updated Notes** in that subject; **Show more** adds five more each time.
+4. Write your new text. The button becomes **Append to Lesson 2 →**. A confirmed append adds the text after the original Note content, retaining its heading and other metadata, and clears the submitted editor text.
 
 The dropdown is subject-specific: switching subjects starts back at **Default (new Note)**. It does not show other subjects' Notes. Both GitHub Vault and MongoDB Notes are supported according to your existing account storage setting. A concurrent change or uncertain append keeps the typed text and asks you to refresh before retrying, rather than silently duplicating content. The existing standalone Quick Notes destination is unchanged.
 
@@ -59,7 +59,7 @@ When you open the floating toolbelt, the draggable **O** launcher is hidden so i
 
 - **Launcher shares panel space:** when the toolbelt opens, the `O` is hidden **behind the panel in the same screen location**. The panel's bottom edge aligns with the launcher's bottom edge instead of reserving a separate 54-pixel gap, and you can drag the open panel toward the bottom of the viewport. The `×` button restores the launcher.
 - **Match Oge appearance:** the widget uses Oge's light and dark palette. Open the **connected OgeNotes site** and change its theme; the extension watches the site's `data-theme` and securely updates the widget across tabs. The connection must be set up first. Other websites cannot change this theme; the extension defaults to Oge's dark theme until synchronized.
-- **Save page link moved into My Links:** select **My links** to see GitHub, LinkedIn and portfolio URLs, followed by **Save current page to Saved Links**. The separate Saved Links tab is removed, leaving a reserved **Coming soon** slot for future features.
+- **Save page link moved into My Links:** select **My links** to see GitHub, LinkedIn and portfolio URLs, followed by **Save current page to Saved Links**. The separate Saved Links tab is removed, with Learning Tracks available when enabled by the connected site.
 
 The toolbar popup still includes its original standalone **Save tab** action; only the **floating widget** layout changes in this update.
 
@@ -67,9 +67,14 @@ The toolbar popup still includes its original standalone **Save tab** action; on
 
 The floating panel header has a **⌖ Position** control. Each click moves the **open widget** clockwise through **top-right → bottom-right → bottom-left → top-left → top-right**. It keeps a small gap from the screen edge, preserves panel resizing, and updates the button's accessible label to show the next destination. If the viewport changes size, the selected corner is reapplied. Dragging the panel manually leaves corner-snap mode. Closing the widget brings the floating `O` launcher back at the panel's current corner.
 
-## Learning Tracks preview (M97)
+## Learning Tracks and study timer
 
-**Hidden from the normal extension starting in M124.** M97 added an early experimental playlist-tracking UI before the planned Learning Track product was finished. The floating extension now shows only **Quick note** and **My links**. The prototype UI code remains behind the hardcoded `LEARNING_TRACKS_EXTENSION_PREVIEW = false` gate, and its original server API remains default OFF (`OGE_LEARNING_TRACKS_PREVIEW=false`). No user-visible extension Tracks button appears until a future roadmap decision explicitly re-enables it and completes testing. The existing prototype supports a manual playlist title and videos-per-day goal only; it does not automatically generate lesson notes, capture transcripts or sync watched video progress. Preserve the prototype without advertising it as a finished feature.
+- When Learning Tracks is available on your connected site, select **Tracks** in the floating widget. Open a YouTube playlist or a lesson in that playlist, enter a track name, choose a daily target and optionally select a Notes subject. The extension discovers the playlist count automatically (up to 500 videos).
+- Use **Complete & Next** to save progress and advance, **Watch next** to navigate without marking completion, or **Lesson Note** to capture notes with video references and optional timestamps. Notes follow your configured storage.
+- Use the clock button in the header for a stopwatch or countdown. Pause, resume, reset or reuse a countdown. Completion produces an in-page notification or a desktop notification when Chrome is in the background, if allowed by your system. The timer is local to your Chrome profile.
+- While typing or editing, the inactivity countdown is refreshed. Fading resumes after 12 seconds of inactivity.
+
+Learning Tracks requires the server's existing feature flag and configured YouTube Data API key. Live connected-account and cross-application notification acceptance is still required before release. Developers can explicitly connect to a local loopback address; public connections use HTTPS.
 
 ## M114 — Choose whether new text updates or creates a Note
 

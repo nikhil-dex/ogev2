@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "OgeNotes — Study Toolbelt",
   "version": "0.2.0",
-  "description": "Floating Quick Notes, Save URL and My Links toolbelt on websites, plus the extension popup.",
+  "description": "Capture notes, save links, organize learning playlists and track study time with a floating study toolbelt.",
   "permissions": [
     "activeTab",
     "storage",
@@ -10,16 +10,14 @@
     "alarms",
     "notifications"
   ],
-  "host_permissions": [
-    "http://localhost:3000/*"
-  ],
   "action": {
     "default_title": "OgeNotes Study Toolbelt",
     "default_popup": "popup.html"
   },
   "optional_host_permissions": [
     "https://*/*",
-    "http://localhost:3000/*"
+    "http://localhost/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "service-worker.js"

@@ -294,14 +294,14 @@ export default function LearningTracksPage() {
   }
   return <main className="shell oge-shell"><SiteNavbar />
     <section className={styles.hero}>
-      <span className="oge-section-kicker">LEARNING TRACKS · PREVIEW</span>
+      <span className="oge-section-kicker">LEARNING TRACKS</span>
       <h1>Make playlists into <span>progress.</span></h1>
-      <p>Add a YouTube playlist, set a daily goal and mark completed videos. Optionally discover public video titles through the official YouTube API and preview the next seven lesson days. Discovery is on demand, not automatic. Notes are not created automatically. An isolated staging-only preview lets you link existing GitHub Notes and hand off lesson starters to Vault Quick Capture.</p>
+      <p>Organize any supported YouTube playlist, set a daily goal and track your progress. Discover lessons, group related topics and connect them to your Notes. Use the Oge extension to save lesson notes with video references as you study.</p>
     </section>
     <section className={styles.grid}>
       <form className={styles.panel} onSubmit={create}>
         <h2>New track</h2>
-        <label>Track name<input required maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Machine learning course" /></label>
+        <label>Track name<input required maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Enter a course or playlist name" /></label>
         <label>YouTube playlist URL<input required type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://www.youtube.com/playlist?list=…" /></label>
         <label>Videos per day<input required type="number" min="1" max="20" value={form.videosPerDay} onChange={(e) => setForm({ ...form, videosPerDay: e.target.value })} /></label>
         <label>Total videos (optional)<input type="number" min="1" max="10000" value={form.totalVideos} onChange={(e) => setForm({ ...form, totalVideos: e.target.value })} placeholder="Unknown" /></label>

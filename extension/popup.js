@@ -16,7 +16,9 @@ function status(message, error = false) {
   statusEl.classList.toggle('error', error);
 }
 function normalizeBase(value) {
-  const url = new URL(value.trim());
+  if (!value.trim()) throw new Error('Enter your Oge website address from the Browser Extension page.');
+  let url;
+  try { url = new URL(value.trim()); } catch { throw new Error('Enter a complete website address, including https://.'); }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
       url.pathname !== '/' || url.search || url.hash) throw new Error('Use a valid app origin without a path.');
   if (url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(url.hostname)) {
@@ -34,6 +36,7 @@ async function loadSettings() {
   if (saved.baseUrl) baseUrl.value = saved.baseUrl;
   if (saved.token) tokenInput.value = saved.token;
   if (saved.category) categoryInput.value = saved.category;
+  if (!saved.baseUrl || !saved.token) showTool('connect');
 }
 function getConnection() {
   const origin = normalizeBase(baseUrl.value);
@@ -164,7 +167,8 @@ $('resetExtension').addEventListener('click', async () => {
   try {
     // Remove the extension's connection and preferences, not the user's server data.
     await chrome.storage.local.remove(['baseUrl', 'token', 'category']);
-    baseUrl.value = 'http://localhost:3000';
+    baseUrl.value = '';
+    showTool('connect');
     tokenInput.value = '';
     categoryInput.value = 'Browser';
     $('linksList').replaceChildren();
