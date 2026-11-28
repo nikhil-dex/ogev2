@@ -227,11 +227,11 @@ export default function SavedLinksPage() {
             <button className="saved-link-close" type="button" onClick={closeForm} disabled={saving} aria-label="Close form">×</button>
           </div>
           <form onSubmit={submitForm} className="saved-link-form">
-            <label>Title <input required maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. React documentation" /></label>
-            <label>URL <input required type="url" maxLength={2048} value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} placeholder="https://example.com" /></label>
+            <label>Title <input required maxLength={120} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Enter a link title" /></label>
+            <label>URL <input required type="url" maxLength={2048} value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} placeholder="Paste a website URL" /></label>
             <label className="saved-link-wide">Description <textarea maxLength={500} rows={2} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="What do you use this link for?" /></label>
-            <label>Category <input maxLength={40} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="Development, Learning…" /></label>
-            <label>Tags <input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} placeholder="docs, frontend, reference" /><span className="saved-link-hint">Separate tags with commas (up to 10).</span></label>
+            <label>Category <input maxLength={40} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="e.g. Work, Learning, Personal" /></label>
+            <label>Tags <input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} placeholder="e.g. reference, useful, reading" /><span className="saved-link-hint">Separate tags with commas (up to 10).</span></label>
             {error && <p className="saved-links-feedback is-error saved-link-wide" role="alert">{error}</p>}
             <div className="saved-link-form-actions saved-link-wide">
               <button className="saved-links-secondary" type="button" onClick={closeForm} disabled={saving}>Cancel</button>

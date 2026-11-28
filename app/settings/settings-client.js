@@ -248,7 +248,7 @@ export default function SettingsClient({ accountDeletionEnabled = false, githubV
         <p className="oge-settings-description">Organize your study notes into subjects. Removing a subject also removes the notes inside it.</p>
         <form className="oge-settings-add-form" onSubmit={addSubject}>
           <label className="sr-only" htmlFor="settings-new-subject">New subject name</label>
-          <input id="settings-new-subject" value={subjectName} maxLength={60} onChange={(event) => setSubjectName(event.target.value)} placeholder="e.g. Computer Networks" required />
+          <input id="settings-new-subject" value={subjectName} maxLength={60} onChange={(event) => setSubjectName(event.target.value)} placeholder="Enter a subject name" required />
           <button className="oge-google-button" type="submit" disabled={subjectBusy}>{subjectBusy ? 'Adding…' : '+ Add subject'}</button>
         </form>
         {subjectMessage && <p className="oge-settings-feedback" role="status">{subjectMessage}</p>}

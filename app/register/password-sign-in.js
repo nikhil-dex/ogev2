@@ -33,7 +33,7 @@ export default function PasswordSignIn() {
       <label htmlFor="oge-login-email">Email address</label>
       <input id="oge-login-email" type="email" name="email" autoComplete="username"
         required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)}
-        placeholder="student@example.com" />
+        placeholder="Enter your email address" />
       <label htmlFor="oge-login-password">OgeNotes password</label>
       <input id="oge-login-password" type="password" name="password" autoComplete="current-password"
         required value={password} onChange={(event) => setPassword(event.target.value)} />
