@@ -72,13 +72,22 @@
     '[data-panel="tracks"] .track-create .subject-label{min-width:0;margin:7px 0 0}',
     '[data-panel="tracks"] [data-open-learning-tracks]{display:block;width:100%;margin-top:9px;background:transparent;color:var(--track-accent)}',
     '[data-panel="tracks"] button:focus-visible,[data-panel="tracks"] input:focus-visible,[data-panel="tracks"] select:focus-visible{outline:2px solid var(--track-accent);outline-offset:2px}',
+    '.timer-toggle{display:flex;align-items:center;gap:4px;min-width:27px;height:27px;padding:0 6px;border:1px solid #dbe5de;border-radius:7px;background:transparent;color:#316b50;font:650 10px system-ui;cursor:pointer;font-variant-numeric:tabular-nums}',
+    '.timer-toggle[aria-expanded="true"],.timer-toggle.is-running{background:#e5f3e9;border-color:#b6d8bf}.timer-toggle svg{width:13px;height:13px;flex:none}.timer-toggle span:empty{display:none}',
+    '.study-timer{margin:9px 12px 0;padding:10px;border:1px solid #dbe5de;border-radius:10px;background:#f7faf7;display:grid;gap:7px}.study-timer[hidden]{display:none}',
+    '.timer-head{display:flex;align-items:center;justify-content:space-between;gap:6px}.timer-head strong{font-size:11px}.timer-readout{font:750 26px/1.2 system-ui;font-variant-numeric:tabular-nums;letter-spacing:-.035em;color:#316b50;text-align:center}',
+    '.timer-detail{margin:0;text-align:center;font-size:10px;color:#637568}.timer-goal{display:flex;align-items:center;gap:7px;font-size:10px}.timer-goal input{width:64px;min-width:0;padding:5px;border:1px solid #d5e0d8;border-radius:6px;background:#fff;color:inherit}',
+    '.timer-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.timer-actions button{padding:7px;border:1px solid #b6d8bf;border-radius:7px;background:#fff;color:#316b50;font-size:11px;font-weight:650;cursor:pointer}.timer-actions [data-timer-start]{background:#316b50;color:#fff}.timer-actions [data-timer-reset]{background:transparent}',
+    ':host([data-oge-theme="dark"]) .timer-toggle{color:#a9d3b8;border-color:#3b4d40}:host([data-oge-theme="dark"]) .timer-toggle[aria-expanded="true"],:host([data-oge-theme="dark"]) .timer-toggle.is-running{background:#293c30;border-color:#44654d}',
+    ':host([data-oge-theme="dark"]) .study-timer{background:#202b24;border-color:#3b4d40}:host([data-oge-theme="dark"]) .timer-readout{color:#a9d3b8}:host([data-oge-theme="dark"]) .timer-detail{color:#a2afa7}:host([data-oge-theme="dark"]) .timer-actions button{background:#293c30;border-color:#44654d;color:#a9d3b8}:host([data-oge-theme="dark"]) .timer-actions [data-timer-start]{background:#78ad8d;color:#15251b}',
   ].join('');
   const panel = document.createElement('section');
   panel.className = 'panel hidden';
   panel.setAttribute('aria-label', 'OgeNotes floating toolbelt');
   // HTML is static extension-owned markup; user content uses textContent.
   panel.innerHTML = [
-    '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
+    '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="timer-toggle" type="button" data-timer-toggle aria-label="Study timer" aria-expanded="false" title="Study timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg><span data-timer-mini></span></button><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
+    '<section class="study-timer" data-study-timer hidden aria-label="Study timer"><div class="timer-head"><strong>Study timer</strong><span data-timer-state>Ready</span></div><div class="timer-readout" data-timer-readout role="timer">00:00:00</div><p class="timer-detail" data-timer-detail>Time studied</p><label class="timer-goal">Target (minutes)<input data-timer-goal type="number" min="0" max="1440" value="0" step="1"><span>0 = stopwatch</span></label><div class="timer-actions"><button type="button" data-timer-start>Start</button><button type="button" data-timer-reset>Reset</button></div><p class="timer-detail" data-timer-error role="status"></p></section>',
     '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><label class="subject-label" data-lesson-timestamp hidden><input type="checkbox" data-attach-timestamp> Attach current video timestamp</label><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
@@ -138,6 +147,187 @@
     if (!response?.ok) throw new Error(response?.error || 'Could not reach OgeNotes.');
     return response;
   }
+  // Timer is independent of the active tool and of the Oge account connection.
+  const timerToggle = panel.querySelector('[data-timer-toggle]');
+  const timerBox = panel.querySelector('[data-study-timer]');
+  const timerMini = panel.querySelector('[data-timer-mini]');
+  const timerGoal = panel.querySelector('[data-timer-goal]');
+  const timerStart = panel.querySelector('[data-timer-start]');
+  const timerReset = panel.querySelector('[data-timer-reset]');
+  const timerError = panel.querySelector('[data-timer-error]');
+  let timerState = null, timerBusy = false, timerVersion = 0, timerInterval = null;
+  let claimingToast = false, toastHost = null, toastTimeout = null, toastSession = null;
+  const timerFormat = ms => {
+    const seconds = Math.floor(Math.max(0, ms) / 1000);
+    return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60].map(n => String(n).padStart(2, '0')).join(':');
+  };
+  function dismissStudyToast() {
+    if (toastTimeout !== null) clearTimeout(toastTimeout);
+    toastTimeout = null;
+    toastHost?.remove();
+    toastHost = null;
+    toastSession = null;
+  }
+  function studyCompletionChime() {
+    // Web audio is best effort: browsers can block playback before user interaction.
+    try {
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      if (!Audio) return;
+      const context = new Audio();
+      const close = () => { void context.close().catch(() => {}); };
+      if (context.state !== 'running') { close(); return; }
+      const start = context.currentTime;
+      for (const [index, frequency] of [523.25, 659.25, 783.99].entries()) {
+        const tone = context.createOscillator();
+        const gain = context.createGain();
+        const at = start + index * .12;
+        tone.type = 'sine';
+        tone.frequency.value = frequency;
+        gain.gain.setValueAtTime(.001, at);
+        gain.gain.exponentialRampToValueAtTime(.065, at + .025);
+        gain.gain.exponentialRampToValueAtTime(.001, at + .28);
+        tone.connect(gain); gain.connect(context.destination);
+        tone.start(at); tone.stop(at + .29);
+        if (index === 2) tone.onended = close;
+      }
+    } catch { /* Visual notification remains available. */ }
+  }
+  function showStudyToast(state) {
+    dismissStudyToast();
+    toastSession = state.sessionId;
+    const element = document.createElement('div');
+    toastHost = element;
+    element.style.cssText = 'all:initial;position:fixed;top:16px;right:16px;width:360px;max-width:calc(100vw - 32px);z-index:2147483647;display:block;pointer-events:auto';
+    const root = element.attachShadow({ mode: 'closed' });
+    const css = document.createElement('style');
+    css.textContent = [
+      '*{box-sizing:border-box}button{font:inherit;cursor:pointer}',
+      '.toast{--bg:#fff;--fg:#222;--muted:#686868;--line:#e0e0e0;--accent:#23794b;--action:#262626;--on:#fff;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 8px 32px #0002;font:13px/1.45 system-ui,-apple-system,sans-serif;animation:appear .2s ease-out}',
+      ':host([data-theme="dark"]) .toast{--bg:#242424;--fg:#f4f4f4;--muted:#b5b5b5;--line:#454545;--accent:#82c7a0;--action:#f4f4f4;--on:#222;box-shadow:0 8px 32px #0006}',
+      '.head{display:flex;align-items:flex-start;gap:10px}.mark{color:var(--accent);flex:none;width:21px;height:21px}.copy{flex:1;min-width:0}.copy strong{font-size:13px}.copy p{margin:4px 0 0;color:var(--muted);font-size:12px}',
+      '.close{border:0;background:transparent;color:var(--muted);font-size:19px;line-height:1;padding:2px 5px}.actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px;margin-top:13px}.actions button{padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--fg);font-size:12px;font-weight:600}.actions .reuse{background:var(--action);color:var(--on);border-color:var(--action)}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}button:disabled{opacity:.6;cursor:wait}',
+      '.error{font-size:11px;color:var(--muted);margin:7px 0 0}.error:empty{display:none}@keyframes appear{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.toast{animation:none}}'
+    ].join('');
+    const card = document.createElement('section');
+    card.className = 'toast';
+    card.setAttribute('aria-label', 'Study session completed');
+    card.innerHTML = '<div class="head"><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg><div class="copy" role="status" aria-live="polite"><strong>Study session completed</strong><p data-toast-message></p></div><button type="button" class="close" aria-label="Dismiss notification">×</button></div><div class="actions"><button type="button" data-toast-reset>Reset</button><button type="button" class="reuse" data-toast-reuse>Reuse timer</button></div><p class="error" role="status"></p>';
+    element.dataset.theme = host.dataset.ogeTheme === 'light' ? 'light' : 'dark';
+    card.querySelector('[data-toast-message]').textContent = 'You studied for ' + state.goalMinutes + (state.goalMinutes === 1 ? ' minute.' : ' minutes.') + ' Time for a break.';
+    root.append(css, card);
+    document.documentElement.append(element);
+    card.querySelector('.close').addEventListener('click', dismissStudyToast);
+    const apply = async action => {
+      const buttons = [...card.querySelectorAll('button')];
+      buttons.forEach(button => { button.disabled = true; });
+      try {
+        const result = await send('STUDY_TIMER', { action, sessionId: state.sessionId });
+        timerState = result.timer;
+        timerGoal.dataset.loaded = '';
+        renderStudyTimer();
+        if (toastHost === element) dismissStudyToast();
+      } catch (error) {
+        card.querySelector('.error').textContent = error.message || 'Could not update timer.';
+        buttons.forEach(button => { button.disabled = false; });
+      }
+    };
+    card.querySelector('[data-toast-reset]').addEventListener('click', () => void apply('toast-reset'));
+    card.querySelector('[data-toast-reuse]').addEventListener('click', () => void apply('toast-reuse'));
+    element.addEventListener('pointerenter', () => { if (toastTimeout !== null) clearTimeout(toastTimeout); toastTimeout = null; });
+    element.addEventListener('pointerleave', () => { if (!root.activeElement) toastTimeout = setTimeout(dismissStudyToast, 10000); });
+    root.addEventListener('focusin', () => { if (toastTimeout !== null) clearTimeout(toastTimeout); toastTimeout = null; });
+    root.addEventListener('focusout', () => { if (toastTimeout === null) toastTimeout = setTimeout(dismissStudyToast, 10000); });
+    root.addEventListener('keydown', event => { if (event.key === 'Escape') dismissStudyToast(); });
+    toastTimeout = setTimeout(dismissStudyToast, 10000);
+    studyCompletionChime();
+  }
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message?.type !== 'SHOW_STUDY_COMPLETION' || sender.id !== chrome.runtime.id) return false;
+    if (document.hidden || !document.hasFocus()) { respond({ shown: false }); return false; }
+    const completed = message.timer;
+    if (!completed || !Number.isInteger(completed.goalMinutes) || completed.goalMinutes < 1 ||
+        completed.elapsedMs < completed.goalMinutes * 60000) { respond({ shown: false }); return false; }
+    if (toastSession !== completed.sessionId) showStudyToast(completed);
+    respond({ shown: true });
+    return false;
+  });
+  async function maybeShowStudyToast() {
+    if (claimingToast || !timerState || timerState.notified || document.hidden || !document.hasFocus()) return;
+    const elapsed = timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt));
+    if (!timerState.goalMinutes || elapsed < timerState.goalMinutes * 60000) return;
+    claimingToast = true;
+    try {
+      const result = await send('STUDY_TIMER', { action: 'claim' });
+      timerState = result.timer;
+      if (result.claimed) showStudyToast(result.timer);
+      renderStudyTimer();
+    } catch { /* Retry on focus or when opening the timer. */ }
+    finally { claimingToast = false; }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) void maybeShowStudyToast(); });
+  window.addEventListener('focus', () => void maybeShowStudyToast());
+  function renderStudyTimer() {
+    if (!timerState) { timerStart.disabled = timerReset.disabled = timerGoal.disabled = true; return; }
+    const goal = timerState.goalMinutes * 60000;
+    const raw = timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt));
+    const elapsed = goal ? Math.min(raw, goal) : raw;
+    const finished = goal > 0 && elapsed >= goal;
+    const running = timerState.startedAt !== null && !finished;
+    const shown = goal ? goal - elapsed : elapsed;
+    const clock = timerFormat(goal ? Math.ceil(shown / 1000) * 1000 : shown);
+    panel.querySelector('[data-timer-readout]').textContent = clock;
+    panel.querySelector('[data-timer-state]').textContent = finished ? 'Finished' : running ? 'Running' : elapsed ? 'Paused' : 'Ready';
+    panel.querySelector('[data-timer-detail]').textContent = goal ? 'Studied ' + timerFormat(elapsed) : 'Time studied';
+    timerMini.textContent = running || elapsed ? clock : '';
+    timerToggle.classList.toggle('is-running', running);
+    timerStart.textContent = running ? 'Pause' : finished ? 'Reuse' : elapsed ? 'Resume' : 'Start';
+    timerStart.disabled = timerReset.disabled = timerBusy;
+    timerGoal.disabled = timerBusy || running || elapsed > 0;
+    if (timerGoal !== shadow.activeElement && (timerGoal.disabled || timerGoal.dataset.loaded !== 'yes')) {
+      timerGoal.value = String(timerState.goalMinutes);
+      timerGoal.dataset.loaded = 'yes';
+    }
+    if (running && timerInterval === null) timerInterval = setInterval(renderStudyTimer, 250);
+    else if (!running && timerInterval !== null) { clearInterval(timerInterval); timerInterval = null; }
+    if (toastHost && (timerState.sessionId !== toastSession || !finished)) dismissStudyToast();
+    if (finished) void maybeShowStudyToast();
+  }
+  async function timerAction(action, goalMinutes) {
+    if (timerBusy) return;
+    timerBusy = true;
+    const version = ++timerVersion;
+    renderStudyTimer();
+    timerError.textContent = '';
+    try {
+      const result = await send('STUDY_TIMER', { action, goalMinutes });
+      if (version === timerVersion) { timerState = result.timer; timerGoal.dataset.loaded = ''; }
+    } catch (error) { timerError.textContent = error.message; }
+    finally { timerBusy = false; renderStudyTimer(); }
+  }
+  timerToggle.addEventListener('click', () => {
+    timerBox.hidden = !timerBox.hidden;
+    timerToggle.setAttribute('aria-expanded', String(!timerBox.hidden));
+    if (!timerBox.hidden) void timerAction('get');
+  });
+  timerGoal.addEventListener('change', () => {
+    if (timerGoal.value === '' || !timerGoal.checkValidity()) { timerError.textContent = 'Enter 0–1440 minutes.'; return; }
+    void timerAction('set', Number(timerGoal.value));
+  });
+  timerStart.addEventListener('click', () => {
+    if (!timerState) return;
+    const finished = timerState.goalMinutes && timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt)) >= timerState.goalMinutes * 60000;
+    void timerAction(timerState.startedAt !== null && !finished ? 'pause' : 'start');
+  });
+  timerReset.addEventListener('click', () => void timerAction('reset'));
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.ogeStudyTimer) {
+      ++timerVersion;
+      timerState = changes.ogeStudyTimer.newValue || null;
+      timerGoal.dataset.loaded = '';
+      renderStudyTimer();
+    }
+  });
+  void timerAction('get');
   function setPanel(tool) {
     active = tool;
     for (const body of panel.querySelectorAll('[data-panel]')) body.hidden = body.dataset.panel !== tool;

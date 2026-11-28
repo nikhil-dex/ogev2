@@ -6,7 +6,9 @@
   "permissions": [
     "activeTab",
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "http://localhost:3000/*"
