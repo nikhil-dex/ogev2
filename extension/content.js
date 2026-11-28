@@ -156,10 +156,106 @@
   const timerReset = panel.querySelector('[data-timer-reset]');
   const timerError = panel.querySelector('[data-timer-error]');
   let timerState = null, timerBusy = false, timerVersion = 0, timerInterval = null;
+  let claimingToast = false, toastHost = null, toastTimeout = null, toastSession = null;
   const timerFormat = ms => {
     const seconds = Math.floor(Math.max(0, ms) / 1000);
     return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60].map(n => String(n).padStart(2, '0')).join(':');
   };
+  function dismissStudyToast() {
+    if (toastTimeout !== null) clearTimeout(toastTimeout);
+    toastTimeout = null;
+    toastHost?.remove();
+    toastHost = null;
+    toastSession = null;
+  }
+  function studyCompletionChime() {
+    // Web audio is best effort: browsers can block playback before user interaction.
+    try {
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      if (!Audio) return;
+      const context = new Audio();
+      const close = () => { void context.close().catch(() => {}); };
+      if (context.state !== 'running') { close(); return; }
+      const start = context.currentTime;
+      for (const [index, frequency] of [523.25, 659.25, 783.99].entries()) {
+        const tone = context.createOscillator();
+        const gain = context.createGain();
+        const at = start + index * .12;
+        tone.type = 'sine';
+        tone.frequency.value = frequency;
+        gain.gain.setValueAtTime(.001, at);
+        gain.gain.exponentialRampToValueAtTime(.065, at + .025);
+        gain.gain.exponentialRampToValueAtTime(.001, at + .28);
+        tone.connect(gain); gain.connect(context.destination);
+        tone.start(at); tone.stop(at + .29);
+        if (index === 2) tone.onended = close;
+      }
+    } catch { /* Visual notification remains available. */ }
+  }
+  function showStudyToast(state) {
+    dismissStudyToast();
+    toastSession = state.sessionId;
+    const element = document.createElement('div');
+    toastHost = element;
+    element.style.cssText = 'all:initial;position:fixed;top:16px;right:16px;width:360px;max-width:calc(100vw - 32px);z-index:2147483647;display:block;pointer-events:auto';
+    const root = element.attachShadow({ mode: 'closed' });
+    const css = document.createElement('style');
+    css.textContent = [
+      '*{box-sizing:border-box}button{font:inherit;cursor:pointer}',
+      '.toast{--bg:#fff;--fg:#222;--muted:#686868;--line:#e0e0e0;--accent:#23794b;--action:#262626;--on:#fff;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 8px 32px #0002;font:13px/1.45 system-ui,-apple-system,sans-serif;animation:appear .2s ease-out}',
+      ':host([data-theme="dark"]) .toast{--bg:#242424;--fg:#f4f4f4;--muted:#b5b5b5;--line:#454545;--accent:#82c7a0;--action:#f4f4f4;--on:#222;box-shadow:0 8px 32px #0006}',
+      '.head{display:flex;align-items:flex-start;gap:10px}.mark{color:var(--accent);flex:none;width:21px;height:21px}.copy{flex:1;min-width:0}.copy strong{font-size:13px}.copy p{margin:4px 0 0;color:var(--muted);font-size:12px}',
+      '.close{border:0;background:transparent;color:var(--muted);font-size:19px;line-height:1;padding:2px 5px}.actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px;margin-top:13px}.actions button{padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--fg);font-size:12px;font-weight:600}.actions .reuse{background:var(--action);color:var(--on);border-color:var(--action)}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}button:disabled{opacity:.6;cursor:wait}',
+      '.error{font-size:11px;color:var(--muted);margin:7px 0 0}.error:empty{display:none}@keyframes appear{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.toast{animation:none}}'
+    ].join('');
+    const card = document.createElement('section');
+    card.className = 'toast';
+    card.setAttribute('aria-label', 'Study session completed');
+    card.innerHTML = '<div class="head"><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg><div class="copy" role="status" aria-live="polite"><strong>Study session completed</strong><p data-toast-message></p></div><button type="button" class="close" aria-label="Dismiss notification">×</button></div><div class="actions"><button type="button" data-toast-reset>Reset</button><button type="button" class="reuse" data-toast-reuse>Reuse timer</button></div><p class="error" role="status"></p>';
+    element.dataset.theme = host.dataset.ogeTheme === 'light' ? 'light' : 'dark';
+    card.querySelector('[data-toast-message]').textContent = 'You studied for ' + state.goalMinutes + (state.goalMinutes === 1 ? ' minute.' : ' minutes.') + ' Time for a break.';
+    root.append(css, card);
+    document.documentElement.append(element);
+    card.querySelector('.close').addEventListener('click', dismissStudyToast);
+    const apply = async action => {
+      const buttons = [...card.querySelectorAll('button')];
+      buttons.forEach(button => { button.disabled = true; });
+      try {
+        const result = await send('STUDY_TIMER', { action, sessionId: state.sessionId });
+        timerState = result.timer;
+        timerGoal.dataset.loaded = '';
+        renderStudyTimer();
+        if (toastHost === element) dismissStudyToast();
+      } catch (error) {
+        card.querySelector('.error').textContent = error.message || 'Could not update timer.';
+        buttons.forEach(button => { button.disabled = false; });
+      }
+    };
+    card.querySelector('[data-toast-reset]').addEventListener('click', () => void apply('toast-reset'));
+    card.querySelector('[data-toast-reuse]').addEventListener('click', () => void apply('toast-reuse'));
+    element.addEventListener('pointerenter', () => { if (toastTimeout !== null) clearTimeout(toastTimeout); toastTimeout = null; });
+    element.addEventListener('pointerleave', () => { if (!root.activeElement) toastTimeout = setTimeout(dismissStudyToast, 10000); });
+    root.addEventListener('focusin', () => { if (toastTimeout !== null) clearTimeout(toastTimeout); toastTimeout = null; });
+    root.addEventListener('focusout', () => { if (toastTimeout === null) toastTimeout = setTimeout(dismissStudyToast, 10000); });
+    root.addEventListener('keydown', event => { if (event.key === 'Escape') dismissStudyToast(); });
+    toastTimeout = setTimeout(dismissStudyToast, 10000);
+    studyCompletionChime();
+  }
+  async function maybeShowStudyToast() {
+    if (claimingToast || !timerState || timerState.notified || document.hidden || !document.hasFocus()) return;
+    const elapsed = timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt));
+    if (!timerState.goalMinutes || elapsed < timerState.goalMinutes * 60000) return;
+    claimingToast = true;
+    try {
+      const result = await send('STUDY_TIMER', { action: 'claim' });
+      timerState = result.timer;
+      if (result.claimed) showStudyToast(result.timer);
+      renderStudyTimer();
+    } catch { /* Retry on focus or when opening the timer. */ }
+    finally { claimingToast = false; }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) void maybeShowStudyToast(); });
+  window.addEventListener('focus', () => void maybeShowStudyToast());
   function renderStudyTimer() {
     if (!timerState) { timerStart.disabled = timerReset.disabled = timerGoal.disabled = true; return; }
     const goal = timerState.goalMinutes * 60000;
@@ -183,6 +279,8 @@
     }
     if (running && timerInterval === null) timerInterval = setInterval(renderStudyTimer, 250);
     else if (!running && timerInterval !== null) { clearInterval(timerInterval); timerInterval = null; }
+    if (toastHost && (timerState.sessionId !== toastSession || !finished)) dismissStudyToast();
+    if (finished) void maybeShowStudyToast();
   }
   async function timerAction(action, goalMinutes) {
     if (timerBusy) return;

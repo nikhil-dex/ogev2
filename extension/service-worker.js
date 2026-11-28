@@ -50,7 +50,7 @@ async function handleAction(message, sender) {
       !validWebsiteUrl(sender.tab.url) || !EXTENSION_ACTIONS.has(message?.type)) {
     throw new Error('Unsupported extension action.');
   }
-  if (message.type === 'STUDY_TIMER') return { timer: await updateLocalStudyTimer(message.action, message.goalMinutes) };
+  if (message.type === 'STUDY_TIMER') return updateLocalStudyTimer(message.action, message.goalMinutes, message.sessionId);
   if (message.type === 'GET_THEME') {
     const stored = await chrome.storage.local.get(['ogeTheme', 'baseUrl']);
     let isOgePage = false;

@@ -1514,3 +1514,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ## Extension study timer
 
 - Compact header timer button accessible from every tool. Local stopwatch or optional 1–1440 minute countdown, pause/resume, reset retains target, reuse completed countdown. Chrome local storage and timestamp arithmetic preserve elapsed time across pages and tabs, without account or backend calls. No automatic activity detection, notifications or study history. New CI/browser verification pending.
+
+### Study timer completion toast
+
+- Prior timer commit 8ed964e passed all four CI jobs (run 46168384527). Added a standalone top-right ChatGPT-style toast with theme-aware styling, ten-second dismissal (paused during hover/focus), Reset, Reuse and best-effort Web Audio chime. Serialized one-time completion claim in the service worker prevents repeated multi-tab alerts; stale toast actions cannot change a newer session. If no focused supported web page is available, the alert appears when one is focused again; browser autoplay policy may mute the chime. No system notifications, alarms, added permissions or backend writes. New CI and manual browser acceptance pending.
