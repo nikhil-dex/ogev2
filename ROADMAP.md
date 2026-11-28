@@ -1522,3 +1522,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### Study timer background notification fallback
 
 - Prior toast commit e9acc55 passed CI run 46168858241. Added Chrome alarms and notifications permissions, timestamp-based deadline scheduling, alarm recovery on startup/install, focused-tab toast delivery with native desktop fallback, serialized deduplication and deferred in-page claim if desktop permission is denied. Chrome must remain running; OS focus mode or notification settings can suppress banners. New CI and real cross-application notification testing pending.
+
+### Extension idle visibility fix
+
+- Fixed focused-editor key events being stopped in capture phase before the old window bubble-phase idle listener. Refresh inactivity deadline inside shortcut isolation before stopping propagation. Also observe input, paste, change and composition activity; hold full opacity during IME composition. Existing 12-second idle delay and collapsed/expanded fade levels retained. Added deterministic simulated-clock regression test for continued typing, idle fade, input wake and composition. CI and manual browser acceptance pending.

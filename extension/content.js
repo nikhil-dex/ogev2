@@ -395,10 +395,13 @@
   }
   let idleTimer;
   const IDLE_DELAY_MS = 12000;
+  let composingInWidget = false;
   function wake() {
     host.style.opacity = '1';
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
+      // A live IME composition is still editing, even between keystrokes.
+      if (composingInWidget && !panel.classList.contains('hidden')) { wake(); return; }
       // Stay discoverable while idle; never hide the editing surface entirely.
       host.style.opacity = panel.classList.contains('hidden') ? '.38' : '.78';
     }, IDLE_DELAY_MS);
@@ -407,12 +410,21 @@
     window.addEventListener(name, wake, { passive: true });
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) host.style.opacity = '.38';
+    if (document.hidden) { composingInWidget = false; clearTimeout(idleTimer); host.style.opacity = '.38'; }
     else wake();
   });
   shadow.addEventListener('pointerdown', wake);
   shadow.addEventListener('focusin', wake);
+  // Input also covers paste, dictation, autofill and IME composition, even
+  // when keyboard shortcuts are intercepted at the window capture phase.
+  for (const name of ['input', 'change', 'compositionstart', 'compositionupdate', 'compositionend', 'paste']) {
+    shadow.addEventListener(name, wake, { capture: true, passive: true });
+  }
+  shadow.addEventListener('compositionstart', () => { composingInWidget = true; wake(); });
+  shadow.addEventListener('compositionend', () => { composingInWidget = false; wake(); });
+  shadow.addEventListener('focusout', () => { composingInWidget = false; wake(); });
   function openPanel(open) {
+    if (!open) composingInWidget = false;
     panel.classList.toggle('hidden', !open);
     // Keep the launcher as a positioning anchor while the open panel hides it.
     // Closing restores the draggable O button.
@@ -477,6 +489,7 @@
   const stopPageShortcutsWhileTyping = (event) => {
     const focused = shadow.activeElement;
     if (panel.classList.contains('hidden') || !focused?.matches('textarea, input, select, button, [contenteditable="true"]')) return;
+    wake();
     event.stopPropagation();
     event.stopImmediatePropagation();
   };
