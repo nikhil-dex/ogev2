@@ -1,7 +1,8 @@
 // All OgeNotes requests are made from the extension service worker.
 // The floating content script never receives the bearer token or app origin.
+importScripts('study-timer-worker.js');
 const TOKEN_PATTERN = /^oge_[A-Za-z0-9_-]{40,60}$/;
-const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'CREATE_LEARNING_TRACK', 'CREATE_LESSON_NOTE', 'LOOKUP_LESSON_NOTE', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'REFRESH_TRACK_PLAYLIST', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
+const EXTENSION_ACTIONS = new Set(['CREATE_QUICK_NOTE', 'CREATE_VAULT_QUICK_NOTE', 'CREATE_VAULT_NOTE', 'UPDATE_VAULT_NOTE', 'SAVE_CURRENT_TAB', 'GET_PROFILE_LINKS', 'VISIT_PROFILE_LINK', 'GET_SUBJECTS', 'GET_NOTES_FOR_SUBJECT', 'APPEND_TO_NOTE', 'GET_THEME', 'SET_THEME', 'STUDY_TIMER', 'CREATE_LEARNING_TRACK', 'CREATE_LESSON_NOTE', 'LOOKUP_LESSON_NOTE', 'LIST_LEARNING_TRACKS', 'WATCH_NEXT_LESSON', 'REFRESH_TRACK_PLAYLIST', 'COMPLETE_NEXT_LESSON', 'UNDO_CURRENT_LESSON', 'OPEN_LEARNING_TRACKS', 'OPEN_VAULT_NOTE']);
 const LINK_KINDS = new Set(['github', 'linkedin', 'portfolio']);
 
 function normalizeBase(value) {
@@ -49,6 +50,7 @@ async function handleAction(message, sender) {
       !validWebsiteUrl(sender.tab.url) || !EXTENSION_ACTIONS.has(message?.type)) {
     throw new Error('Unsupported extension action.');
   }
+  if (message.type === 'STUDY_TIMER') return { timer: await updateLocalStudyTimer(message.action, message.goalMinutes) };
   if (message.type === 'GET_THEME') {
     const stored = await chrome.storage.local.get(['ogeTheme', 'baseUrl']);
     let isOgePage = false;

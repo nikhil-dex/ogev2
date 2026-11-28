@@ -1510,3 +1510,7 @@ Report implemented vs tested separately after each milestone, include the commit
 ### LT10 extension Tracks visual polish
 
 - Scoped floating Tracks UI styles to the Tracks panel. Added light/dark theme tokens, compact playlist cards, current-playlist emphasis, responsive action grids, distinct Complete & Next and Lesson Note actions, readable creation form and empty state. Retained existing actions, API messages, drag/resize behavior and Quick Note/My Links styling. Avoided a percentage bar because historical completed IDs may include removed lessons. Previous commit 3e526b7 had all four CI jobs green; this visual change requires new CI and browser inspection.
+
+## Extension study timer
+
+- Compact header timer button accessible from every tool. Local stopwatch or optional 1–1440 minute countdown, pause/resume, reset retains target, reuse completed countdown. Chrome local storage and timestamp arithmetic preserve elapsed time across pages and tabs, without account or backend calls. No automatic activity detection, notifications or study history. New CI/browser verification pending.

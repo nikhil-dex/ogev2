@@ -72,13 +72,22 @@
     '[data-panel="tracks"] .track-create .subject-label{min-width:0;margin:7px 0 0}',
     '[data-panel="tracks"] [data-open-learning-tracks]{display:block;width:100%;margin-top:9px;background:transparent;color:var(--track-accent)}',
     '[data-panel="tracks"] button:focus-visible,[data-panel="tracks"] input:focus-visible,[data-panel="tracks"] select:focus-visible{outline:2px solid var(--track-accent);outline-offset:2px}',
+    '.timer-toggle{display:flex;align-items:center;gap:4px;min-width:27px;height:27px;padding:0 6px;border:1px solid #dbe5de;border-radius:7px;background:transparent;color:#316b50;font:650 10px system-ui;cursor:pointer;font-variant-numeric:tabular-nums}',
+    '.timer-toggle[aria-expanded="true"],.timer-toggle.is-running{background:#e5f3e9;border-color:#b6d8bf}.timer-toggle svg{width:13px;height:13px;flex:none}.timer-toggle span:empty{display:none}',
+    '.study-timer{margin:9px 12px 0;padding:10px;border:1px solid #dbe5de;border-radius:10px;background:#f7faf7;display:grid;gap:7px}.study-timer[hidden]{display:none}',
+    '.timer-head{display:flex;align-items:center;justify-content:space-between;gap:6px}.timer-head strong{font-size:11px}.timer-readout{font:750 26px/1.2 system-ui;font-variant-numeric:tabular-nums;letter-spacing:-.035em;color:#316b50;text-align:center}',
+    '.timer-detail{margin:0;text-align:center;font-size:10px;color:#637568}.timer-goal{display:flex;align-items:center;gap:7px;font-size:10px}.timer-goal input{width:64px;min-width:0;padding:5px;border:1px solid #d5e0d8;border-radius:6px;background:#fff;color:inherit}',
+    '.timer-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.timer-actions button{padding:7px;border:1px solid #b6d8bf;border-radius:7px;background:#fff;color:#316b50;font-size:11px;font-weight:650;cursor:pointer}.timer-actions [data-timer-start]{background:#316b50;color:#fff}.timer-actions [data-timer-reset]{background:transparent}',
+    ':host([data-oge-theme="dark"]) .timer-toggle{color:#a9d3b8;border-color:#3b4d40}:host([data-oge-theme="dark"]) .timer-toggle[aria-expanded="true"],:host([data-oge-theme="dark"]) .timer-toggle.is-running{background:#293c30;border-color:#44654d}',
+    ':host([data-oge-theme="dark"]) .study-timer{background:#202b24;border-color:#3b4d40}:host([data-oge-theme="dark"]) .timer-readout{color:#a9d3b8}:host([data-oge-theme="dark"]) .timer-detail{color:#a2afa7}:host([data-oge-theme="dark"]) .timer-actions button{background:#293c30;border-color:#44654d;color:#a9d3b8}:host([data-oge-theme="dark"]) .timer-actions [data-timer-start]{background:#78ad8d;color:#15251b}',
   ].join('');
   const panel = document.createElement('section');
   panel.className = 'panel hidden';
   panel.setAttribute('aria-label', 'OgeNotes floating toolbelt');
   // HTML is static extension-owned markup; user content uses textContent.
   panel.innerHTML = [
-    '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
+    '<header class="top"><span class="mark">O</span><strong class="heading">OgeNotes</strong><button class="timer-toggle" type="button" data-timer-toggle aria-label="Study timer" aria-expanded="false" title="Study timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6M12 2v3"/></svg><span data-timer-mini></span></button><button class="corner-button" type="button" aria-label="Move widget to top-right corner" title="Move to top-right corner">⌖</button><button class="close" type="button" aria-label="Close toolbelt">×</button></header>',
+    '<section class="study-timer" data-study-timer hidden aria-label="Study timer"><div class="timer-head"><strong>Study timer</strong><span data-timer-state>Ready</span></div><div class="timer-readout" data-timer-readout role="timer">00:00:00</div><p class="timer-detail" data-timer-detail>Time studied</p><label class="timer-goal">Target (minutes)<input data-timer-goal type="number" min="0" max="1440" value="0" step="1"><span>0 = stopwatch</span></label><div class="timer-actions"><button type="button" data-timer-start>Start</button><button type="button" data-timer-reset>Reset</button></div><p class="timer-detail" data-timer-error role="status"></p></section>',
     '<div class="body" data-panel="note"><p class="hint">Write a quick thought, or a title followed by details. Choose a destination below.</p><textarea maxlength="20000" aria-label="Quick note" placeholder="Write a thought, or a title&#10;&#10;Your note…"></textarea><p class="hint" data-lesson-context hidden></p><label class="subject-label" data-lesson-timestamp hidden><input type="checkbox" data-attach-timestamp> Attach current video timestamp</label><button type="button" class="note-more" data-manual-destination hidden>Choose destination manually</button><button type="button" class="note-more" data-auto-destination hidden>Use current lesson Note</button><label class="subject-label" for="oge-note-subject">Save to</label><select class="subject-select" id="oge-note-subject" aria-label="Choose note destination"><option value="">Quick Notes (default)</option></select><div data-existing-note-picker hidden><label class="subject-label" for="oge-target-note">Note</label><select class="subject-select" id="oge-target-note" aria-label="Choose existing note"><option value="">Default (new Note)</option></select><button type="button" class="note-more" data-show-more-notes hidden>Show more</button></div><button class="primary" type="button" data-save-note>Save to Quick Notes</button><button type="button" data-new-vault-note hidden>Save this as a separate Note instead</button><button type="button" data-open-saved-vault-note hidden>View last saved GitHub Note ↗</button></div>',
     '<div class="body" data-panel="links" hidden><p class="hint">Your GitHub, LinkedIn and portfolio links.</p><div data-links><p class="empty">Open My Links to load URLs.</p></div><button class="primary" type="button" data-save-url>＋ Save current page to Saved Links</button></div>',
     ...(LEARNING_TRACKS_EXTENSION_PREVIEW ? [
@@ -138,6 +147,79 @@
     if (!response?.ok) throw new Error(response?.error || 'Could not reach OgeNotes.');
     return response;
   }
+  // Timer is independent of the active tool and of the Oge account connection.
+  const timerToggle = panel.querySelector('[data-timer-toggle]');
+  const timerBox = panel.querySelector('[data-study-timer]');
+  const timerMini = panel.querySelector('[data-timer-mini]');
+  const timerGoal = panel.querySelector('[data-timer-goal]');
+  const timerStart = panel.querySelector('[data-timer-start]');
+  const timerReset = panel.querySelector('[data-timer-reset]');
+  const timerError = panel.querySelector('[data-timer-error]');
+  let timerState = null, timerBusy = false, timerVersion = 0, timerInterval = null;
+  const timerFormat = ms => {
+    const seconds = Math.floor(Math.max(0, ms) / 1000);
+    return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60].map(n => String(n).padStart(2, '0')).join(':');
+  };
+  function renderStudyTimer() {
+    if (!timerState) { timerStart.disabled = timerReset.disabled = timerGoal.disabled = true; return; }
+    const goal = timerState.goalMinutes * 60000;
+    const raw = timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt));
+    const elapsed = goal ? Math.min(raw, goal) : raw;
+    const finished = goal > 0 && elapsed >= goal;
+    const running = timerState.startedAt !== null && !finished;
+    const shown = goal ? goal - elapsed : elapsed;
+    const clock = timerFormat(goal ? Math.ceil(shown / 1000) * 1000 : shown);
+    panel.querySelector('[data-timer-readout]').textContent = clock;
+    panel.querySelector('[data-timer-state]').textContent = finished ? 'Finished' : running ? 'Running' : elapsed ? 'Paused' : 'Ready';
+    panel.querySelector('[data-timer-detail]').textContent = goal ? 'Studied ' + timerFormat(elapsed) : 'Time studied';
+    timerMini.textContent = running || elapsed ? clock : '';
+    timerToggle.classList.toggle('is-running', running);
+    timerStart.textContent = running ? 'Pause' : finished ? 'Reuse' : elapsed ? 'Resume' : 'Start';
+    timerStart.disabled = timerReset.disabled = timerBusy;
+    timerGoal.disabled = timerBusy || running || elapsed > 0;
+    if (timerGoal !== shadow.activeElement && (timerGoal.disabled || timerGoal.dataset.loaded !== 'yes')) {
+      timerGoal.value = String(timerState.goalMinutes);
+      timerGoal.dataset.loaded = 'yes';
+    }
+    if (running && timerInterval === null) timerInterval = setInterval(renderStudyTimer, 250);
+    else if (!running && timerInterval !== null) { clearInterval(timerInterval); timerInterval = null; }
+  }
+  async function timerAction(action, goalMinutes) {
+    if (timerBusy) return;
+    timerBusy = true;
+    const version = ++timerVersion;
+    renderStudyTimer();
+    timerError.textContent = '';
+    try {
+      const result = await send('STUDY_TIMER', { action, goalMinutes });
+      if (version === timerVersion) { timerState = result.timer; timerGoal.dataset.loaded = ''; }
+    } catch (error) { timerError.textContent = error.message; }
+    finally { timerBusy = false; renderStudyTimer(); }
+  }
+  timerToggle.addEventListener('click', () => {
+    timerBox.hidden = !timerBox.hidden;
+    timerToggle.setAttribute('aria-expanded', String(!timerBox.hidden));
+    if (!timerBox.hidden) void timerAction('get');
+  });
+  timerGoal.addEventListener('change', () => {
+    if (timerGoal.value === '' || !timerGoal.checkValidity()) { timerError.textContent = 'Enter 0–1440 minutes.'; return; }
+    void timerAction('set', Number(timerGoal.value));
+  });
+  timerStart.addEventListener('click', () => {
+    if (!timerState) return;
+    const finished = timerState.goalMinutes && timerState.elapsedMs + (timerState.startedAt === null ? 0 : Math.max(0, Date.now() - timerState.startedAt)) >= timerState.goalMinutes * 60000;
+    void timerAction(timerState.startedAt !== null && !finished ? 'pause' : 'start');
+  });
+  timerReset.addEventListener('click', () => void timerAction('reset'));
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.ogeStudyTimer) {
+      ++timerVersion;
+      timerState = changes.ogeStudyTimer.newValue || null;
+      timerGoal.dataset.loaded = '';
+      renderStudyTimer();
+    }
+  });
+  void timerAction('get');
   function setPanel(tool) {
     active = tool;
     for (const body of panel.querySelectorAll('[data-panel]')) body.hidden = body.dataset.panel !== tool;
